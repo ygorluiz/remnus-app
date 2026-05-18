@@ -4,7 +4,10 @@ import { createClient } from '@libsql/client';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-const client = createClient({ url: process.env.DATABASE_URL || 'file:local.db' });
+const client = createClient({
+  url: process.env.DATABASE_URL || 'file:local.db',
+  authToken: process.env.DATABASE_AUTH_TOKEN,
+});
 const db = drizzle(client);
 
 async function main() {

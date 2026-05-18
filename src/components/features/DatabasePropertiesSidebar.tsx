@@ -52,6 +52,14 @@ interface DatabasePropertiesSidebarProps {
   // Kanban Group by
   groupByCol?: string;
   onGroupByColChange?: (colId: string) => void;
+
+  // Calendar settings
+  dateCol?: string;
+  onDateColChange?: (colId: string) => void;
+  viewMode?: 'month' | 'week';
+  onViewModeChange?: (mode: 'month' | 'week') => void;
+  firstDayOfWeek?: 'sunday' | 'monday';
+  onFirstDayOfWeekChange?: (day: 'sunday' | 'monday') => void;
 }
 
 const OPERATORS: { value: FilterOperator; label: string; needsValue: boolean }[] = [
@@ -93,6 +101,12 @@ export default function DatabasePropertiesSidebar({
   onOpenBehaviorChange,
   groupByCol,
   onGroupByColChange,
+  dateCol,
+  onDateColChange,
+  viewMode,
+  onViewModeChange,
+  firstDayOfWeek,
+  onFirstDayOfWeekChange,
 }: DatabasePropertiesSidebarProps) {
   const [schema, setSchema] = useState<any[]>(() => database.schema || []);
   const [isSavingSchema, setIsSavingSchema] = useState(false);
@@ -103,6 +117,7 @@ export default function DatabasePropertiesSidebar({
 
   const isSchemaDirty = JSON.stringify(schema) !== JSON.stringify(database.schema);
   const selectColumns = schema.filter((c: any) => c.type === 'select');
+  const dateColumns = schema.filter((c: any) => c.type === 'date' || c.type === 'datetime');
 
   // --- Schema mutations ---
   const addColumn = () => {
@@ -377,6 +392,61 @@ export default function DatabasePropertiesSidebar({
                     Add a Select property to enable grouping
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* Section 1.6: Date Column (Calendar view only) */}
+            {activeView.config.type === 'calendar' && (
+              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
+                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Date Property</span>
+                {dateColumns.length > 0 ? (
+                  <select
+                    value={dateCol}
+                    onChange={(e) => onDateColChange?.(e.target.value)}
+                    className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                  >
+                    <option value="">Select a date property...</option>
+                    {dateColumns.map((col: any) => (
+                      <option key={col.id} value={col.id}>
+                        {col.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs text-amber-500/80">
+                    Add a Date or Date & Time property to enable calendar
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Section 1.7: View Mode (Calendar view only) */}
+            {activeView.config.type === 'calendar' && (
+              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
+                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Calendar View Mode</span>
+                <select
+                  value={viewMode}
+                  onChange={(e) => onViewModeChange?.(e.target.value as 'month' | 'week')}
+                  className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                >
+                  <option value="month">Month</option>
+                  <option value="week">Week</option>
+                </select>
+              </div>
+            )}
+
+            {/* Section 1.8: First Day of Week (Calendar view only) */}
+            {activeView.config.type === 'calendar' && (
+              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
+                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Start Week On</span>
+                <select
+                  value={firstDayOfWeek || 'sunday'}
+                  onChange={(e) => onFirstDayOfWeekChange?.(e.target.value as 'sunday' | 'monday')}
+                  className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                >
+                  <option value="sunday">Sunday</option>
+                  <option value="monday">Monday</option>
+                </select>
               </div>
             )}
 

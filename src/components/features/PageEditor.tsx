@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { updatePageContent, updatePageProperties } from '@/lib/actions/page';
 import { ArrowLeft, X } from 'lucide-react';
 import Link from 'next/link';
@@ -29,6 +29,13 @@ export default function PageEditor({
   const [properties, setProperties] = useState<Record<string, any>>(initialPage.properties || {});
 
   const schema = database.schema as any[];
+  const pageTitle = properties['title'] || 'Untitled';
+
+  useEffect(() => {
+    if (!isPeek) {
+      document.title = `${pageTitle} | Remna`;
+    }
+  }, [pageTitle, isPeek]);
 
   const handleContentChange = useMemo(
     () =>

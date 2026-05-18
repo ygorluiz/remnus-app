@@ -29,6 +29,10 @@ export default function StandalonePageEditor({ item, page }: { item: Item; page:
     return () => clearTimeout(t);
   }, [title, item.id]);
 
+  useEffect(() => {
+    document.title = `${title || 'Untitled'} | Remna`;
+  }, [title]);
+
   const handleContentChange = useMemo(
     () => debounce((md: string) => updateStandalonePageContent(item.id, md), 1000),
     [item.id]

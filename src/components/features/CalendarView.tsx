@@ -1,0 +1,473 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, GripVertical, Settings, Trash2, Calendar as CalendarIcon, Clock } from 'lucide-react';
+
+interface CalendarViewProps {
+  database: any;
+  pages: any[];
+  dateCol: string;
+  viewMode: 'month' | 'week';
+  firstDayOfWeek: 'sunday' | 'monday';
+  onCardClick: (pageId: string) => void;
+  onCardDateChange: (pageId: string, newDateStr: string) => void;
+  onDeletePage: (pageId: string) => void;
+}
+
+const formatYYYYMMDD = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getMonthDays = (date: Date, firstDayOfWeek: 'sunday' | 'monday') => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1);
+  
+  let startDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday, 1 is Monday, etc.
+  if (firstDayOfWeek === 'monday') {
+    startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+  }
+  
+  const days = [];
+  // Add days from previous month
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+    days.push({
+      date: new Date(year, month - 1, prevMonthLastDay - i),
+      isCurrentMonth: false,
+    });
+  }
+  // Add days of current month
+  const currentMonthLastDay = new Date(year, month + 1, 0).getDate();
+  for (let i = 1; i <= currentMonthLastDay; i++) {
+    days.push({
+      date: new Date(year, month, i),
+      isCurrentMonth: true,
+    });
+  }
+  // Add days of next month to make complete weeks (multiples of 7, standard 6 rows = 42 cells)
+  const totalDays = days.length;
+  const remaining = 42 - totalDays;
+  for (let i = 1; i <= remaining; i++) {
+    days.push({
+      date: new Date(year, month + 1, i),
+      isCurrentMonth: false,
+    });
+  }
+  return days;
+};
+
+const getWeekDays = (date: Date, firstDayOfWeek: 'sunday' | 'monday') => {
+  let currentDay = date.getDay();
+  if (firstDayOfWeek === 'monday') {
+    currentDay = currentDay === 0 ? 6 : currentDay - 1;
+  }
+  const sunday = new Date(date);
+  sunday.setDate(date.getDate() - currentDay);
+  
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    days.push({
+      date: d,
+      isCurrentMonth: d.getMonth() === date.getMonth(),
+    });
+  }
+  return days;
+};
+
+const WEEKDAYS_SUN = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const WEEKDAYS_MON = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+export default function CalendarView({
+  database,
+  pages,
+  dateCol,
+  viewMode,
+  firstDayOfWeek,
+  onCardClick,
+  onCardDateChange,
+  onDeletePage,
+}: CalendarViewProps) {
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  // Card dragging states
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const [isCardDragReady, setIsCardDragReady] = useState(false);
+  const [dragOverDayStr, setDragOverDayStr] = useState<string | null>(null);
+  const [activeMenuCardId, setActiveMenuCardId] = useState<string | null>(null);
+
+  const schema = database.schema as any[];
+  const dateProperty = schema.find((c) => c.id === dateCol);
+
+  const days = useMemo(() => {
+    return viewMode === 'month' ? getMonthDays(currentDate, firstDayOfWeek) : getWeekDays(currentDate, firstDayOfWeek);
+  }, [currentDate, viewMode, firstDayOfWeek]);
+
+  const handlePrev = () => {
+    setCurrentDate((prev) => {
+      const d = new Date(prev);
+      if (viewMode === 'month') {
+        d.setMonth(d.getMonth() - 1);
+      } else {
+        d.setDate(d.getDate() - 7);
+      }
+      return d;
+    });
+  };
+
+  const handleNext = () => {
+    setCurrentDate((prev) => {
+      const d = new Date(prev);
+      if (viewMode === 'month') {
+        d.setMonth(d.getMonth() + 1);
+      } else {
+        d.setDate(d.getDate() + 7);
+      }
+      return d;
+    });
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const getHeaderLabel = () => {
+    if (viewMode === 'month') {
+      return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else {
+      let currentDay = currentDate.getDay();
+      if (firstDayOfWeek === 'monday') {
+        currentDay = currentDay === 0 ? 6 : currentDay - 1;
+      }
+      const start = new Date(currentDate);
+      start.setDate(currentDate.getDate() - currentDay);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      
+      const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+      const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
+      
+      if (start.getFullYear() !== end.getFullYear()) {
+        return `${startMonth} ${start.getDate()}, ${start.getFullYear()} – ${endMonth} ${end.getDate()}, ${end.getFullYear()}`;
+      } else if (start.getMonth() !== end.getMonth()) {
+        return `${startMonth} ${start.getDate()} – ${endMonth} ${end.getDate()}, ${start.getFullYear()}`;
+      } else {
+        return `${startMonth} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
+      }
+    }
+  };
+
+  const isSameDay = (d1: Date, d2: Date) => {
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
+  };
+
+  const getPagesForDay = (dayDate: Date) => {
+    if (!dateCol) return [];
+    return pages.filter((page) => {
+      const val = page.properties[dateCol];
+      if (!val) return false;
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return false;
+      return isSameDay(d, dayDate);
+    });
+  };
+
+  if (!dateCol) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-neutral-500 py-20 text-center gap-3">
+        <CalendarIcon size={28} className="text-neutral-600 animate-pulse" />
+        <span className="text-sm">Please select a date property in the Layout Settings to enable the Calendar View.</span>
+        <span className="text-xs text-neutral-600 max-w-xs">
+          Open <strong>Settings &gt; Layout</strong> tab in the top right to bind this calendar to a date property.
+        </span>
+      </div>
+    );
+  }
+
+  const todayStr = formatYYYYMMDD(new Date());
+
+  return (
+    <div className="flex flex-col h-full bg-neutral-950 text-neutral-200">
+      {/* Calendar Header Nav */}
+      <div className="flex items-center justify-between pb-3.5 mb-2.5 border-b border-neutral-850/60 shrink-0 select-none">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handlePrev}
+            className="p-1.5 hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={handleToday}
+            className="px-3 py-1 text-xs font-semibold hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer"
+          >
+            Today
+          </button>
+          <button
+            onClick={handleNext}
+            className="p-1.5 hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer"
+          >
+            <ChevronRight size={14} />
+          </button>
+          <span className="text-sm font-semibold ml-2.5 text-neutral-100 shrink-0">
+            {getHeaderLabel()}
+          </span>
+        </div>
+
+        {/* Small badge of dateCol binding */}
+        <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 bg-neutral-900/30 border border-neutral-850 px-2 py-0.5 uppercase tracking-wider">
+          <Clock size={10} />
+          <span>Mapped to: {dateProperty?.name || 'Unknown'}</span>
+        </div>
+      </div>
+
+      {/* Weekdays names row */}
+      <div className="grid grid-cols-7 border-b border-neutral-800/80 bg-neutral-900/10 shrink-0 select-none">
+        {(firstDayOfWeek === 'monday' ? WEEKDAYS_MON : WEEKDAYS_SUN).map((day) => (
+          <div
+            key={day}
+            className="text-[10px] text-neutral-500 font-semibold tracking-wider text-center py-2"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Grid Container */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div
+          className={`grid grid-cols-7 border-l border-t border-neutral-800/80 bg-neutral-950 h-full ${
+            viewMode === 'month' ? 'grid-rows-6' : 'grid-rows-1 min-h-87.5'
+          }`}
+        >
+          {days.map(({ date, isCurrentMonth }, idx) => {
+            const dayStr = formatYYYYMMDD(date);
+            const isToday = dayStr === todayStr;
+            const dayPages = getPagesForDay(date);
+            const isDragOver = dragOverDayStr === dayStr;
+
+            return (
+              <div
+                key={idx}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (draggedCardId) {
+                    setDragOverDayStr(dayStr);
+                  }
+                }}
+                onDragLeave={() => {
+                  if (dragOverDayStr === dayStr) {
+                    setDragOverDayStr(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const cardId = e.dataTransfer.getData('text/plain') || draggedCardId;
+                  if (cardId) {
+                    onCardDateChange(cardId, dayStr);
+                  }
+                  setDragOverDayStr(null);
+                  setDraggedCardId(null);
+                  setIsCardDragReady(false);
+                }}
+                className={`border-r border-b border-neutral-800/80 p-2 min-h-24 flex flex-col transition-colors overflow-y-auto ${
+                  !isCurrentMonth && viewMode === 'month' ? 'bg-neutral-950/20' : 'bg-transparent'
+                } ${isDragOver ? 'bg-neutral-800/15' : ''}`}
+              >
+                {/* Day Number / Indicator */}
+                <div className="flex items-center justify-between mb-1.5 shrink-0 select-none">
+                  <span
+                    className={`text-xs font-semibold py-0.5 px-1.5 ${
+                      isToday
+                        ? 'bg-blue-600 text-white font-bold'
+                        : isCurrentMonth
+                        ? 'text-neutral-400'
+                        : 'text-neutral-600'
+                    }`}
+                  >
+                    {date.getDate()}
+                  </span>
+                  {dayPages.length > 0 && (
+                    <span className="text-[10px] text-neutral-600 font-medium font-mono">
+                      {dayPages.length}
+                    </span>
+                  )}
+                </div>
+
+                {/* Cards Container inside day */}
+                <div className="flex-1 flex flex-col gap-1.5 min-h-10">
+                  {dayPages.map((page) => (
+                    <div
+                      key={page.id}
+                      onClick={() => onCardClick(page.id)}
+                      draggable={isCardDragReady}
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        setDraggedCardId(page.id);
+                        e.dataTransfer.setData('text/plain', page.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => {
+                        setDraggedCardId(page.id);
+                        setIsCardDragReady(false);
+                      }}
+                      className={`relative py-2.5 px-2 bg-neutral-800/45 cursor-pointer hover:bg-neutral-800/75 transition-colors group flex flex-col select-none ${
+                        draggedCardId === page.id ? 'opacity-25' : ''
+                      }`}
+                    >
+                      {/* Hover Actions */}
+                      <div
+                        className="absolute right-1 top-1.5 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity z-10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuCardId(activeMenuCardId === page.id ? null : page.id);
+                          }}
+                          className="p-1 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-200 transition-colors rounded-none cursor-pointer"
+                          title="Page actions"
+                        >
+                          <Settings size={10} />
+                        </button>
+                        <button
+                          draggable={true}
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            setDraggedCardId(page.id);
+                            e.dataTransfer.setData('text/plain', page.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                          onMouseDown={() => setIsCardDragReady(true)}
+                          onMouseLeave={() => setIsCardDragReady(false)}
+                          className="p-1 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing transition-colors rounded-none"
+                          title="Drag to reschedule"
+                        >
+                          <GripVertical size={10} />
+                        </button>
+                      </div>
+
+                      {/* Card Dropdown Menu */}
+                      {activeMenuCardId === page.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-20 cursor-default"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuCardId(null);
+                            }}
+                          />
+                          <div
+                            className="absolute right-0 top-6 z-30 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-32 rounded-none text-left animate-fade-in animate-duration-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm('Are you sure you want to delete this page?')) {
+                                  onDeletePage(page.id);
+                                }
+                                setActiveMenuCardId(null);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-[11px] text-red-400 hover:bg-neutral-800 flex items-center gap-1.5 cursor-pointer transition-colors"
+                            >
+                              <Trash2 size={11} />
+                              <span>Delete page</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Page Title */}
+                      <h4 className="text-xs text-neutral-300 group-hover:text-neutral-100 font-medium leading-snug wrap-break-word pr-8">
+                        {page.properties['title'] || 'Untitled'}
+                      </h4>
+
+                      {/* Up to 2 metadata attributes in small font */}
+                      <div className="mt-1 flex flex-col gap-0.5 select-none shrink-0">
+                        {schema
+                          .filter((c) => c.id !== 'title' && c.id !== dateCol)
+                          .slice(0, 1)
+                          .map((c) => {
+                            const val = page.properties[c.id];
+                            const isEmpty =
+                              val === undefined ||
+                              val === null ||
+                              val === '' ||
+                              (Array.isArray(val) && val.length === 0);
+                            if (isEmpty) return null;
+
+                            let display: React.ReactNode;
+                            if (c.type === 'multi_select' && Array.isArray(val)) {
+                              display = (
+                                <span className="flex flex-wrap gap-0.5">
+                                  {val.map((opt: string) => (
+                                    <span
+                                      key={opt}
+                                      className="bg-neutral-700/60 text-neutral-400 text-[9px] px-1 py-0"
+                                    >
+                                      {opt}
+                                    </span>
+                                  ))}
+                                </span>
+                              );
+                            } else if (c.type === 'date' && val) {
+                              const d = new Date(val);
+                              display = (
+                                <span className="text-neutral-500 truncate text-[9px]">
+                                  {isNaN(d.getTime())
+                                    ? val
+                                    : d.toLocaleDateString('en-US', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                      })}
+                                </span>
+                              );
+                            } else if (c.type === 'datetime' && val) {
+                              const d = new Date(val);
+                              display = (
+                                <span className="text-neutral-500 truncate text-[9px]">
+                                  {isNaN(d.getTime())
+                                    ? val
+                                    : d.toLocaleString('en-US', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                </span>
+                              );
+                            } else {
+                              display = (
+                                <span className="text-neutral-500 truncate text-[9px]">{String(val)}</span>
+                              );
+                            }
+
+                            return (
+                              <div key={c.id} className="text-[9px] flex items-center gap-1.5 select-none">
+                                <span className="text-neutral-600 shrink-0">{c.name}:</span>
+                                {display}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

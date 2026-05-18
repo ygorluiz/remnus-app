@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { LayoutList, KanbanSquare, Plus } from 'lucide-react';
+import { LayoutList, KanbanSquare, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import type { DatabaseView } from '@/lib/types/views';
 
 interface ViewsBarProps {
   views: DatabaseView[];
   activeViewId: string;
   onActivate: (id: string) => void;
-  onAdd: (type: 'table' | 'kanban') => void;
+  onAdd: (type: 'table' | 'kanban' | 'calendar') => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
   onReorder: (views: DatabaseView[]) => void;
@@ -101,7 +101,12 @@ export default function ViewsBar({
     <div className="flex items-center gap-0">
       {views.map((view) => {
         const isActive = view.id === activeViewId;
-        const Icon = view.config.type === 'table' ? LayoutList : KanbanSquare;
+        let Icon = LayoutList;
+        if (view.config.type === 'kanban') {
+          Icon = KanbanSquare;
+        } else if (view.config.type === 'calendar') {
+          Icon = CalendarIcon;
+        }
         const isRenaming = renamingId === view.id;
 
         return (
@@ -202,9 +207,18 @@ export default function ViewsBar({
                 onAdd('kanban');
                 setAddOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none"
+              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none border-b border-neutral-850/60"
             >
               <KanbanSquare size={13} /> Kanban view
+            </button>
+            <button
+              onClick={() => {
+                onAdd('calendar');
+                setAddOpen(false);
+              }}
+              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none"
+            >
+              <CalendarIcon size={13} /> Calendar view
             </button>
           </div>
         )}

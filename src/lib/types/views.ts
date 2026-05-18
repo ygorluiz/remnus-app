@@ -39,8 +39,20 @@ export interface KanbanViewConfig {
   openBehavior?: OpenBehavior;
 }
 
+export interface CalendarViewConfig {
+  type: 'calendar';
+  dateCol: string;         // which date or datetime column to place cards on
+  viewMode: 'month' | 'week';
+  firstDayOfWeek?: 'sunday' | 'monday';
+  filters: ViewFilter[];
+  sorts: ViewSort[];
+  openBehavior?: OpenBehavior;
+}
+
 export interface DatabaseView {
   id: string;
   name: string;
-  config: TableViewConfig | KanbanViewConfig;
+  config: TableViewConfig | KanbanViewConfig | CalendarViewConfig;
 }
+
+

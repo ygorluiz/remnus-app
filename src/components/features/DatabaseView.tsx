@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createPage, getPage, deletePage, reorderPages, updatePageProperties } from '@/lib/actions/page';
 import { updateDatabaseViews } from '@/lib/actions/database';
 import { Plus, Settings, Columns3, Filter, ArrowUpDown, X, Maximize2, Database } from 'lucide-react';
 import TableLayout from './TableLayout';
 import KanbanBoard from './KanbanBoard';
+import CalendarView from './CalendarView';
 import ViewsBar from './ViewsBar';
 import DatabasePropertiesSidebar from './DatabasePropertiesSidebar';
 import PageEditor from './PageEditor';
@@ -14,6 +15,7 @@ import type {
   DatabaseView,
   TableViewConfig,
   KanbanViewConfig,
+  CalendarViewConfig,
   ViewFilter,
   ViewSort,
 } from '@/lib/types/views';
@@ -39,6 +41,21 @@ function defaultKanbanView(schema: any[], name = 'Board'): DatabaseView {
       type: 'kanban',
       groupByCol: firstSelect?.id ?? '',
       groupOrder: [],
+      filters: [],
+      sorts: [],
+    },
+  };
+}
+
+function defaultCalendarView(schema: any[], name = 'Calendar'): DatabaseView {
+  const firstDate = schema.find((c: any) => c.type === 'date' || c.type === 'datetime');
+  return {
+    id: uid(),
+    name,
+    config: {
+      type: 'calendar',
+      dateCol: firstDate?.id ?? '',
+      viewMode: 'month',
       filters: [],
       sorts: [],
     },
@@ -108,8 +125,30 @@ export default function DatabaseView({
     return [defaultTableView()];
   });
 
-  const [activeViewId, setActiveViewId] = useState(() => views[0].id);
+  const [activeViewId, setActiveViewId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const v = urlParams.get('v');
+      if (v && views.some((vw) => vw.id === v)) {
+        return v;
+      }
+    }
+    return views[0].id;
+  });
   const [isAdding, setIsAdding] = useState(false);
+
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // Sync activeViewId with URL query parameter
+  useEffect(() => {
+    const v = searchParams.get('v');
+    if (v && views.some((vw) => vw.id === v) && v !== activeViewId) {
+      setActiveViewId(v);
+    }
+  }, [searchParams, views, activeViewId]);
+
+
 
   // Sidebar states
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -140,6 +179,13 @@ export default function DatabaseView({
 
   const activeView = views.find((v) => v.id === activeViewId) ?? views[0];
   const config = activeView.config;
+
+  // Synchronize document title
+  useEffect(() => {
+    if (database && activeView) {
+      document.title = `${database.name} - ${activeView.name} | Remna`;
+    }
+  }, [database?.name, activeView?.name]);
 
   const mutateConfig = useCallback(
     (fn: (cfg: typeof config) => typeof config) => {
@@ -302,15 +348,33 @@ export default function DatabaseView({
   };
 
   // --- View management ---
-  const handleActivate = (id: string) => setActiveViewId(id);
+  const handleActivate = (id: string) => {
+    setActiveViewId(id);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.set('v', id);
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    }
+  };
 
-  const handleAddView = (type: 'table' | 'kanban') => {
+  const handleAddView = (type: 'table' | 'kanban' | 'calendar') => {
     const count = views.filter((v) => v.config.type === type).length;
-    const base = type === 'table' ? 'Table' : 'Board';
+    let base = 'Table';
+    if (type === 'kanban') base = 'Board';
+    else if (type === 'calendar') base = 'Calendar';
     const name = count === 0 ? base : `${base} ${count + 1}`;
-    const newView = type === 'table' ? defaultTableView(name) : defaultKanbanView(schema, name);
+    
+    let newView: DatabaseView;
+    if (type === 'table') {
+      newView = defaultTableView(name);
+    } else if (type === 'kanban') {
+      newView = defaultKanbanView(schema, name);
+    } else {
+      newView = defaultCalendarView(schema, name);
+    }
+    
     mutateViews((vs) => [...vs, newView]);
-    setActiveViewId(newView.id);
+    handleActivate(newView.id);
   };
 
   const handleRenameView = (id: string, name: string) => {
@@ -356,8 +420,43 @@ export default function DatabaseView({
 
   const isTableView = config.type === 'table';
   const tableConfig = isTableView ? (config as TableViewConfig) : null;
-  const kanbanConfig = !isTableView ? (config as KanbanViewConfig) : null;
+  const kanbanConfig = config.type === 'kanban' ? (config as KanbanViewConfig) : null;
+  const calendarConfig = config.type === 'calendar' ? (config as CalendarViewConfig) : null;
   const selectColumns = schema.filter((c: any) => c.type === 'select');
+
+  const handleDateColChange = (dateCol: string) =>
+    mutateConfig((cfg) => ({ ...cfg, dateCol }));
+
+  const handleViewModeChange = (viewMode: 'month' | 'week') =>
+    mutateConfig((cfg) => ({ ...cfg, viewMode }));
+
+  const handleFirstDayOfWeekChange = (firstDayOfWeek: 'sunday' | 'monday') =>
+    mutateConfig((cfg) => ({ ...cfg, firstDayOfWeek }));
+
+  const handleCardDateChange = async (pageId: string, newDate: string | null) => {
+    const page = localPages.find((p) => p.id === pageId);
+    if (!page || !calendarConfig) return;
+
+    const nextPages = localPages.map((p) => {
+      if (p.id === pageId) {
+        return {
+          ...p,
+          properties: {
+            ...p.properties,
+            [calendarConfig.dateCol]: newDate,
+          },
+        };
+      }
+      return p;
+    });
+
+    setLocalPages(nextPages);
+
+    const targetPage = nextPages.find((p) => p.id === pageId);
+    if (targetPage) {
+      await updatePageProperties(pageId, targetPage.properties);
+    }
+  };
 
   const handleToggleSidebar = (tab: typeof sidebarTab) => {
     if (sidebarOpen && sidebarTab === tab) {
@@ -437,6 +536,17 @@ export default function DatabaseView({
               onDeletePage={handleDeletePage}
               hasSorts={(config.sorts?.length ?? 0) > 0}
             />
+          ) : calendarConfig ? (
+            <CalendarView
+              database={database}
+              pages={processedPages}
+              dateCol={calendarConfig.dateCol}
+              viewMode={calendarConfig.viewMode}
+              firstDayOfWeek={calendarConfig.firstDayOfWeek || 'sunday'}
+              onCardClick={handlePageClick}
+              onCardDateChange={handleCardDateChange}
+              onDeletePage={handleDeletePage}
+            />
           ) : null}
         </div>
 
@@ -471,6 +581,12 @@ export default function DatabaseView({
               }
               groupByCol={kanbanConfig?.groupByCol}
               onGroupByColChange={handleGroupByChange}
+              dateCol={calendarConfig?.dateCol}
+              onDateColChange={handleDateColChange}
+              viewMode={calendarConfig?.viewMode}
+              onViewModeChange={handleViewModeChange}
+              firstDayOfWeek={calendarConfig?.firstDayOfWeek}
+              onFirstDayOfWeekChange={handleFirstDayOfWeekChange}
             />
           </div>
         )}
