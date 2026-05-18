@@ -1,8 +1,9 @@
-import { getWorkspaceItems, getDatabaseByItemId } from '@/lib/actions/workspace';
+import { getActiveWorkspaceId, getWorkspaceItems, getDatabaseByItemId } from '@/lib/actions/workspace';
 import { redirect } from 'next/navigation';
 
 export default async function HomePage() {
-  const items = await getWorkspaceItems();
+  const activeWorkspaceId = await getActiveWorkspaceId();
+  const items = await getWorkspaceItems(activeWorkspaceId);
 
   if (items.length > 0) {
     const first = items[0];

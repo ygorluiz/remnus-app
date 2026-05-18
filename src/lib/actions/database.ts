@@ -3,10 +3,11 @@ import { db } from '@/db';
 import { databases } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { createWorkspaceDatabase } from './workspace';
+import { createWorkspaceDatabase, getActiveWorkspaceId } from './workspace';
 
 export async function createDatabase(name: string) {
-  const { dbId } = await createWorkspaceDatabase(name);
+  const workspaceId = await getActiveWorkspaceId();
+  const { dbId } = await createWorkspaceDatabase(workspaceId, name);
   revalidatePath('/');
   return dbId;
 }

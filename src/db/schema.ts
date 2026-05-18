@@ -1,14 +1,22 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
-export const workspaceItems = sqliteTable('workspace_items', {
+export const workspaces = sqliteTable('workspaces', {
   id:        text('id').primaryKey(),
-  type:      text('type', { enum: ['page', 'database'] }).notNull(),
-  title:     text('title').notNull(),
-  parentId:  text('parent_id'),
-  sortOrder: integer('sort_order').notNull().default(0),
+  name:      text('name').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const workspaceItems = sqliteTable('workspace_items', {
+  id:          text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  type:        text('type', { enum: ['page', 'database'] }).notNull(),
+  title:       text('title').notNull(),
+  parentId:    text('parent_id'),
+  sortOrder:   integer('sort_order').notNull().default(0),
+  createdAt:   integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt:   integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const standalonePages = sqliteTable('standalone_pages', {

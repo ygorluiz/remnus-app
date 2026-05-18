@@ -9,61 +9,53 @@ import KanbanBoard from './KanbanBoard';
 export default function DatabaseView({ database, initialPages }: { database: any, initialPages: any[] }) {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditingSchema, setIsEditingSchema] = useState(false);
-  
-  // View state: 'table' or 'kanban'
   const [activeView, setActiveView] = useState<'table' | 'kanban'>('table');
-  
+
   const schema = database.schema as any[];
-  
-  // Get all select properties to use for Kanban grouping
   const selectColumns = schema.filter(col => col.type === 'select');
-  
-  // Default to the first select column if available
   const [groupByCol, setGroupByCol] = useState<string>(selectColumns.length > 0 ? selectColumns[0].id : '');
 
   const handleAddRow = async () => {
     setIsAdding(true);
-    const title = 'New Page';
-    await createPage(database.id, title);
+    await createPage(database.id, 'New Page');
     setIsAdding(false);
   };
 
   return (
     <div className="flex flex-col h-full gap-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {/* View Toggle */}
-          <div className="flex bg-neutral-900 border border-neutral-800 rounded-md p-1">
+        <div className="flex items-center gap-4">
+          {/* View toggle — underline style */}
+          <div className="flex items-center border-b border-neutral-800">
             <button
               onClick={() => setActiveView('table')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                activeView === 'table' 
-                  ? 'bg-neutral-800 text-white shadow-sm' 
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeView === 'table'
+                  ? 'border-neutral-300 text-neutral-100'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-300'
               }`}
             >
-              <LayoutList size={16} /> Table
+              <LayoutList size={15} /> Table
             </button>
             <button
               onClick={() => setActiveView('kanban')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                activeView === 'kanban' 
-                  ? 'bg-neutral-800 text-white shadow-sm' 
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeView === 'kanban'
+                  ? 'border-neutral-300 text-neutral-100'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-300'
               }`}
             >
-              <KanbanSquare size={16} /> Kanban
+              <KanbanSquare size={15} /> Kanban
             </button>
           </div>
 
-          {/* Group By selector (Only visible in Kanban view) */}
           {activeView === 'kanban' && selectColumns.length > 0 && (
-            <div className="flex items-center gap-2 ml-4">
-              <span className="text-sm text-neutral-400 font-medium">Group By:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-500">Group by</span>
               <select
                 value={groupByCol}
                 onChange={(e) => setGroupByCol(e.target.value)}
-                className="bg-neutral-900 border border-neutral-800 text-sm text-white rounded-md px-3 py-1.5 outline-none focus:border-neutral-600 transition-colors cursor-pointer"
+                className="bg-transparent border border-neutral-800 text-xs text-neutral-300 px-2 py-1 outline-none hover:border-neutral-600 transition-colors cursor-pointer"
               >
                 {selectColumns.map(col => (
                   <option key={col.id} value={col.id}>{col.name}</option>
@@ -71,39 +63,38 @@ export default function DatabaseView({ database, initialPages }: { database: any
               </select>
             </div>
           )}
-          
+
           {activeView === 'kanban' && selectColumns.length === 0 && (
-            <div className="ml-4 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-md">
-              Add a "Select" property to use Kanban
-            </div>
+            <span className="text-xs text-amber-500/80">
+              Kanban için bir "Select" özelliği ekle
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button 
+        <div className="flex items-center gap-1">
+          <button
             onClick={() => setIsEditingSchema(true)}
-            className="flex items-center gap-2 text-neutral-400 hover:text-white px-3 py-2 rounded-md transition-colors text-sm"
+            className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-200 px-3 py-2 transition-colors text-sm"
           >
-            <Settings size={16} /> Properties
+            <Settings size={15} /> Properties
           </button>
-          <button 
+          <button
             onClick={handleAddRow}
             disabled={isAdding}
-            className="flex items-center gap-2 bg-white text-black hover:bg-neutral-200 px-4 py-2 rounded-md transition-colors text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-neutral-100 text-neutral-900 hover:bg-white px-4 py-2 transition-colors text-sm font-medium disabled:opacity-50"
           >
-            <Plus size={16} /> New
+            <Plus size={15} /> New
           </button>
         </div>
       </div>
 
       {isEditingSchema && (
-        <SchemaEditorModal 
-          database={database} 
-          onClose={() => setIsEditingSchema(false)} 
+        <SchemaEditorModal
+          database={database}
+          onClose={() => setIsEditingSchema(false)}
         />
       )}
 
-      {/* Render the selected view */}
       <div className="flex-1 min-h-0">
         {activeView === 'table' ? (
           <TableLayout database={database} pages={initialPages} />
