@@ -4,25 +4,49 @@ import { updatePageContent, updatePageProperties } from '@/lib/actions/page';
 import { ArrowLeft, X } from 'lucide-react';
 import Link from 'next/link';
 
-export default function PageEditor({ database, initialPage }: { database: any, initialPage: any }) {
+export default function PageEditor({
+  database,
+  initialPage,
+  isPeek = false,
+  onClose,
+  onPageUpdated,
+}: {
+  database: any;
+  initialPage: any;
+  isPeek?: boolean;
+  onClose?: () => void;
+  onPageUpdated?: (updatedPage: any) => void;
+}) {
   const [content, setContent] = useState(initialPage.content || '');
   const [properties, setProperties] = useState<Record<string, any>>(initialPage.properties || {});
 
   const schema = database.schema as any[];
 
+  // Sync state if initialPage changes
+  useEffect(() => {
+    setContent(initialPage.content || '');
+    setProperties(initialPage.properties || {});
+  }, [initialPage]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (content !== initialPage.content) {
         updatePageContent(initialPage.id, content);
+        if (onPageUpdated) {
+          onPageUpdated({ ...initialPage, properties, content });
+        }
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [content, initialPage.id, initialPage.content]);
+  }, [content, initialPage.id, initialPage.content, properties, onPageUpdated]);
 
   const handlePropertyChange = async (colId: string, value: any) => {
     const newProps = { ...properties, [colId]: value };
     setProperties(newProps);
     await updatePageProperties(initialPage.id, newProps);
+    if (onPageUpdated) {
+      onPageUpdated({ ...initialPage, properties: newProps, content });
+    }
   };
 
   const handleMultiSelectToggle = async (colId: string, option: string) => {
@@ -34,10 +58,12 @@ export default function PageEditor({ database, initialPage }: { database: any, i
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8 lg:p-12">
-      <Link href={`/db/${database.id}`} className="inline-flex items-center gap-2 text-neutral-400 hover:text-white mb-10 transition-colors text-sm font-medium">
-        <ArrowLeft size={16} /> Back to {database.name}
-      </Link>
+    <div className={`${isPeek ? 'p-6 md:p-8 lg:p-10' : 'max-w-4xl mx-auto p-8 lg:p-12'}`}>
+      {!isPeek && (
+        <Link href={`/db/${database.id}`} className="inline-flex items-center gap-2 text-neutral-400 hover:text-white mb-10 transition-colors text-sm font-medium">
+          <ArrowLeft size={16} /> Back to {database.name}
+        </Link>
+      )}
 
       {/* Properties Section */}
       <div className="mb-12 space-y-4">

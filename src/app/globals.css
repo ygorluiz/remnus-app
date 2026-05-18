@@ -22,6 +22,23 @@
   --color-neutral-850: #262e38;      /* Custom intermediate active/hover bg color */
   --color-neutral-900: #202933;      /* Requested sidebar and card background */
   --color-neutral-950: #181e26;      /* Pure requested dark black background */
+
+  --animate-slide-in-right: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-fade-in: fade-in 0.2s ease-out forwards;
+  --animate-scale-in: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes scale-in {
+    from { transform: scale(0.96); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
 }
 
 @media (prefers-color-scheme: dark) {

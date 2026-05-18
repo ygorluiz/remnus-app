@@ -43,6 +43,7 @@ export const pages = sqliteTable('pages', {
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
   properties: text('properties', { mode: 'json' }).notNull().$type<Record<string, any>>().default({}),
+  sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });

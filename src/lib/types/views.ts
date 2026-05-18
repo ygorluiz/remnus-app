@@ -19,12 +19,15 @@ export interface ViewSort {
   direction: 'asc' | 'desc';
 }
 
+export type OpenBehavior = 'center' | 'side' | 'full';
+
 export interface TableViewConfig {
   type: 'table';
   columnOrder: string[];   // visible column IDs in order; [] = use schema order
   hiddenColumns: string[];
   filters: ViewFilter[];
   sorts: ViewSort[];
+  openBehavior?: OpenBehavior;
 }
 
 export interface KanbanViewConfig {
@@ -33,6 +36,7 @@ export interface KanbanViewConfig {
   groupOrder: string[];    // option values in display order; [] = use options order
   filters: ViewFilter[];
   sorts: ViewSort[];
+  openBehavior?: OpenBehavior;
 }
 
 export interface DatabaseView {

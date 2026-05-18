@@ -57,20 +57,20 @@ To support fully dynamic, user-defined properties without structural database mi
   - `src/app/db/[id]/[pageId]/page.tsx`: Database row page editor (markdown + properties).
   - `src/app/page/[itemId]/page.tsx`: Standalone workspace page editor (title + markdown only).
 - `src/lib/types/`: Types definitions.
-  - `views.ts`: Types for `DatabaseView`, `TableViewConfig`, `KanbanViewConfig`, `ViewFilter`, `ViewSort`, and operator definitions.
+  - `views.ts`: Types for `DatabaseView`, `TableViewConfig`, `KanbanViewConfig`, `ViewFilter`, `ViewSort`, operator definitions, and `OpenBehavior` options ('center' | 'side' | 'full').
 - `src/lib/actions/`: Next.js Server Actions for all database mutations (CRUD).
   - `workspace.ts`: Workspace & items CRUD — `getActiveWorkspaceId`, `getWorkspaces`, `createWorkspace`, `deleteWorkspace`, `renameWorkspace`, `switchWorkspace`, `getWorkspaceItems`, `createStandalonePage`, `createWorkspaceDatabase`, `getStandalonePageByItemId`, `updateStandalonePageContent`, `updateWorkspaceItemTitle`, `getDatabaseByItemId`.
   - `database.ts`: `createDatabase` delegates to `createWorkspaceDatabase`; also `getDatabases`, `getDatabase`, `updateDatabaseSchema`, `updateDatabaseViews`.
   - `page.ts`: Database row actions — `createPage`, `getPages`, `getPage`, `updatePageProperties`, `updatePageContent`.
 - `src/components/features/`: React components.
   - `WorkspaceSidebar`: Unified sidebar displaying all workspaces as root branches in a collapsible tree-view layout. Child pages and databases are nested directly beneath their parent workspace. Clicking an item silently syncs the active workspace cookie. Supports inline workspace creation, renaming, deletion, and adding items directly within a specific workspace's subtree.
-  - `DatabaseView`: Orchestrates the active view tabs, controls active view state, manages the schema, handles view creation/renaming/deletion, and provides filtering/sorting coordination.
+  - `DatabaseView`: Orchestrates the active view tabs, controls active view state, manages the schema, handles view creation/renaming/deletion, provides filtering/sorting coordination, and manages page peek overlay modals (Center / Side Peek) and opening behaviors.
   - `ViewsBar`: Renders named view tab buttons for a database, allowing inline renaming, deleting, and adding table or kanban views.
-  - `DatabasePropertiesSidebar`: Unified right-side sidebar managing database schema properties (adding/removing fields, editing options), columns visibility controls, active view filters, and active view sorts in a tabbed panel layout.
-  - `TableLayout`: Notion-like grid with vertical borders, tight padding, and fully draggable columns (swap-on-drop) that persist to the active view's configuration. Supports hidden columns.
-  - `KanbanBoard`: Kanban board grouped by a designated `select` column, with Uncategorized fallback. Column groups are draggable (reorderable) and saved to the view config.
+  - `DatabasePropertiesSidebar`: Unified right-side sidebar managing database schema properties (adding/removing fields, editing options), columns visibility controls, active view filters, active view sorts, and page opening modes (peek options) in a tabbed panel layout.
+  - `TableLayout`: Notion-like grid with vertical borders, tight padding, and fully draggable columns (swap-on-drop) that persist to the active view's configuration. Supports hidden columns and custom row click behaviors.
+  - `KanbanBoard`: Kanban board grouped by a designated `select` column, with Uncategorized fallback. Column groups are draggable (reorderable), saved to the view config. Supports custom card click behaviors.
   - `StandalonePageEditor`: Simple editor for workspace pages — large title input + markdown textarea, both auto-saved (debounced). No properties panel.
-  - `PageEditor`: Full editor for database row pages — properties panel (select dropdowns, text inputs) + markdown textarea with auto-save.
+  - `PageEditor`: Full editor for database row pages — properties panel (select dropdowns, text inputs) + markdown textarea with auto-save. Can be rendered inside a peek panel.
 - `src/db/`: Contains Drizzle `schema.ts`, connection `index.ts`, migration scripts, and `migrations/` folder.
 
 ### Common Commands

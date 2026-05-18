@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
-import { createPage } from '@/lib/actions/page';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createPage, getPage, deletePage, reorderPages, updatePageProperties } from '@/lib/actions/page';
 import { updateDatabaseViews } from '@/lib/actions/database';
-import { Plus, Settings, Columns3, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Settings, Columns3, Filter, ArrowUpDown, X, Maximize2, Database } from 'lucide-react';
 import TableLayout from './TableLayout';
 import KanbanBoard from './KanbanBoard';
 import ViewsBar from './ViewsBar';
 import DatabasePropertiesSidebar from './DatabasePropertiesSidebar';
+import PageEditor from './PageEditor';
 import type {
   DatabaseView,
   TableViewConfig,
@@ -86,6 +88,19 @@ export default function DatabaseView({
   initialPages: any[];
 }) {
   const schema: any[] = database.schema ?? [];
+  const router = useRouter();
+
+  // Local pages state so that we can update them instantly in the UI when they are updated in peek mode
+  const [localPages, setLocalPages] = useState<any[]>(() => initialPages);
+
+  useEffect(() => {
+    setLocalPages(initialPages);
+  }, [initialPages]);
+
+  // Peek states
+  const [peekPageId, setPeekPageId] = useState<string | null>(null);
+  const [peekPage, setPeekPage] = useState<any | null>(null);
+  const [isPageLoading, setIsPageLoading] = useState(false);
 
   const [views, setViews] = useState<DatabaseView[]>(() => {
     const saved = database.views as DatabaseView[] | null | undefined;
@@ -98,7 +113,7 @@ export default function DatabaseView({
 
   // Sidebar states
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'properties' | 'columns' | 'filters' | 'sorts'>('properties');
+  const [sidebarTab, setSidebarTab] = useState<'properties' | 'layout'>('properties');
 
   const saveTimer = useRef<any>(null);
 
@@ -138,14 +153,152 @@ export default function DatabaseView({
   );
 
   const processedPages = useMemo(
-    () => applySorts(applyFilters(initialPages, config.filters, schema), config.sorts),
-    [initialPages, config.filters, config.sorts, schema]
+    () => applySorts(applyFilters(localPages, config.filters, schema), config.sorts),
+    [localPages, config.filters, config.sorts, schema]
   );
+
+  // Fetch page content when peeking a page
+  useEffect(() => {
+    if (!peekPageId) {
+      setPeekPage(null);
+      return;
+    }
+
+    let active = true;
+    setIsPageLoading(true);
+    getPage(peekPageId)
+      .then((page) => {
+        if (active) {
+          setPeekPage(page);
+          setIsPageLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Error fetching page:', err);
+        if (active) setIsPageLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [peekPageId]);
+
+  const handlePageUpdated = (updatedPage: any) => {
+    // Update local state instantly so Table and Kanban update in the background
+    setLocalPages((prev) =>
+      prev.map((p) => (p.id === updatedPage.id ? updatedPage : p))
+    );
+    // Also, if the active peeked page is this page, update its cache
+    setPeekPage((prev: any) => {
+      if (prev && prev.id === updatedPage.id) {
+        return { ...prev, ...updatedPage };
+      }
+      return prev;
+    });
+  };
+
+  const handlePageClick = (pageId: string) => {
+    const openBehavior = config.openBehavior ?? 'full';
+    if (openBehavior === 'full') {
+      router.push(`/db/${database.id}/${pageId}`);
+    } else {
+      setPeekPageId(pageId);
+    }
+  };
 
   const handleAddRow = async () => {
     setIsAdding(true);
     await createPage(database.id, 'New Page');
     setIsAdding(false);
+  };
+
+  const handleDeletePage = async (pageId: string) => {
+    // Optimistic delete
+    setLocalPages((prev) => prev.filter((p) => p.id !== pageId));
+    // Persist
+    await deletePage(pageId, database.id);
+  };
+
+  const handleRowReorder = async (orderedIds: string[]) => {
+    const idMap = new Map(orderedIds.map((id, index) => [id, index]));
+    const reordered = [...localPages].sort((a, b) => {
+      const aIdx = idMap.has(a.id) ? idMap.get(a.id)! : Infinity;
+      const bIdx = idMap.has(b.id) ? idMap.get(b.id)! : Infinity;
+      return aIdx - bIdx;
+    });
+    setLocalPages(reordered);
+    await reorderPages(database.id, orderedIds);
+  };
+
+  const handleCardReorder = async (pageId: string, targetGroupId: string, targetPageId?: string) => {
+    const page = localPages.find((p) => p.id === pageId);
+    if (!page) return;
+
+    const oldVal = page.properties[kanbanConfig?.groupByCol ?? ''];
+    const newVal = targetGroupId === 'Uncategorized' ? null : targetGroupId;
+    const isGroupChanged = oldVal !== newVal;
+
+    let nextPages = [...localPages];
+
+    // 1. If group changed, update properties local state
+    if (isGroupChanged) {
+      nextPages = nextPages.map((p) => {
+        if (p.id === pageId) {
+          return {
+            ...p,
+            properties: {
+              ...p.properties,
+              [kanbanConfig?.groupByCol ?? '']: newVal,
+            },
+          };
+        }
+        return p;
+      });
+    }
+
+    // 2. Reorder within the list if sorting is NOT active
+    const hasSorts = config.sorts && config.sorts.length > 0;
+    if (!hasSorts) {
+      const fromIdx = nextPages.findIndex((p) => p.id === pageId);
+      if (fromIdx !== -1) {
+        const [moved] = nextPages.splice(fromIdx, 1);
+        if (targetPageId) {
+          const toIdx = nextPages.findIndex((p) => p.id === targetPageId);
+          if (toIdx !== -1) {
+            nextPages.splice(toIdx, 0, moved);
+          } else {
+            nextPages.push(moved);
+          }
+        } else {
+          // Drop on column empty area: place at the end of the group
+          const lastInGroupIdx = [...nextPages].reverse().findIndex((p) => {
+            const val = p.properties[kanbanConfig?.groupByCol ?? ''];
+            const group = val || 'Uncategorized';
+            return group === targetGroupId;
+          });
+          if (lastInGroupIdx !== -1) {
+            const actualIdx = nextPages.length - 1 - lastInGroupIdx;
+            nextPages.splice(actualIdx + 1, 0, moved);
+          } else {
+            nextPages.push(moved);
+          }
+        }
+      }
+    }
+
+    // Apply optimistic updates
+    setLocalPages(nextPages);
+
+    // 3. Persist to backend
+    if (isGroupChanged) {
+      const targetPage = nextPages.find((p) => p.id === pageId);
+      if (targetPage) {
+        await updatePageProperties(pageId, targetPage.properties);
+      }
+    }
+    if (!hasSorts) {
+      await reorderPages(database.id, nextPages.map((p) => p.id));
+    }
   };
 
   // --- View management ---
@@ -234,40 +387,16 @@ export default function DatabaseView({
         />
 
         <div className="flex items-center gap-0 pb-1.5">
-          {/* Group by (kanban only) */}
-          {!isTableView && kanbanConfig && selectColumns.length > 0 && (
-            <div className="flex items-center gap-2 px-3">
-              <span className="text-xs text-neutral-500">Group by</span>
-              <select
-                value={kanbanConfig.groupByCol}
-                onChange={(e) => handleGroupByChange(e.target.value)}
-                className="bg-transparent border border-neutral-800 text-xs text-neutral-300 px-2 py-1 outline-none hover:border-neutral-600 transition-colors cursor-pointer"
-              >
-                {selectColumns.map((col: any) => (
-                  <option key={col.id} value={col.id}>
-                    {col.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {!isTableView && kanbanConfig && selectColumns.length === 0 && (
-            <span className="text-xs text-amber-500/80 px-3">
-              Add a Select property to enable grouping
-            </span>
-          )}
-
-          {/* Properties Button */}
+          {/* Settings Button */}
           <button
-            onClick={() => handleToggleSidebar('properties')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors cursor-pointer ${
+            onClick={() => handleToggleSidebar(sidebarTab)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors cursor-pointer ${
               sidebarOpen
                 ? 'text-blue-400 font-semibold'
                 : 'text-neutral-500 hover:text-neutral-200'
             }`}
           >
-            <Settings size={14} /> Properties
+            <Settings size={13} /> Settings
           </button>
 
           {/* New Page button */}
@@ -291,6 +420,7 @@ export default function DatabaseView({
               columnOrder={tableConfig.columnOrder}
               hiddenColumns={tableConfig.hiddenColumns}
               onColumnOrderChange={handleColumnOrderChange}
+              onRowClick={handlePageClick}
             />
           ) : kanbanConfig ? (
             <KanbanBoard
@@ -299,6 +429,7 @@ export default function DatabaseView({
               groupByCol={kanbanConfig.groupByCol}
               groupOrder={kanbanConfig.groupOrder}
               onGroupOrderChange={handleGroupOrderChange}
+              onCardClick={handlePageClick}
             />
           ) : null}
         </div>
@@ -328,10 +459,135 @@ export default function DatabaseView({
               sorts={config.sorts}
               onFiltersChange={handleFiltersChange}
               onSortsChange={handleSortsChange}
+              openBehavior={config.openBehavior ?? 'full'}
+              onOpenBehaviorChange={(behavior) =>
+                mutateConfig((cfg) => ({ ...cfg, openBehavior: behavior }))
+              }
+              groupByCol={kanbanConfig?.groupByCol}
+              onGroupByColChange={handleGroupByChange}
             />
           </div>
         )}
       </div>
+
+      {/* Peek Overlay & Container (Center / Side Peek) */}
+      {peekPageId && (
+        <>
+          {/* Dark Glassmorphism Backdrop */}
+          <div
+            onClick={() => setPeekPageId(null)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 animate-fade-in transition-opacity cursor-pointer animate-duration-200"
+          />
+
+          {/* Center Peek Modal */}
+          {(config.openBehavior ?? 'full') === 'center' && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-10 pointer-events-none">
+              <div className="relative w-full max-w-4xl max-h-[85vh] md:max-h-[90vh] bg-neutral-950 border border-neutral-800 flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden rounded-none pointer-events-auto animate-scale-in">
+                {/* Peek Sticky Header */}
+                <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setPeekPageId(null)}
+                      className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer"
+                    >
+                      <X size={16} />
+                    </button>
+                    <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded-none">
+                      Center Peek
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        router.push(`/db/${database.id}/${peekPageId}`);
+                        setPeekPageId(null);
+                      }}
+                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded-none"
+                    >
+                      <Maximize2 size={12} />
+                      <span>Open in full page</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Peek Editor Scrollable Content */}
+                <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-950">
+                  {isPageLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-neutral-500 gap-2 animate-fade-in">
+                      <div className="w-5 h-5 border-2 border-neutral-800 border-t-neutral-500 rounded-full animate-spin" />
+                      <span className="text-xs">Loading page...</span>
+                    </div>
+                  ) : (
+                    peekPage && (
+                      <PageEditor
+                        database={database}
+                        initialPage={peekPage}
+                        isPeek={true}
+                        onClose={() => setPeekPageId(null)}
+                        onPageUpdated={handlePageUpdated}
+                      />
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Side Peek Drawer */}
+          {(config.openBehavior ?? 'full') === 'side' && (
+            <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-neutral-950 border-l border-neutral-800 shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-hidden rounded-none animate-slide-in-right">
+              {/* Peek Sticky Header */}
+              <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setPeekPageId(null)}
+                    className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                  <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded-none">
+                    Side Peek
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      router.push(`/db/${database.id}/${peekPageId}`);
+                      setPeekPageId(null);
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded-none"
+                  >
+                    <Maximize2 size={12} />
+                    <span>Open in full page</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Peek Editor Scrollable Content */}
+              <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-950">
+                {isPageLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-neutral-500 gap-2 animate-fade-in">
+                    <div className="w-5 h-5 border-2 border-neutral-800 border-t-neutral-500 rounded-full animate-spin" />
+                    <span className="text-xs">Loading page...</span>
+                  </div>
+                ) : (
+                  peekPage && (
+                    <PageEditor
+                      database={database}
+                      initialPage={peekPage}
+                      isPeek={true}
+                      onClose={() => setPeekPageId(null)}
+                      onPageUpdated={handlePageUpdated}
+                    />
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

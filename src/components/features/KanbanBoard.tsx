@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { GripVertical, Settings, Trash2 } from 'lucide-react';
 
 function getEffectiveGroupOrder(options: string[], groupOrder: string[]): string[] {
   if (!groupOrder || groupOrder.length === 0) return options;
@@ -17,12 +18,20 @@ export default function KanbanBoard({
   groupByCol,
   groupOrder,
   onGroupOrderChange,
+  onCardClick,
+  onCardMove,
+  onDeletePage,
+  hasSorts,
 }: {
   database: any;
   pages: any[];
   groupByCol: string;
   groupOrder: string[];
   onGroupOrderChange: (order: string[]) => void;
+  onCardClick: (pageId: string) => void;
+  onCardMove: (pageId: string, targetGroupId: string, targetPageId?: string) => void;
+  onDeletePage: (pageId: string) => void;
+  hasSorts: boolean;
 }) {
   const router = useRouter();
   const schema = database.schema as any[];
@@ -45,6 +54,13 @@ export default function KanbanBoard({
 
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
+
+  // Card dragging states
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null);
+  const [dragOverColumnName, setDragOverColumnName] = useState<string | null>(null);
+  const [isCardDragReady, setIsCardDragReady] = useState(false);
+  const [activeMenuCardId, setActiveMenuCardId] = useState<string | null>(null);
 
   const handleGroupDragStart = (e: React.DragEvent, group: string) => {
     if (group === 'Uncategorized') return;
@@ -87,6 +103,63 @@ export default function KanbanBoard({
     setDragOverGroup(null);
   };
 
+  // Card drag and drop handlers
+  const handleCardDragStart = (e: React.DragEvent, cardId: string) => {
+    setDraggedCardId(cardId);
+    e.dataTransfer.setData('text/plain', cardId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleCardDragOver = (e: React.DragEvent, targetCardId: string, columnName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedCardId && draggedCardId !== targetCardId) {
+      setDragOverCardId(targetCardId);
+      setDragOverColumnName(columnName);
+    }
+  };
+
+  const handleCardDrop = (e: React.DragEvent, targetCardId: string, targetColumnName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const cardId = draggedCardId || e.dataTransfer.getData('text/plain');
+    if (!cardId) return;
+
+    onCardMove(cardId, targetColumnName, targetCardId);
+
+    setDraggedCardId(null);
+    setDragOverCardId(null);
+    setDragOverColumnName(null);
+    setIsCardDragReady(false);
+  };
+
+  const handleCardDragEnd = () => {
+    setDraggedCardId(null);
+    setDragOverCardId(null);
+    setDragOverColumnName(null);
+    setIsCardDragReady(false);
+  };
+
+  const handleColumnCardAreaDragOver = (e: React.DragEvent, columnName: string) => {
+    e.preventDefault();
+    if (draggedCardId) {
+      setDragOverColumnName(columnName);
+    }
+  };
+
+  const handleColumnCardAreaDrop = (e: React.DragEvent, columnName: string) => {
+    e.preventDefault();
+    const cardId = draggedCardId || e.dataTransfer.getData('text/plain');
+    if (!cardId) return;
+
+    onCardMove(cardId, columnName);
+
+    setDraggedCardId(null);
+    setDragOverCardId(null);
+    setDragOverColumnName(null);
+    setIsCardDragReady(false);
+  };
+
   if (!groupByCol) {
     return (
       <div className="flex items-center justify-center h-full text-neutral-600 text-sm">
@@ -127,17 +200,95 @@ export default function KanbanBoard({
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto flex flex-col min-h-20">
+            <div
+              onDragOver={(e) => handleColumnCardAreaDragOver(e, columnName)}
+              onDrop={(e) => handleColumnCardAreaDrop(e, columnName)}
+              className={`flex-1 overflow-y-auto flex flex-col min-h-20 transition-colors ${
+                dragOverColumnName === columnName && !dragOverCardId ? 'bg-neutral-800/10' : ''
+              }`}
+            >
               {groupedPages[columnName].length === 0 ? (
                 <div className="text-xs text-neutral-700 py-4">No pages</div>
               ) : (
                 groupedPages[columnName].map((page) => (
                   <div
                     key={page.id}
-                    onClick={() => router.push(`/db/${database.id}/${page.id}`)}
-                    className="py-3 px-3 mb-1.5 bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/70 transition-colors group"
+                    onClick={() => onCardClick(page.id)}
+                    draggable={isCardDragReady}
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      handleCardDragStart(e, page.id);
+                    }}
+                    onDragOver={(e) => handleCardDragOver(e, page.id, columnName)}
+                    onDrop={(e) => handleCardDrop(e, page.id, columnName)}
+                    onDragEnd={handleCardDragEnd}
+                    className={`relative py-3 px-3 mb-1.5 bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/70 transition-colors group
+                      ${draggedCardId === page.id ? 'opacity-25' : ''}
+                      ${dragOverCardId === page.id ? 'border-t-2 border-t-blue-500/60' : ''}
+                    `}
                   >
-                    <h4 className="text-sm text-neutral-300 group-hover:text-neutral-100 transition-colors">
+                    {/* Hover Card Actions */}
+                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
+                      {/* Settings button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuCardId(activeMenuCardId === page.id ? null : page.id);
+                        }}
+                        className="p-1 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-200 transition-colors rounded-sm cursor-pointer"
+                        title="Page actions"
+                      >
+                        <Settings size={12} />
+                      </button>
+                      {/* Drag handle */}
+                      <button
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          handleCardDragStart(e, page.id);
+                        }}
+                        onMouseDown={() => {
+                          setIsCardDragReady(true);
+                        }}
+                        onMouseLeave={() => {
+                          setIsCardDragReady(false);
+                        }}
+                        className="p-1 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing transition-colors rounded-sm"
+                        title="Drag to move"
+                      >
+                        <GripVertical size={12} />
+                      </button>
+                    </div>
+
+                    {/* Card Dropdown Menu */}
+                    {activeMenuCardId === page.id && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-20 cursor-default"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuCardId(null);
+                          }}
+                        />
+                        <div className="absolute right-0 top-7 z-30 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36 rounded-none text-left animate-fade-in animate-duration-100" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm('Are you sure you want to delete this page?')) {
+                                onDeletePage(page.id);
+                              }
+                              setActiveMenuCardId(null);
+                            }}
+                            className="w-full px-3 py-2 text-xs text-red-400 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete page</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    <h4 className="text-sm text-neutral-300 group-hover:text-neutral-100 transition-colors pr-12">
                       {page.properties['title'] || 'Untitled'}
                     </h4>
 

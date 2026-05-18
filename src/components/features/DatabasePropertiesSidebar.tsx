@@ -29,8 +29,8 @@ import type {
 interface DatabasePropertiesSidebarProps {
   database: any;
   activeView: DatabaseView;
-  activeTab: 'properties' | 'columns' | 'filters' | 'sorts';
-  setActiveTab: (tab: 'properties' | 'columns' | 'filters' | 'sorts') => void;
+  activeTab: 'properties' | 'layout';
+  setActiveTab: (tab: 'properties' | 'layout') => void;
   onClose: () => void;
   
   // Columns visibility & order (Table view only)
@@ -44,6 +44,14 @@ interface DatabasePropertiesSidebarProps {
   sorts: ViewSort[];
   onFiltersChange: (filters: ViewFilter[]) => void;
   onSortsChange: (sorts: ViewSort[]) => void;
+
+  // Page Open behavior
+  openBehavior: 'center' | 'side' | 'full';
+  onOpenBehaviorChange: (behavior: 'center' | 'side' | 'full') => void;
+
+  // Kanban Group by
+  groupByCol?: string;
+  onGroupByColChange?: (colId: string) => void;
 }
 
 const OPERATORS: { value: FilterOperator; label: string; needsValue: boolean }[] = [
@@ -81,6 +89,10 @@ export default function DatabasePropertiesSidebar({
   sorts,
   onFiltersChange,
   onSortsChange,
+  openBehavior,
+  onOpenBehaviorChange,
+  groupByCol,
+  onGroupByColChange,
 }: DatabasePropertiesSidebarProps) {
   const [schema, setSchema] = useState<any[]>(() => database.schema || []);
   const [isSavingSchema, setIsSavingSchema] = useState(false);
@@ -90,6 +102,7 @@ export default function DatabasePropertiesSidebar({
   }, [database.schema]);
 
   const isSchemaDirty = JSON.stringify(schema) !== JSON.stringify(database.schema);
+  const selectColumns = schema.filter((c: any) => c.type === 'select');
 
   // --- Schema mutations ---
   const addColumn = () => {
@@ -156,10 +169,8 @@ export default function DatabasePropertiesSidebar({
   };
 
   const tabs = [
-    { id: 'properties', label: 'Database', icon: Database, disabled: false },
-    { id: 'columns', label: 'Columns', icon: Columns3, disabled: activeView.config.type !== 'table' },
-    { id: 'filters', label: 'Filters', icon: Filter, disabled: false },
-    { id: 'sorts', label: 'Sorts', icon: ArrowUpDown, disabled: false },
+    { id: 'properties', label: 'Properties', icon: Database },
+    { id: 'layout',     label: 'Layout',     icon: Settings },
   ] as const;
 
   return (
@@ -180,7 +191,6 @@ export default function DatabasePropertiesSidebar({
       {/* Tabs */}
       <div className="flex border-b border-neutral-800 bg-neutral-950 shrink-0">
         {tabs.map((tab) => {
-          if (tab.disabled) return null;
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -329,77 +339,192 @@ export default function DatabasePropertiesSidebar({
           </div>
         )}
 
-        {/* --- COLUMNS VISIBILITY TAB --- */}
-        {activeTab === 'columns' && activeView.config.type === 'table' && (
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-850 bg-neutral-900/10">
-              <span className="text-xs text-neutral-500">Show / Hide Columns</span>
-              <div className="flex gap-2.5">
-                <button onClick={handleShowAll} className="text-xs text-blue-400 hover:text-blue-300 font-medium cursor-pointer">Show all</button>
-                <button onClick={handleHideAll} className="text-xs text-neutral-500 hover:text-neutral-300 font-medium cursor-pointer">Hide all</button>
-              </div>
+        {/* --- LAYOUT TAB --- */}
+        {activeTab === 'layout' && (
+          <div className="flex flex-col pb-24 divide-y divide-neutral-850">
+            {/* Section 1: Page Opening Behavior */}
+            <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
+              <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Page Opening Behavior</span>
+              <select
+                value={openBehavior}
+                onChange={(e) => onOpenBehaviorChange(e.target.value as 'center' | 'side' | 'full')}
+                className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+              >
+                <option value="full">Full page (Default)</option>
+                <option value="side">Side peek</option>
+                <option value="center">Center peek</option>
+              </select>
             </div>
 
-            <div className="flex flex-col">
-              {schema.map((col) => {
-                const isHidden = hiddenColumns.includes(col.id);
-                const isTitle = col.id === 'title';
-                return (
-                  <button
-                    key={col.id}
-                    onClick={() => !isTitle && onToggleHideColumn(col.id)}
-                    disabled={isTitle}
-                    className={`w-full flex items-center justify-between py-3 px-4 text-left border-b border-neutral-850/60 transition-all rounded-none ${
-                      isTitle 
-                        ? 'opacity-50 cursor-not-allowed bg-neutral-900/10'
-                        : 'hover:bg-neutral-800/20 cursor-pointer'
-                    }`}
+            {/* Section 1.5: Group by (Kanban view only) */}
+            {activeView.config.type === 'kanban' && (
+              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
+                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Group by</span>
+                {selectColumns.length > 0 ? (
+                  <select
+                    value={groupByCol}
+                    onChange={(e) => onGroupByColChange?.(e.target.value)}
+                    className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center gap-2">
-                      {getPropertyIcon(col.type)}
-                      <span className="text-xs text-neutral-300 font-medium">{col.name}</span>
-                    </div>
-                    
-                    <span className={`w-3.5 h-3.5 rounded-none border flex items-center justify-center transition-all ${
-                      !isHidden 
-                        ? 'bg-blue-500 border-blue-500 text-white' 
-                        : 'border-neutral-700 text-transparent'
-                    }`}>
-                      {!isHidden && <span className="text-[9px] font-bold leading-none">✓</span>}
-                    </span>
-                  </button>
-                );
-              })}
+                    {selectColumns.map((col: any) => (
+                      <option key={col.id} value={col.id}>
+                        {col.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs text-amber-500/80">
+                    Add a Select property to enable grouping
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Section 2: Columns Visibility (Table view only) */}
+            {activeView.config.type === 'table' && (
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between px-4 py-3 bg-neutral-900/5">
+                  <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Columns</span>
+                  <div className="flex gap-2.5">
+                    <button onClick={handleShowAll} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer">Show all</button>
+                    <button onClick={handleHideAll} className="text-[10px] text-neutral-500 hover:text-neutral-300 font-medium cursor-pointer">Hide all</button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col border-t border-neutral-850/60">
+                  {schema.map((col) => {
+                    const isHidden = hiddenColumns.includes(col.id);
+                    const isTitle = col.id === 'title';
+                    return (
+                      <button
+                        key={col.id}
+                        onClick={() => !isTitle && onToggleHideColumn(col.id)}
+                        disabled={isTitle}
+                        className={`w-full flex items-center justify-between py-2 px-4 text-left border-b border-neutral-850/30 transition-all rounded-none ${
+                          isTitle 
+                            ? 'opacity-50 cursor-not-allowed bg-neutral-900/10'
+                            : 'hover:bg-neutral-800/15 cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {getPropertyIcon(col.type)}
+                          <span className="text-xs text-neutral-300 font-medium">{col.name}</span>
+                        </div>
+                        
+                        <span className={`w-3.5 h-3.5 rounded-none border flex items-center justify-center transition-all ${
+                          !isHidden 
+                            ? 'bg-blue-500 border-blue-500 text-white' 
+                            : 'border-neutral-700 text-transparent'
+                        }`}>
+                          {!isHidden && <span className="text-[9px] font-bold leading-none">✓</span>}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Section 3: Filters */}
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 bg-neutral-900/5">
+                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Filters</span>
+                <button 
+                  onClick={addFilter}
+                  className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+                >
+                  <Plus size={11} />
+                  <span>Add Filter</span>
+                </button>
+              </div>
+
+              {filters.length === 0 ? (
+                <p className="text-[11px] text-neutral-600 text-center py-6 border-t border-neutral-850/60">No filters applied.</p>
+              ) : (
+                <div className="flex flex-col border-t border-neutral-850/60 divide-y divide-neutral-850/40 bg-neutral-900/5">
+                  {filters.map((filter) => {
+                    const opDef = OPERATORS.find((o) => o.value === filter.operator);
+                    return (
+                      <div 
+                        key={filter.id} 
+                        className="p-4 flex flex-col gap-2 relative group/item hover:bg-neutral-800/5 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">Filter rule</span>
+                          <button 
+                            onClick={() => deleteFilter(filter.id)} 
+                            className="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={filter.columnId}
+                            onChange={(e) => updateFilter(filter.id, { columnId: e.target.value })}
+                            className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                          >
+                            {schema.map((col) => (
+                              <option key={col.id} value={col.id}>{col.name}</option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={filter.operator}
+                            onChange={(e) =>
+                              updateFilter(filter.id, { operator: e.target.value as FilterOperator })
+                            }
+                            className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                          >
+                            {OPERATORS.map((op) => (
+                              <option key={op.value} value={op.value}>{op.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {opDef?.needsValue && (
+                          <input
+                            type="text"
+                            value={filter.value}
+                            onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                            placeholder="Value..."
+                            className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        )}
 
-        {/* --- FILTERS TAB --- */}
-        {activeTab === 'filters' && (
-          <div className="flex flex-col">
-            <button 
-              onClick={addFilter}
-              className="w-full flex items-center gap-2 py-3 px-4 bg-transparent border-b border-neutral-850 hover:bg-neutral-800/30 text-xs text-neutral-400 hover:text-neutral-200 transition-all font-semibold cursor-pointer text-left"
-            >
-              <Plus size={13} />
-              <span>Add Filter</span>
-            </button>
+            {/* Section 4: Sorts */}
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 bg-neutral-900/5">
+                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Sorts</span>
+                <button 
+                  onClick={addSort}
+                  className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+                >
+                  <Plus size={11} />
+                  <span>Add Sort</span>
+                </button>
+              </div>
 
-            {filters.length === 0 ? (
-              <p className="text-xs text-neutral-600 text-center py-8">No filters applied to this view.</p>
-            ) : (
-              <div className="flex flex-col pb-24 border-t border-neutral-850">
-                {filters.map((filter) => {
-                  const opDef = OPERATORS.find((o) => o.value === filter.operator);
-                  return (
+              {sorts.length === 0 ? (
+                <p className="text-[11px] text-neutral-600 text-center py-6 border-t border-neutral-850/60">No sorts applied.</p>
+              ) : (
+                <div className="flex flex-col border-t border-neutral-850/60 divide-y divide-neutral-850/40 bg-neutral-900/5">
+                  {sorts.map((sort) => (
                     <div 
-                      key={filter.id} 
-                      className="p-4 bg-transparent border-b border-neutral-850 flex flex-col gap-2.5 relative group/item hover:bg-neutral-800/10 transition-colors"
+                      key={sort.id} 
+                      className="p-4 flex flex-col gap-2 relative group/item hover:bg-neutral-800/5 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">Filter rule</span>
+                        <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">Sort rule</span>
                         <button 
-                          onClick={() => deleteFilter(filter.id)} 
+                          onClick={() => deleteSort(sort.id)} 
                           className="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
                         >
                           <Trash2 size={12} />
@@ -408,8 +533,8 @@ export default function DatabasePropertiesSidebar({
 
                       <div className="grid grid-cols-2 gap-2">
                         <select
-                          value={filter.columnId}
-                          onChange={(e) => updateFilter(filter.id, { columnId: e.target.value })}
+                          value={sort.columnId}
+                          onChange={(e) => updateSort(sort.id, { columnId: e.target.value })}
                           className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
                         >
                           {schema.map((col) => (
@@ -417,92 +542,22 @@ export default function DatabasePropertiesSidebar({
                           ))}
                         </select>
 
-                        <select
-                          value={filter.operator}
-                          onChange={(e) =>
-                            updateFilter(filter.id, { operator: e.target.value as FilterOperator })
+                        <button
+                          onClick={() =>
+                            updateSort(sort.id, {
+                              direction: sort.direction === 'asc' ? 'desc' : 'asc',
+                            })
                           }
-                          className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                          className="bg-neutral-950 hover:bg-neutral-850 border border-neutral-850 text-neutral-300 text-xs py-1 px-2 rounded-none text-center transition-colors font-medium shrink-0 cursor-pointer"
                         >
-                          {OPERATORS.map((op) => (
-                            <option key={op.value} value={op.value}>{op.label}</option>
-                          ))}
-                        </select>
+                          {sort.direction === 'asc' ? 'A → Z' : 'Z → A'}
+                        </button>
                       </div>
-
-                      {opDef?.needsValue && (
-                        <input
-                          type="text"
-                          value={filter.value}
-                          onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
-                          placeholder="Value..."
-                          className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-2 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors"
-                        />
-                      )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* --- SORTS TAB --- */}
-        {activeTab === 'sorts' && (
-          <div className="flex flex-col">
-            <button 
-              onClick={addSort}
-              className="w-full flex items-center gap-2 py-3 px-4 bg-transparent border-b border-neutral-850 hover:bg-neutral-800/30 text-xs text-neutral-400 hover:text-neutral-200 transition-all font-semibold cursor-pointer text-left"
-            >
-              <Plus size={13} />
-              <span>Add Sort</span>
-            </button>
-
-            {sorts.length === 0 ? (
-              <p className="text-xs text-neutral-600 text-center py-8">No sorts applied to this view.</p>
-            ) : (
-              <div className="flex flex-col pb-24 border-t border-neutral-850">
-                {sorts.map((sort) => (
-                  <div 
-                    key={sort.id} 
-                    className="p-4 bg-transparent border-b border-neutral-850 flex flex-col gap-2.5 relative group/item hover:bg-neutral-800/10 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">Sort rule</span>
-                      <button 
-                        onClick={() => deleteSort(sort.id)} 
-                        className="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        value={sort.columnId}
-                        onChange={(e) => updateSort(sort.id, { columnId: e.target.value })}
-                        className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
-                      >
-                        {schema.map((col) => (
-                          <option key={col.id} value={col.id}>{col.name}</option>
-                        ))}
-                      </select>
-
-                      <button
-                        onClick={() =>
-                          updateSort(sort.id, {
-                            direction: sort.direction === 'asc' ? 'desc' : 'asc',
-                          })
-                        }
-                        className="bg-neutral-950 hover:bg-neutral-850 border border-neutral-850 text-neutral-300 text-xs py-1 px-2 rounded-none text-center transition-colors font-medium shrink-0 cursor-pointer"
-                      >
-                        {sort.direction === 'asc' ? 'A → Z' : 'Z → A'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
