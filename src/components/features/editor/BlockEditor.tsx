@@ -4,6 +4,12 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import Placeholder from '@tiptap/extension-placeholder';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import BubbleMenuBar from './BubbleMenuBar';
 import { SlashCommand } from './SlashCommandMenu';
 
@@ -22,7 +28,7 @@ type Props = {
 };
 
 // Block-level markdown patterns that HTML clipboard cannot reliably represent.
-const BLOCK_MARKDOWN_RE = /^#{1,6} |^[-*+] |^\d+\. |^> |^```/m;
+const BLOCK_MARKDOWN_RE = /^#{1,6} |^[-*+] |^\d+\. |^> |^```|^\|/m;
 
 export default function BlockEditor({ initialContent, onChange, placeholder }: Props) {
   const editorRef = useRef<any>(null);
@@ -39,8 +45,14 @@ export default function BlockEditor({ initialContent, onChange, placeholder }: P
           if (node.type.name === 'heading') return 'Heading...';
           return placeholder ?? "Type '/' for commands or start writing...";
         },
-        showOnlyCurrent: false,
+        showOnlyCurrent: true,
       }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableCell,
+      TableHeader,
       SlashCommand,
     ],
     content: initialContent,
@@ -53,6 +65,26 @@ export default function BlockEditor({ initialContent, onChange, placeholder }: P
       attributes: {
         class: 'prose-editor focus:outline-none min-h-[500px]',
       },
+      handleKeyDown: (view, event) => {
+        if (event.key !== 'Backspace') return false;
+        const { state } = view;
+        const { selection } = state;
+        const { $from, empty } = selection;
+
+        // Only intercept when cursor is at the very start of an empty paragraph
+        if (!empty || $from.parentOffset !== 0) return false;
+        if ($from.parent.type.name !== 'paragraph' || $from.parent.content.size !== 0) return false;
+
+        // If the node immediately before this paragraph is an hr, delete only the hr
+        const pos = $from.before($from.depth);
+        if (pos === 0) return false;
+        const nodeBefore = state.doc.resolve(pos).nodeBefore;
+        if (!nodeBefore || nodeBefore.type.name !== 'horizontalRule') return false;
+
+        const hrFrom = pos - nodeBefore.nodeSize;
+        view.dispatch(state.tr.delete(hrFrom, pos));
+        return true;
+      },
       handlePaste: (_view, event) => {
         const text = event.clipboardData?.getData('text/plain');
         if (!text || !BLOCK_MARKDOWN_RE.test(text)) return false;
@@ -61,15 +93,14 @@ export default function BlockEditor({ initialContent, onChange, placeholder }: P
         if (!ed) return false;
 
         try {
-          // @tiptap/markdown v3 exposes the manager on editor.markdown
-          const manager: any = (ed as any).markdown ?? ed.storage?.manager;
-          if (!manager) return false;
+          // editor.markdown is set by @tiptap/markdown and exposes parse()
+          const manager: any = (ed as any).markdown;
+          if (!manager?.parse) return false;
 
-          // parse() returns { type: 'doc', content: JSONContent[] }
-          const json = manager.parse(text);
-          if (!json?.content?.length) return false;
+          const doc = manager.parse(text);
+          if (!doc?.content?.length) return false;
 
-          ed.commands.insertContent(json.content);
+          ed.commands.insertContent(doc.content);
           return true;
         } catch {
           return false;

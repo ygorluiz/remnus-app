@@ -1,6 +1,6 @@
 'use client';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code2, Minus } from 'lucide-react';
+import { CheckSquare, Heading1, Heading2, Heading3, List, ListOrdered, Minus, Quote, Code2, Table } from 'lucide-react';
 
 export type SlashCommandItem = {
   id: string;
@@ -52,6 +52,14 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
       editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
   },
   {
+    id: 'task',
+    label: 'Task List',
+    description: 'Checkbox list for tasks',
+    icon: <CheckSquare size={15} />,
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).toggleTaskList().run(),
+  },
+  {
     id: 'quote',
     label: 'Quote',
     description: 'Capture a quote or callout',
@@ -66,6 +74,14 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     icon: <Code2 size={15} />,
     command: ({ editor, range }) =>
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
+  },
+  {
+    id: 'table',
+    label: 'Table',
+    description: 'Insert a 3×3 table',
+    icon: <Table size={15} />,
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
     id: 'divider',

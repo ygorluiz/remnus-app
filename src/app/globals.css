@@ -162,6 +162,81 @@ body {
   height: 0;
 }
 
+/* Task list */
+.prose-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25rem;
+  margin: 0.5rem 0;
+}
+.prose-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+.prose-editor ul[data-type="taskList"] li > label {
+  margin-top: 0.22rem;
+  flex-shrink: 0;
+}
+.prose-editor ul[data-type="taskList"] li > label input[type="checkbox"] {
+  cursor: pointer;
+  width: 0.9rem;
+  height: 0.9rem;
+  accent-color: var(--color-neutral-500);
+}
+.prose-editor ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: var(--color-neutral-600);
+}
+.prose-editor ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+.prose-editor ul[data-type="taskList"] li > div p {
+  margin: 0;
+}
+
+/* Table */
+.prose-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+  table-layout: fixed;
+}
+.prose-editor table th,
+.prose-editor table td {
+  border: 1px solid var(--color-neutral-800);
+  padding: 0.35rem 0.65rem;
+  min-width: 80px;
+  vertical-align: top;
+  position: relative;
+}
+.prose-editor table th {
+  background: var(--color-neutral-900);
+  color: var(--color-neutral-200);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.prose-editor table td {
+  color: var(--color-neutral-300);
+  background: transparent;
+}
+.prose-editor table td p,
+.prose-editor table th p {
+  margin: 0;
+}
+.prose-editor .selectedCell::after {
+  position: absolute;
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--color-neutral-800);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
 /* ProseMirror selection */
 .prose-editor .ProseMirror-selectednode {
   outline: 2px solid var(--color-neutral-700);
