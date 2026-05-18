@@ -55,8 +55,8 @@ export default function StandalonePageEditor({ item, page }: { item: Item; page:
   );
 
   const containerClass =
-    widthMode === 'full' ? 'px-8 py-10' :
-    widthMode === 'wide' ? 'max-w-6xl mx-auto px-8 lg:px-12 py-10' :
+    widthMode === 'full' ? 'px-16 py-10' :
+    widthMode === 'wide' ? 'max-w-7xl mx-auto px-8 lg:px-12 py-10' :
     'max-w-4xl mx-auto px-8 lg:px-16 py-10';
 
   return (

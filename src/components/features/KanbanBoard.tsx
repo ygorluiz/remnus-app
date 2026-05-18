@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GripVertical, Settings, Trash2 } from 'lucide-react';
+import { GripVertical, Settings, Trash2, Plus, Copy } from 'lucide-react';
 import { normalizeOption, getOptionColorByValue, getCardBorderDots } from '@/lib/types/properties';
 import type { SelectOption } from '@/lib/types/properties';
+import InlineCellEditor from './InlineCellEditor';
 
 function getEffectiveGroupOrder(options: string[], groupOrder: string[]): string[] {
   if (!groupOrder || groupOrder.length === 0) return options;
@@ -23,12 +24,15 @@ export default function KanbanBoard({
   onCardClick,
   onCardMove,
   onDeletePage,
+  onDuplicatePage,
   hasSorts,
   cardProperties,
   showPropertyLabels = true,
   propertyTextClamp = 'truncate',
   cardColorCol,
   groupColBg = false,
+  onUpdatePageProperties,
+  onCreatePage,
 }: {
   database: any;
   pages: any[];
@@ -38,15 +42,27 @@ export default function KanbanBoard({
   onCardClick: (pageId: string) => void;
   onCardMove: (pageId: string, targetGroupId: string, targetPageId?: string) => void;
   onDeletePage: (pageId: string) => void;
+  onDuplicatePage: (pageId: string) => void;
   hasSorts: boolean;
   cardProperties?: string[];
   showPropertyLabels?: boolean;
   propertyTextClamp?: 'truncate' | 'wrap';
   cardColorCol?: string;
   groupColBg?: boolean;
+  onUpdatePageProperties: (pageId: string, properties: Record<string, any>) => void;
+  onCreatePage?: (initialProperties?: Record<string, any>) => void;
 }) {
   const router = useRouter();
   const schema = database.schema as any[];
+
+  const [editingCell, setEditingCell] = useState<{ pageId: string; colId: string } | null>(null);
+
+  const handleCellSave = (pageId: string, colId: string, newVal: any) => {
+    const page = pages.find((p) => p.id === pageId);
+    if (!page) return;
+    const nextProps = { ...page.properties, [colId]: newVal };
+    onUpdatePageProperties(pageId, nextProps);
+  };
 
   const groupColumn = schema.find((col) => col.id === groupByCol);
   const options: string[] = (groupColumn?.options ?? []).map((o: string | SelectOption) => normalizeOption(o).value);
@@ -207,8 +223,8 @@ export default function KanbanBoard({
             onDragOver={(e) => handleGroupDragOver(e, columnName)}
             onDrop={(e) => handleGroupDrop(e, columnName)}
             onDragEnd={handleGroupDragEnd}
-            className={`shrink-0 w-68 flex flex-col max-h-full transition-opacity ${
-              hasBg ? 'p-3' : ''
+            className={`shrink-0 w-68 flex flex-col max-h-full transition-opacity group/col ${
+              hasBg ? 'p-3 rounded' : ''
             } ${isDraggingThis ? 'opacity-30' : ''} ${isOver ? 'ring-1 ring-blue-500/40' : ''}`}
             style={groupBgStyle}
           >
@@ -238,6 +254,7 @@ export default function KanbanBoard({
                 groupedPages[columnName].map((page) => {
                   const colorColSchema = cardColorCol ? schema.find((c) => c.id === cardColorCol) : null;
                   const borderDots = getCardBorderDots(colorColSchema, page.properties[cardColorCol ?? '']);
+                  const isCardEditing = editingCell?.pageId === page.id;
                   return (
                   <div
                     key={page.id}
@@ -250,7 +267,8 @@ export default function KanbanBoard({
                     onDragOver={(e) => handleCardDragOver(e, page.id, columnName)}
                     onDrop={(e) => handleCardDrop(e, page.id, columnName)}
                     onDragEnd={handleCardDragEnd}
-                    className={`relative py-3 px-3 mb-1.5 bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/70 transition-colors group overflow-hidden
+                    className={`relative py-3 px-3 mb-1.5 bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/70 transition-colors group rounded
+                      ${isCardEditing ? 'overflow-visible z-30' : 'overflow-hidden'}
                       ${draggedCardId === page.id ? 'opacity-25' : ''}
                       ${dragOverCardId === page.id ? 'border-t-2 border-t-blue-500/60' : ''}
                     `}
@@ -263,19 +281,8 @@ export default function KanbanBoard({
                       </div>
                     )}
                     {/* Hover Card Actions */}
-                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
-                      {/* Settings button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenuCardId(activeMenuCardId === page.id ? null : page.id);
-                        }}
-                        className="p-1 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-200 transition-colors rounded-sm cursor-pointer"
-                        title="Page actions"
-                      >
-                        <Settings size={12} />
-                      </button>
-                      {/* Drag handle */}
+                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 flex items-center transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
+                      {/* Drag handle & Actions */}
                       <button
                         draggable={true}
                         onDragStart={(e) => {
@@ -288,10 +295,14 @@ export default function KanbanBoard({
                         onMouseLeave={() => {
                           setIsCardDragReady(false);
                         }}
-                        className="p-1 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing transition-colors rounded-sm"
-                        title="Drag to move"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuCardId(activeMenuCardId === page.id ? null : page.id);
+                        }}
+                        className="p-1 hover:bg-neutral-700/60 text-neutral-400 hover:text-neutral-200 cursor-grab active:cursor-grabbing transition-colors rounded"
+                        title="Drag to move or click for actions"
                       >
-                        <GripVertical size={12} />
+                        <GripVertical size={13} />
                       </button>
                     </div>
 
@@ -305,7 +316,18 @@ export default function KanbanBoard({
                             setActiveMenuCardId(null);
                           }}
                         />
-                        <div className="absolute right-0 top-7 z-30 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36 rounded-none text-left animate-fade-in animate-duration-100" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute right-0 top-7 z-30 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36 rounded text-left animate-fade-in animate-duration-100 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDuplicatePage(page.id);
+                              setActiveMenuCardId(null);
+                            }}
+                            className="w-full px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors border-b border-neutral-850"
+                          >
+                            <Copy size={13} />
+                            <span>Duplicate page</span>
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -323,19 +345,20 @@ export default function KanbanBoard({
                       </>
                     )}
 
-                    <h4 className="text-sm text-neutral-300 group-hover:text-neutral-100 transition-colors pr-12">
+                    <h4 className="text-base font-medium text-neutral-200 group-hover:text-neutral-100 transition-colors wrap-break-word whitespace-normal pr-12">
                       {page.properties['title'] || 'Untitled'}
                     </h4>
 
-                    <div className="mt-1.5 flex flex-col gap-0.5">
+                    <div className="mt-1.5 flex flex-col gap-1.5">
                       {propsToShow.map((c) => {
                           const val = page.properties[c.id];
+                          const isEditing = editingCell?.pageId === page.id && editingCell?.colId === c.id;
                           const isEmpty =
                             val === undefined ||
                             val === null ||
                             val === '' ||
                             (Array.isArray(val) && val.length === 0);
-                          if (isEmpty) return null;
+                          if (isEmpty && !isEditing) return null;
 
                           let display: React.ReactNode;
                           if (c.type === 'select' && typeof val === 'string') {
@@ -347,11 +370,11 @@ export default function KanbanBoard({
                             );
                           } else if (c.type === 'multi_select' && Array.isArray(val)) {
                             display = (
-                              <span className="flex flex-wrap gap-1">
+                              <span className={`flex gap-1 ${propertyTextClamp === 'wrap' ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>
                                 {val.map((optVal: string) => {
                                   const mc = getOptionColorByValue(c.options || [], optVal);
                                   return (
-                                    <span key={optVal} className="text-xs px-1.5 py-0 rounded-sm" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                    <span key={optVal} className="text-xs px-1.5 py-0 rounded-sm shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
                                       {optVal}
                                     </span>
                                   );
@@ -388,16 +411,34 @@ export default function KanbanBoard({
                             );
                           } else {
                             display = (
-                              <span className={`text-neutral-500 ${textClass}`}>{String(val)}</span>
+                              <span className={`text-neutral-500 ${textClass}`}>{val !== undefined && val !== null ? String(val) : ''}</span>
                             );
                           }
 
+                          const handlePropClick = (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            setEditingCell({ pageId: page.id, colId: c.id });
+                          };
+
                           return (
-                            <div key={c.id} className={`text-xs flex gap-1.5 ${propertyTextClamp === 'wrap' ? 'items-start' : 'items-center'} overflow-hidden`}>
+                            <div
+                              key={c.id}
+                              onClick={handlePropClick}
+                              className={`text-xs leading-relaxed flex gap-1.5 ${propertyTextClamp === 'wrap' ? 'items-start' : 'items-center'} overflow-visible relative cursor-pointer`}
+                            >
                               {showPropertyLabels && (
                                 <span className="text-neutral-700 shrink-0">{c.name}</span>
                               )}
-                              {display}
+                              {isEditing ? (
+                                <InlineCellEditor
+                                  column={c}
+                                  value={val}
+                                  onSave={(newVal) => handleCellSave(page.id, c.id, newVal)}
+                                  onClose={() => setEditingCell(null)}
+                                />
+                              ) : (
+                                display
+                              )}
                             </div>
                           );
                         })}
@@ -406,6 +447,14 @@ export default function KanbanBoard({
                   );
                 })
               )}
+              {/* "+ New" Button at the bottom of the group, visible on hover of the column */}
+              <button
+                onClick={() => onCreatePage?.(isUncategorized ? {} : { [groupByCol]: columnName })}
+                className="w-full text-left py-1.5 px-2 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/20 rounded transition-colors text-xs font-medium flex items-center gap-1.5 cursor-pointer mt-1 opacity-0 group-hover/col:opacity-100 transition-opacity duration-150 shrink-0"
+              >
+                <Plus size={13} />
+                <span>New</span>
+              </button>
             </div>
           </div>
         );

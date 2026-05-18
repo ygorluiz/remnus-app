@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { getOptionColorByValue } from '@/lib/types/properties';
-import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags } from 'lucide-react';
+import InlineCellEditor from './InlineCellEditor';
+import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, Plus, Copy } from 'lucide-react';
 
 function getPropertyIcon(type: string) {
   switch (type) {
@@ -47,7 +48,7 @@ function getVisibleColumns(schema: any[], columnOrder: string[], hiddenColumns: 
   });
 }
 
-const ACTION_BAR_WIDTH = 58;
+const ACTION_BAR_WIDTH = 26;
 
 export default function TableLayout({
   database,
@@ -58,7 +59,10 @@ export default function TableLayout({
   onRowClick,
   onRowReorder,
   onDeletePage,
+  onDuplicatePage,
   hasSorts,
+  onUpdatePageProperties,
+  onCreatePage,
 }: {
   database: any;
   pages: any[];
@@ -68,10 +72,22 @@ export default function TableLayout({
   onRowClick: (pageId: string) => void;
   onRowReorder: (orderedIds: string[]) => void;
   onDeletePage: (pageId: string) => void;
+  onDuplicatePage: (pageId: string) => void;
   hasSorts: boolean;
+  onUpdatePageProperties: (pageId: string, properties: Record<string, any>) => void;
+  onCreatePage?: (initialProperties?: Record<string, any>) => void;
 }) {
   const schema: any[] = database.schema ?? [];
   const visibleCols = getVisibleColumns(schema, columnOrder, hiddenColumns);
+
+  const [editingCell, setEditingCell] = useState<{ pageId: string; colId: string } | null>(null);
+
+  const handleCellSave = (pageId: string, colId: string, newVal: any) => {
+    const page = pages.find((p) => p.id === pageId);
+    if (!page) return;
+    const nextProps = { ...page.properties, [colId]: newVal };
+    onUpdatePageProperties(pageId, nextProps);
+  };
 
   // Column DnD
   const [draggedColId, setDraggedColId] = useState<string | null>(null);
@@ -187,7 +203,7 @@ export default function TableLayout({
     cancelHide();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setHoveredPageId(pageId);
-    setActionPos({ top: rect.top, left: rect.left - ACTION_BAR_WIDTH, height: rect.height });
+    setActionPos({ top: rect.top, left: rect.left - ACTION_BAR_WIDTH + 4, height: rect.height });
   };
 
   const handleRowMouseLeave = (_e: React.MouseEvent, pageId: string) => {
@@ -285,7 +301,9 @@ export default function TableLayout({
                 </td>
               </tr>
             ) : (
-              pages.map((page) => (
+              pages.map((page) => {
+                const isRowEditing = editingCell?.pageId === page.id;
+                return (
                 <tr
                   key={page.id}
                   data-row-id={page.id}
@@ -301,6 +319,7 @@ export default function TableLayout({
                   onDrop={(e) => handleRowDrop(e, page.id)}
                   className={[
                     'hover:bg-neutral-800/20 cursor-pointer transition-colors',
+                    isRowEditing ? 'relative z-20' : '',
                     draggedRowId === page.id ? 'opacity-25' : '',
                     dragOverRowId === page.id && dropPosition === 'before'
                       ? 'border-t-2 border-t-blue-500 border-b border-neutral-800/40'
@@ -312,15 +331,38 @@ export default function TableLayout({
                   {visibleCols.map((col, idx) => {
                     const val = page.properties[col.id];
                     const isLast = idx === visibleCols.length - 1;
+                    const isEditing = editingCell?.pageId === page.id && editingCell?.colId === col.id;
+                    const handleCellClick = (e: React.MouseEvent) => {
+                      if (col.id === 'title') return;
+                      e.stopPropagation();
+                      setEditingCell({ pageId: page.id, colId: col.id });
+                    };
                     return (
                       <td
                         key={col.id}
-                        className={`py-2 px-3 whitespace-nowrap overflow-hidden text-ellipsis
+                        onClick={handleCellClick}
+                        className={`py-2 px-3 whitespace-nowrap overflow-visible relative text-ellipsis
+                          ${isEditing ? 'z-30' : ''}
                           ${!isLast ? 'border-r border-neutral-800/40' : ''}
                         `}
                       >
-                        {col.id === 'title' ? (
-                          <span className="font-medium text-neutral-200">{val || 'Untitled'}</span>
+                        {isEditing ? (
+                          <InlineCellEditor
+                            column={col}
+                            value={val}
+                            onSave={(newVal) => handleCellSave(page.id, col.id, newVal)}
+                            onClose={() => setEditingCell(null)}
+                          />
+                        ) : col.id === 'title' ? (
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCell({ pageId: page.id, colId: col.id });
+                            }}
+                            className="font-medium text-neutral-200 hover:text-white cursor-text hover:underline"
+                          >
+                            {val || 'Untitled'}
+                          </span>
                         ) : col.type === 'select' ? (
                           val ? (() => {
                             const c = getOptionColorByValue(col.options || [], val);
@@ -358,7 +400,21 @@ export default function TableLayout({
                     );
                   })}
                 </tr>
-              ))
+                );
+              })
+            )}
+            {pages.length > 0 && (
+              <tr
+                onClick={() => onCreatePage?.()}
+                className="hover:bg-neutral-800/10 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors border-b border-neutral-800/40 group/newrow"
+              >
+                <td colSpan={visibleCols.length} className="py-2 px-3 text-xs font-medium">
+                  <span className="flex items-center gap-1.5 opacity-60 group-hover/newrow:opacity-100 transition-opacity">
+                    <Plus size={13} className="text-neutral-500" />
+                    New
+                  </span>
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -368,7 +424,7 @@ export default function TableLayout({
       {showActionBar && (
         <div
           data-action-bar
-          className="fixed z-30 flex items-center justify-end gap-0.5 pr-1"
+          className="fixed z-30 flex items-center justify-center bg-neutral-850 rounded-none border-none py-1 px-1"
           style={{
             top: actionPos!.top,
             left: actionPos!.left,
@@ -379,13 +435,6 @@ export default function TableLayout({
           onMouseLeave={handleActionBarMouseLeave}
         >
           <button
-            onClick={handleMenuToggle}
-            className="p-1 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer rounded-sm"
-            title="Page actions"
-          >
-            <Settings size={12} />
-          </button>
-          <button
             draggable={!hasSorts}
             onDragStart={(e) => {
               e.stopPropagation();
@@ -393,12 +442,17 @@ export default function TableLayout({
               if (pid) handleGripDragStart(e, pid);
             }}
             onDragEnd={handleRowDragEnd}
-            className={`p-1 text-neutral-600 hover:text-neutral-400 transition-colors rounded-sm ${
+            onClick={(e) => {
+              e.stopPropagation();
+              handleMenuToggle(e);
+            }}
+            className={`text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 transition-colors rounded flex items-center justify-center ${
               hasSorts ? 'cursor-not-allowed opacity-30' : 'cursor-grab active:cursor-grabbing'
             }`}
-            title={hasSorts ? 'Sorting is active — cannot reorder' : 'Drag to reorder'}
+            style={{ width: 22, height: 24 }}
+            title={hasSorts ? 'Page actions (Sorting is active — cannot reorder)' : 'Drag to reorder or click for actions'}
           >
-            <GripVertical size={12} />
+            <GripVertical size={14} />
           </button>
         </div>
       )}
@@ -408,9 +462,19 @@ export default function TableLayout({
         <>
           <div className="fixed inset-0 z-40 cursor-default" onClick={closeMenu} />
           <div
-            className="fixed z-50 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36"
+            className="fixed z-50 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36 rounded overflow-hidden"
             style={{ left: menuPos.x, top: menuPos.y }}
           >
+            <button
+              onClick={() => {
+                onDuplicatePage(activeMenuRowId);
+                closeMenu();
+              }}
+              className="w-full px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors border-b border-neutral-850"
+            >
+              <Copy size={13} />
+              <span>Duplicate page</span>
+            </button>
             <button
               onClick={handleDeleteConfirm}
               className="w-full px-3 py-2 text-xs text-red-400 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors"

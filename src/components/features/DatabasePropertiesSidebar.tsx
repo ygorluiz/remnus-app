@@ -90,7 +90,7 @@ function getPropertyIcon(type: string) {
 
 function Checkbox({ checked }: { checked: boolean }) {
   return (
-    <span className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-colors ${
+    <span className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-colors rounded-sm ${
       checked ? 'bg-blue-500 border-blue-500' : 'border-neutral-700'
     }`}>
       {checked && <span className="text-[8px] font-bold text-white leading-none">✓</span>}
@@ -98,7 +98,7 @@ function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
-const selectCls = 'bg-neutral-900 border border-neutral-800 text-neutral-300 outline-none cursor-pointer focus:border-neutral-700 transition-colors';
+const selectCls = 'bg-neutral-900 border border-neutral-800 text-neutral-300 outline-none cursor-pointer focus:border-neutral-700 transition-colors rounded';
 
 export default function DatabasePropertiesSidebar({
   database,
@@ -247,13 +247,55 @@ export default function DatabasePropertiesSidebar({
     setDragOverCardProp(null);
   };
 
+  // Calendar card props
+  const [draggingCalProp, setDraggingCalProp] = useState<string | null>(null);
+  const [dragOverCalProp, setDragOverCalProp] = useState<string | null>(null);
+
+  const calAvailableCardProps = schema.filter((c: any) => c.id !== 'title' && c.id !== dateCol);
+  const effectiveCalVisible: string[] =
+    cardProperties !== undefined
+      ? cardProperties.filter((id) => calAvailableCardProps.some((c: any) => c.id === id))
+      : calAvailableCardProps.slice(0, 1).map((c: any) => c.id);
+
+  const visibleCalCardProps = effectiveCalVisible
+    .map((id) => calAvailableCardProps.find((c: any) => c.id === id))
+    .filter(Boolean) as any[];
+  const hiddenCalCardProps = calAvailableCardProps.filter((c: any) => !effectiveCalVisible.includes(c.id));
+
+  const toggleCalCardProp = (colId: string) => {
+    if (effectiveCalVisible.includes(colId)) {
+      onCardPropertiesChange?.(effectiveCalVisible.filter((id) => id !== colId));
+    } else {
+      onCardPropertiesChange?.([...effectiveCalVisible, colId]);
+    }
+  };
+
+  const handleCalPropDragOver = (e: React.DragEvent, colId: string) => {
+    e.preventDefault();
+    if (draggingCalProp && draggingCalProp !== colId) setDragOverCalProp(colId);
+  };
+
+  const handleCalPropDrop = (targetColId: string) => {
+    if (!draggingCalProp || draggingCalProp === targetColId) return;
+    const current = [...effectiveCalVisible];
+    const fromIdx = current.indexOf(draggingCalProp);
+    const toIdx = current.indexOf(targetColId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [moved] = current.splice(fromIdx, 1);
+      current.splice(toIdx, 0, moved);
+      onCardPropertiesChange?.(current);
+    }
+    setDraggingCalProp(null);
+    setDragOverCalProp(null);
+  };
+
   return (
     <div className="w-72 shrink-0 bg-neutral-900 border-l border-neutral-800 flex flex-col h-full overflow-hidden animate-in slide-in-from-right duration-200">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-800 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-semibold text-neutral-200">Settings</span>
-          <span className="text-[10px] text-neutral-500 border border-neutral-800 px-1.5 py-0.5 shrink-0">
+          <span className="text-[10px] text-neutral-500 border border-neutral-800 px-1.5 py-0.5 shrink-0 rounded">
             {activeView.name}
           </span>
         </div>
@@ -337,7 +379,7 @@ export default function DatabasePropertiesSidebar({
                           const c = getOptionColor(opt);
                           const pickerKey = `${idx}-${optIdx}`;
                           return (
-                            <span key={optIdx} className="relative flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 border border-neutral-700/30" style={{ backgroundColor: c.bg, color: c.text }}>
+                            <span key={optIdx} className="relative flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 border border-neutral-700/30 rounded" style={{ backgroundColor: c.bg, color: c.text }}>
                               <button
                                 title="Change color"
                                 onClick={(e) => {
@@ -363,7 +405,7 @@ export default function DatabasePropertiesSidebar({
                               {colorPickerOpen === pickerKey && (
                                 <div
                                   ref={colorPickerRef}
-                                  className="absolute z-50 top-full left-0 mt-1 p-1.5 bg-neutral-900 border border-neutral-700 flex flex-wrap gap-1"
+                                  className="absolute z-50 top-full left-0 mt-1 p-1.5 bg-neutral-900 border border-neutral-700 flex flex-wrap gap-1 rounded shadow-xl overflow-hidden"
                                   style={{ width: 110 }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
@@ -642,6 +684,77 @@ export default function DatabasePropertiesSidebar({
                     </select>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Calendar: Card properties */}
+            {activeView.config.type === 'calendar' && (
+              <div>
+                <div className="px-4 py-2.5">
+                  <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Card properties</span>
+                </div>
+                {calAvailableCardProps.length === 0 ? (
+                  <p className="text-[11px] text-neutral-700 text-center pb-3">No additional properties.</p>
+                ) : (
+                  <div className="flex flex-col">
+                    {visibleCalCardProps.map((col) => (
+                      <div
+                        key={col.id}
+                        draggable
+                        onDragStart={() => setDraggingCalProp(col.id)}
+                        onDragOver={(e) => handleCalPropDragOver(e, col.id)}
+                        onDrop={() => handleCalPropDrop(col.id)}
+                        onDragEnd={() => { setDraggingCalProp(null); setDragOverCalProp(null); }}
+                        className={`flex items-center gap-2 px-4 py-2 border-b border-neutral-800/30 hover:bg-neutral-800/10 transition-colors cursor-default ${
+                          draggingCalProp === col.id ? 'opacity-30' : ''
+                        } ${dragOverCalProp === col.id ? 'border-t-2 border-t-blue-500/50' : ''}`}
+                      >
+                        <GripVertical size={11} className="text-neutral-600 cursor-grab shrink-0" />
+                        {getPropertyIcon(col.type)}
+                        <span className="flex-1 text-xs text-neutral-300 truncate">{col.name}</span>
+                        <button onClick={() => toggleCalCardProp(col.id)} className="cursor-pointer">
+                          <Checkbox checked={true} />
+                        </button>
+                      </div>
+                    ))}
+                    {hiddenCalCardProps.map((col: any) => (
+                      <button
+                        key={col.id}
+                        onClick={() => toggleCalCardProp(col.id)}
+                        className="flex items-center gap-2 px-4 py-2 border-b border-neutral-800/30 hover:bg-neutral-800/10 transition-colors cursor-pointer text-left"
+                      >
+                        <span className="w-2.75 shrink-0" />
+                        {getPropertyIcon(col.type)}
+                        <span className="flex-1 text-xs text-neutral-500 truncate">{col.name}</span>
+                        <Checkbox checked={false} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Calendar: Show labels + text wrap */}
+            {activeView.config.type === 'calendar' && (
+              <div>
+                <button
+                  onClick={() => onShowPropertyLabelsChange?.(!showPropertyLabels)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-neutral-800/10 transition-colors cursor-pointer border-b border-neutral-800/30"
+                >
+                  <span className="text-xs text-neutral-300">Show property labels</span>
+                  <Checkbox checked={showPropertyLabels} />
+                </button>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-xs text-neutral-300">Property text</span>
+                  <select
+                    value={propertyTextClamp}
+                    onChange={(e) => onPropertyTextClampChange?.(e.target.value as 'truncate' | 'wrap')}
+                    className={`${selectCls} text-[10px] text-neutral-400 py-1 px-1.5`}
+                  >
+                    <option value="truncate">Single line</option>
+                    <option value="wrap">Multi-line</option>
+                  </select>
+                </div>
               </div>
             )}
 

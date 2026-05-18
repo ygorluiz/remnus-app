@@ -53,6 +53,9 @@ export interface CalendarViewConfig {
   sorts: ViewSort[];
   openBehavior?: OpenBehavior;
   cardColorCol?: string;                  // property ID whose select value drives the card's left-border color
+  cardProperties?: string[];              // visible property IDs in display order; undefined = first 1
+  showPropertyLabels?: boolean;           // show property name before value; default true
+  propertyTextClamp?: 'truncate' | 'wrap'; // single-line truncate or multi-line wrap; default truncate
 }
 
 export interface DatabaseView {

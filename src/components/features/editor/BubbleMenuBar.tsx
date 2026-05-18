@@ -157,7 +157,7 @@ export default function BubbleMenuBar({ editor }: Props) {
           ref={menuRef}
           style={{ position: 'fixed', top: layout.top, left: layout.left, zIndex: 9999 }}
           onMouseDown={(e) => e.preventDefault()}
-          className="flex items-center bg-neutral-900 border border-neutral-800 rounded-none shadow-xl overflow-hidden"
+          className="flex items-center bg-neutral-900 border border-neutral-800 rounded-md shadow-xl overflow-hidden"
         >
           <button
             onMouseDown={(e) => { e.preventDefault(); setBlockMenuOpen((v) => !v); }}
@@ -190,7 +190,7 @@ export default function BubbleMenuBar({ editor }: Props) {
           ref={blockMenuRef}
           style={{ position: 'fixed', top: dropTop, left: layout.left, zIndex: 10000 }}
           onMouseDown={(e) => e.preventDefault()}
-          className="min-w-49 bg-neutral-900 border border-neutral-800 shadow-xl py-1"
+          className="min-w-49 bg-neutral-900 border border-neutral-800 shadow-xl py-1 rounded-md overflow-hidden"
         >
           <div className="px-3 py-1.5 text-xs text-neutral-600 font-medium uppercase tracking-wider">Turn into</div>
           {BLOCK_OPTIONS.map((opt) => (

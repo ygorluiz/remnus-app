@@ -125,7 +125,7 @@ const SlashCommandList = forwardRef<{ onKeyDown: (props: { event: KeyboardEvent 
     if (!items.length) return null;
 
     return (
-      <div className="min-w-[220px] bg-neutral-900 border border-neutral-800 rounded-none shadow-xl overflow-hidden py-1">
+      <div className="min-w-[220px] bg-neutral-900 border border-neutral-800 rounded-md shadow-xl overflow-hidden py-1">
         {items.map((item, index) => (
           <button
             key={item.id}

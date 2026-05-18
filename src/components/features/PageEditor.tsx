@@ -1,7 +1,8 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { updatePageContent, updatePageProperties } from '@/lib/actions/page';
-import { ArrowLeft, X, ChevronDown } from 'lucide-react';
+import { updatePageContent, updatePageProperties, duplicatePage, deletePage } from '@/lib/actions/page';
+import { ArrowLeft, X, ChevronDown, MoreHorizontal, Trash2, Copy } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import BlockEditor from '@/components/features/editor/BlockEditor';
 import {
@@ -35,6 +36,21 @@ export default function PageEditor({
   const [properties, setProperties] = useState<Record<string, any>>(initialPage.properties || {});
   const [openSelectId, setOpenSelectId] = useState<string | null>(null);
   const selectDropdownRef = useRef<HTMLDivElement>(null);
+
+  const router = useRouter();
+  const [openMenu, setOpenMenu] = useState(false);
+  const menuDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuDropdownRef.current && !menuDropdownRef.current.contains(e.target as Node)) {
+        setOpenMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openMenu]);
 
   useEffect(() => {
     if (!openSelectId) return;
@@ -107,9 +123,51 @@ export default function PageEditor({
   return (
     <div className={`${isPeek ? 'p-6 md:p-8 lg:p-10' : 'max-w-4xl mx-auto p-8 lg:p-12'}`}>
       {!isPeek && (
-        <Link href={`/db/${database.id}`} className="inline-flex items-center gap-2 text-neutral-400 hover:text-white mb-10 transition-colors text-sm font-medium">
-          <ArrowLeft size={16} /> Back to {database.name}
-        </Link>
+        <div className="flex items-center justify-between mb-10">
+          <Link href={`/db/${database.id}`} className="inline-flex items-center gap-2 text-neutral-400 hover:text-white transition-colors text-sm font-medium">
+            <ArrowLeft size={16} /> Back to {database.name}
+          </Link>
+          <div className="relative" ref={menuDropdownRef}>
+            <button
+              onClick={() => setOpenMenu(!openMenu)}
+              className="flex items-center justify-center p-1.5 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded transition-colors"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+            {openMenu && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36 rounded overflow-hidden text-left animate-fade-in animate-duration-100">
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setOpenMenu(false);
+                    const newId = await duplicatePage(initialPage.id, database.id);
+                    if (newId) {
+                      router.push(`/db/${database.id}/${newId}`);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors border-b border-neutral-850"
+                >
+                  <Copy size={13} />
+                  <span>Duplicate page</span>
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setOpenMenu(false);
+                    if (confirm('Are you sure you want to delete this page?')) {
+                      await deletePage(initialPage.id, database.id);
+                      router.push(`/db/${database.id}`);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs text-red-400 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete page</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Properties Section */}
@@ -138,7 +196,7 @@ export default function PageEditor({
                     {val ? (() => {
                       const c = getOptionColorByValue(col.options || [], val);
                       return (
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
                           {val}
                         </span>
                       );
@@ -148,7 +206,7 @@ export default function PageEditor({
                     <ChevronDown size={12} className="text-neutral-600" />
                   </button>
                   {openSelectId === col.id && (
-                    <div className="absolute z-50 top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 min-w-32 py-1" style={{ minWidth: 140 }}>
+                    <div className="absolute z-50 top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 min-w-32 py-1 rounded shadow-xl overflow-hidden" style={{ minWidth: 140 }}>
                       <button
                         onClick={() => { handlePropertyChange(col.id, ''); setOpenSelectId(null); }}
                         className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer"
@@ -164,7 +222,7 @@ export default function PageEditor({
                             onClick={() => { handlePropertyChange(col.id, opt.value); setOpenSelectId(null); }}
                             className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-neutral-800 transition-colors cursor-pointer"
                           >
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
                               {opt.value}
                             </span>
                           </button>
@@ -180,7 +238,7 @@ export default function PageEditor({
                       {val.map((optVal: string) => {
                         const c = getOptionColorByValue(col.options || [], optVal);
                         return (
-                          <span key={optVal} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                          <span key={optVal} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded" style={{ backgroundColor: c.bg, color: c.text }}>
                             {optVal}
                             <button
                               onClick={() => handleMultiSelectToggle(col.id, optVal)}
@@ -205,7 +263,7 @@ export default function PageEditor({
                             <button
                               key={opt.value}
                               onClick={() => handleMultiSelectToggle(col.id, opt.value)}
-                              className="text-xs px-2 py-0.5 rounded-sm border border-neutral-700/40 opacity-50 hover:opacity-80 transition-opacity cursor-pointer"
+                              className="text-xs px-2 py-0.5 rounded border border-neutral-700/40 opacity-50 hover:opacity-80 transition-opacity cursor-pointer"
                               style={{ backgroundColor: c.bg, color: c.text }}
                             >
                               + {opt.value}

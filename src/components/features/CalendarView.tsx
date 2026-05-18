@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { getOptionColorByValue, getCardBorderDots } from '@/lib/types/properties';
-import { ChevronLeft, ChevronRight, GripVertical, Settings, Trash2, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical, Settings, Trash2, Calendar as CalendarIcon, Clock, Plus, Copy } from 'lucide-react';
 
 interface CalendarViewProps {
   database: any;
@@ -13,7 +13,13 @@ interface CalendarViewProps {
   onCardClick: (pageId: string) => void;
   onCardDateChange: (pageId: string, newDateStr: string) => void;
   onDeletePage: (pageId: string) => void;
+  onDuplicatePage: (pageId: string) => void;
   cardColorCol?: string;
+  cardProperties?: string[];
+  showPropertyLabels?: boolean;
+  propertyTextClamp?: 'truncate' | 'wrap';
+  onUpdatePageProperties: (pageId: string, properties: Record<string, any>) => void;
+  onCreatePage?: (initialProperties?: Record<string, any>) => void;
 }
 
 const formatYYYYMMDD = (d: Date) => {
@@ -94,7 +100,13 @@ export default function CalendarView({
   onCardClick,
   onCardDateChange,
   onDeletePage,
+  onDuplicatePage,
   cardColorCol,
+  cardProperties,
+  showPropertyLabels = true,
+  propertyTextClamp = 'truncate',
+  onUpdatePageProperties,
+  onCreatePage,
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
@@ -106,6 +118,12 @@ export default function CalendarView({
 
   const schema = database.schema as any[];
   const dateProperty = schema.find((c) => c.id === dateCol);
+
+  const availableProps = schema.filter((c) => c.id !== 'title' && c.id !== dateCol);
+  const propsToShow = cardProperties !== undefined && cardProperties.length > 0
+    ? cardProperties.map((id) => availableProps.find((c) => c.id === id)).filter(Boolean) as any[]
+    : availableProps.slice(0, 1);
+  const textClass = propertyTextClamp === 'wrap' ? 'break-words whitespace-pre-wrap' : 'truncate';
 
   const days = useMemo(() => {
     return viewMode === 'month' ? getMonthDays(currentDate, firstDayOfWeek) : getWeekDays(currentDate, firstDayOfWeek);
@@ -205,19 +223,19 @@ export default function CalendarView({
         <div className="flex items-center gap-1.5">
           <button
             onClick={handlePrev}
-            className="p-1.5 hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer rounded"
           >
             <ChevronLeft size={14} />
           </button>
           <button
             onClick={handleToday}
-            className="px-3 py-1 text-xs font-semibold hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer"
+            className="px-3 py-1 text-xs font-semibold hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer rounded"
           >
             Today
           </button>
           <button
             onClick={handleNext}
-            className="p-1.5 hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-neutral-800/60 hover:text-neutral-100 border border-neutral-850 bg-neutral-900/10 transition-colors cursor-pointer rounded"
           >
             <ChevronRight size={14} />
           </button>
@@ -227,7 +245,7 @@ export default function CalendarView({
         </div>
 
         {/* Small badge of dateCol binding */}
-        <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 bg-neutral-900/30 border border-neutral-850 px-2 py-0.5 uppercase tracking-wider">
+        <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 bg-neutral-900/30 border border-neutral-850 px-2 py-0.5 uppercase tracking-wider rounded">
           <Clock size={10} />
           <span>Mapped to: {dateProperty?.name || 'Unknown'}</span>
         </div>
@@ -248,9 +266,10 @@ export default function CalendarView({
       {/* Grid Container */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div
-          className={`grid grid-cols-7 border-l border-t border-neutral-800/80 bg-neutral-850 h-full ${
-            viewMode === 'month' ? 'grid-rows-6' : 'grid-rows-1 min-h-87.5'
-          }`}
+          className="grid grid-cols-7 border-l border-t border-neutral-800/80 bg-neutral-850 min-h-full h-auto"
+          style={{
+            gridTemplateRows: viewMode === 'month' ? 'repeat(6, minmax(6rem, 1fr))' : 'minmax(22rem, 1fr)'
+          }}
         >
           {days.map(({ date, isCurrentMonth }, idx) => {
             const dayStr = formatYYYYMMDD(date);
@@ -282,7 +301,7 @@ export default function CalendarView({
                   setDraggedCardId(null);
                   setIsCardDragReady(false);
                 }}
-                className={`border-r border-b border-neutral-800/80 p-2 min-h-24 flex flex-col transition-colors overflow-y-auto ${
+                className={`border-r border-b border-neutral-800/80 p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
                   !isCurrentMonth && viewMode === 'month' ? 'bg-neutral-950/20' : 'bg-transparent'
                 } ${isDragOver ? 'bg-neutral-800/15' : ''}`}
               >
@@ -299,11 +318,20 @@ export default function CalendarView({
                   >
                     {date.getDate()}
                   </span>
-                  {dayPages.length > 0 && (
-                    <span className="text-[10px] text-neutral-600 font-medium font-mono">
-                      {dayPages.length}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 h-6">
+                    {dayPages.length > 0 && (
+                      <span className="text-[10px] text-neutral-600 font-medium font-mono group-hover/day:hidden">
+                        {dayPages.length}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => onCreatePage?.({ [dateCol]: dayStr })}
+                      className="opacity-0 group-hover/day:opacity-100 transition-opacity p-0.5 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-200 rounded cursor-pointer duration-100"
+                      title="Add a page to this day"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Cards Container inside day */}
@@ -326,7 +354,7 @@ export default function CalendarView({
                         setDraggedCardId(page.id);
                         setIsCardDragReady(false);
                       }}
-                      className={`relative py-2.5 px-2 bg-neutral-800/45 cursor-pointer hover:bg-neutral-800/75 transition-colors group flex flex-col select-none overflow-hidden ${
+                      className={`relative py-2.5 px-2 bg-neutral-800/45 cursor-pointer hover:bg-neutral-800/75 transition-colors group flex flex-col select-none overflow-hidden rounded ${
                         draggedCardId === page.id ? 'opacity-25' : ''
                       }`}
                     >
@@ -339,19 +367,10 @@ export default function CalendarView({
                       )}
                       {/* Hover Actions */}
                       <div
-                        className="absolute right-1 top-1.5 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity z-10"
+                        className="absolute right-1 top-1.5 opacity-0 group-hover:opacity-100 flex items-center transition-opacity z-10"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuCardId(activeMenuCardId === page.id ? null : page.id);
-                          }}
-                          className="p-1 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-200 transition-colors rounded-none cursor-pointer"
-                          title="Page actions"
-                        >
-                          <Settings size={10} />
-                        </button>
+                        {/* Drag handle & Actions */}
                         <button
                           draggable={true}
                           onDragStart={(e) => {
@@ -362,10 +381,14 @@ export default function CalendarView({
                           }}
                           onMouseDown={() => setIsCardDragReady(true)}
                           onMouseLeave={() => setIsCardDragReady(false)}
-                          className="p-1 text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing transition-colors rounded-none"
-                          title="Drag to reschedule"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuCardId(activeMenuCardId === page.id ? null : page.id);
+                          }}
+                          className="p-1 hover:bg-neutral-700/60 text-neutral-400 hover:text-neutral-200 cursor-grab active:cursor-grabbing transition-colors rounded"
+                          title="Drag to reschedule or click for actions"
                         >
-                          <GripVertical size={10} />
+                          <GripVertical size={12} />
                         </button>
                       </div>
 
@@ -380,9 +403,20 @@ export default function CalendarView({
                             }}
                           />
                           <div
-                            className="absolute right-0 top-6 z-30 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-32 rounded-none text-left animate-fade-in animate-duration-100"
+                            className="absolute right-0 top-6 z-30 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-32 rounded text-left animate-fade-in animate-duration-100 overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
                           >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicatePage(page.id);
+                                setActiveMenuCardId(null);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-[11px] text-neutral-300 hover:bg-neutral-800 flex items-center gap-1.5 cursor-pointer transition-colors border-b border-neutral-850"
+                            >
+                              <Copy size={11} />
+                              <span>Duplicate page</span>
+                            </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -401,16 +435,13 @@ export default function CalendarView({
                       )}
 
                       {/* Page Title */}
-                      <h4 className="text-xs text-neutral-300 group-hover:text-neutral-100 font-medium leading-snug wrap-break-word pr-8">
+                      <h4 className="text-sm text-neutral-200 group-hover:text-neutral-100 font-medium leading-snug wrap-break-word whitespace-normal pr-8 mb-1">
                         {page.properties['title'] || 'Untitled'}
                       </h4>
 
-                      {/* Up to 2 metadata attributes in small font */}
-                      <div className="mt-1 flex flex-col gap-0.5 select-none shrink-0">
-                        {schema
-                          .filter((c) => c.id !== 'title' && c.id !== dateCol)
-                          .slice(0, 1)
-                          .map((c) => {
+                      {/* Card properties */}
+                      <div className="mt-1.5 flex flex-col gap-1.5 select-none shrink-0">
+                        {propsToShow.map((c) => {
                             const val = page.properties[c.id];
                             const isEmpty =
                               val === undefined ||
@@ -429,11 +460,11 @@ export default function CalendarView({
                               );
                             } else if (c.type === 'multi_select' && Array.isArray(val)) {
                               display = (
-                                <span className="flex flex-wrap gap-0.5">
+                                <span className={`flex gap-0.5 ${propertyTextClamp === 'wrap' ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>
                                   {val.map((optVal: string) => {
                                     const mc = getOptionColorByValue(c.options || [], optVal);
                                     return (
-                                      <span key={optVal} className="text-[9px] px-1 py-0 rounded-sm" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                      <span key={optVal} className="text-[9px] px-1 py-0 rounded-sm shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
                                         {optVal}
                                       </span>
                                     );
@@ -443,7 +474,7 @@ export default function CalendarView({
                             } else if (c.type === 'date' && val) {
                               const d = new Date(val);
                               display = (
-                                <span className="text-neutral-500 truncate text-[9px]">
+                                <span className={`text-neutral-500 text-[9px] ${textClass}`}>
                                   {isNaN(d.getTime())
                                     ? val
                                     : d.toLocaleDateString('en-US', {
@@ -455,7 +486,7 @@ export default function CalendarView({
                             } else if (c.type === 'datetime' && val) {
                               const d = new Date(val);
                               display = (
-                                <span className="text-neutral-500 truncate text-[9px]">
+                                <span className={`text-neutral-500 text-[9px] ${textClass}`}>
                                   {isNaN(d.getTime())
                                     ? val
                                     : d.toLocaleString('en-US', {
@@ -468,16 +499,21 @@ export default function CalendarView({
                               );
                             } else {
                               display = (
-                                <span className="text-neutral-500 truncate text-[9px]">{String(val)}</span>
+                                <span className={`text-neutral-500 text-[9px] ${textClass}`}>{val !== undefined && val !== null ? String(val) : ''}</span>
                               );
                             }
 
-                            return (
-                              <div key={c.id} className="text-[9px] flex items-center gap-1.5 select-none">
-                                <span className="text-neutral-600 shrink-0">{c.name}:</span>
-                                {display}
-                              </div>
-                            );
+                             return (
+                               <div
+                                 key={c.id}
+                                 className={`text-[9px] leading-relaxed flex gap-1 ${propertyTextClamp === 'wrap' ? 'items-start' : 'items-center'}`}
+                               >
+                                 {showPropertyLabels && (
+                                   <span className="text-neutral-600 shrink-0">{c.name}:</span>
+                                 )}
+                                 {display}
+                               </div>
+                             );
                           })}
                       </div>
                     </div>

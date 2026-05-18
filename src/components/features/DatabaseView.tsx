@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { createPage, getPage, deletePage, reorderPages, updatePageProperties } from '@/lib/actions/page';
+import { createPage, getPage, deletePage, duplicatePage, reorderPages, updatePageProperties } from '@/lib/actions/page';
 import { updateDatabaseViews } from '@/lib/actions/database';
-import { Plus, Settings, Columns3, Filter, ArrowUpDown, X, Maximize2, Database, ArrowLeftRight } from 'lucide-react';
+import { Plus, Settings, Columns3, Filter, ArrowUpDown, X, Maximize2, Database, ArrowLeftRight, MoreHorizontal, Trash2, Copy } from 'lucide-react';
 import TableLayout from './TableLayout';
 import KanbanBoard from './KanbanBoard';
 import CalendarView from './CalendarView';
@@ -28,7 +28,7 @@ function defaultTableView(name = 'Table'): DatabaseView {
   return {
     id: uid(),
     name,
-    config: { type: 'table', columnOrder: [], hiddenColumns: [], filters: [], sorts: [] },
+    config: { type: 'table', columnOrder: [], hiddenColumns: [], filters: [], sorts: [], openBehavior: 'center' },
   };
 }
 
@@ -43,6 +43,7 @@ function defaultKanbanView(schema: any[], name = 'Board'): DatabaseView {
       groupOrder: [],
       filters: [],
       sorts: [],
+      openBehavior: 'center',
     },
   };
 }
@@ -58,6 +59,7 @@ function defaultCalendarView(schema: any[], name = 'Calendar'): DatabaseView {
       viewMode: 'month',
       filters: [],
       sorts: [],
+      openBehavior: 'center',
     },
   };
 }
@@ -118,6 +120,7 @@ export default function DatabaseView({
   const [peekPageId, setPeekPageId] = useState<string | null>(null);
   const [peekPage, setPeekPage] = useState<any | null>(null);
   const [isPageLoading, setIsPageLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const [views, setViews] = useState<DatabaseView[]>(() => {
     const saved = database.views as DatabaseView[] | null | undefined;
@@ -252,7 +255,7 @@ export default function DatabaseView({
   };
 
   const handlePageClick = (pageId: string) => {
-    const openBehavior = config.openBehavior ?? 'full';
+    const openBehavior = config.openBehavior ?? 'center';
     if (openBehavior === 'full') {
       router.push(`/db/${database.id}/${pageId}`);
     } else {
@@ -260,9 +263,9 @@ export default function DatabaseView({
     }
   };
 
-  const handleAddRow = async () => {
+  const handleAddRow = async (initialProperties?: Record<string, any>) => {
     setIsAdding(true);
-    await createPage(database.id, 'New Page');
+    await createPage(database.id, 'New Page', initialProperties);
     setIsAdding(false);
   };
 
@@ -271,6 +274,10 @@ export default function DatabaseView({
     setLocalPages((prev) => prev.filter((p) => p.id !== pageId));
     // Persist
     await deletePage(pageId, database.id);
+  };
+
+  const handleDuplicatePage = async (pageId: string): Promise<string | undefined> => {
+    return await duplicatePage(pageId, database.id);
   };
 
   const handleRowReorder = async (orderedIds: string[]) => {
@@ -481,6 +488,20 @@ export default function DatabaseView({
     }
   };
 
+  const handleUpdatePageProperties = async (pageId: string, newProps: Record<string, any>) => {
+    setLocalPages((prev) =>
+      prev.map((p) => (p.id === pageId ? { ...p, properties: newProps } : p))
+    );
+    setPeekPage((prev: any) => {
+      if (prev && prev.id === pageId) {
+        return { ...prev, properties: newProps };
+      }
+      return prev;
+    });
+    await updatePageProperties(pageId, newProps);
+  };
+
+
   const handleToggleSidebar = (tab: typeof sidebarTab) => {
     if (sidebarOpen && sidebarTab === tab) {
       setSidebarOpen(false);
@@ -496,7 +517,7 @@ export default function DatabaseView({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className={`flex-1 flex flex-col min-h-0 px-8 pt-8 w-full ${widthMode === 'full' ? '' : widthMode === 'wide' ? 'max-w-screen-xl mx-auto' : 'max-w-6xl mx-auto'}`}>
+      <div className={`flex-1 flex flex-col min-h-0 pt-8 w-full ${widthMode === 'full' ? 'px-16' : 'px-8'} ${widthMode === 'full' ? '' : widthMode === 'wide' ? 'max-w-screen-2xl mx-auto' : 'max-w-6xl mx-auto'}`}>
       {/* Title */}
       <h1 className="text-3xl font-bold mb-8 text-white shrink-0">{database.name}</h1>
 
@@ -516,7 +537,7 @@ export default function DatabaseView({
           {/* Full Width Toggle */}
           <button
             onClick={cycleWidth}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer rounded"
           >
             <ArrowLeftRight size={13} />
             {widthLabels[widthMode]}
@@ -525,7 +546,7 @@ export default function DatabaseView({
           {/* Settings Button */}
           <button
             onClick={() => handleToggleSidebar(sidebarTab)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors cursor-pointer rounded ${
               sidebarOpen
                 ? 'text-blue-400 font-semibold'
                 : 'text-neutral-500 hover:text-neutral-200'
@@ -538,7 +559,7 @@ export default function DatabaseView({
           <button
             onClick={handleAddRow}
             disabled={isAdding}
-            className="flex items-center gap-1.5 bg-neutral-100 text-neutral-900 hover:bg-white px-4 py-1.5 transition-colors text-sm font-medium disabled:opacity-50 ml-1 cursor-pointer"
+            className="flex items-center gap-1.5 bg-neutral-100 text-neutral-900 hover:bg-white px-4 py-1.5 transition-colors text-sm font-medium disabled:opacity-50 ml-1 cursor-pointer rounded"
           >
             <Plus size={14} /> New
           </button>
@@ -558,7 +579,10 @@ export default function DatabaseView({
               onRowClick={handlePageClick}
               onRowReorder={handleRowReorder}
               onDeletePage={handleDeletePage}
+              onDuplicatePage={handleDuplicatePage}
               hasSorts={(config.sorts?.length ?? 0) > 0}
+              onUpdatePageProperties={handleUpdatePageProperties}
+              onCreatePage={handleAddRow}
             />
           ) : kanbanConfig ? (
             <KanbanBoard
@@ -570,12 +594,15 @@ export default function DatabaseView({
               onCardClick={handlePageClick}
               onCardMove={handleCardReorder}
               onDeletePage={handleDeletePage}
+              onDuplicatePage={handleDuplicatePage}
               hasSorts={(config.sorts?.length ?? 0) > 0}
               cardProperties={kanbanConfig.cardProperties}
               showPropertyLabels={kanbanConfig.showPropertyLabels ?? true}
               propertyTextClamp={kanbanConfig.propertyTextClamp ?? 'truncate'}
               cardColorCol={kanbanConfig.cardColorCol}
               groupColBg={kanbanConfig.groupColBg ?? false}
+              onUpdatePageProperties={handleUpdatePageProperties}
+              onCreatePage={handleAddRow}
             />
           ) : calendarConfig ? (
             <CalendarView
@@ -587,7 +614,13 @@ export default function DatabaseView({
               onCardClick={handlePageClick}
               onCardDateChange={handleCardDateChange}
               onDeletePage={handleDeletePage}
+              onDuplicatePage={handleDuplicatePage}
               cardColorCol={calendarConfig.cardColorCol}
+              cardProperties={calendarConfig.cardProperties}
+              showPropertyLabels={calendarConfig.showPropertyLabels ?? true}
+              propertyTextClamp={calendarConfig.propertyTextClamp ?? 'truncate'}
+              onUpdatePageProperties={handleUpdatePageProperties}
+              onCreatePage={handleAddRow}
             />
           ) : null}
         </div>
@@ -617,17 +650,17 @@ export default function DatabaseView({
               sorts={config.sorts}
               onFiltersChange={handleFiltersChange}
               onSortsChange={handleSortsChange}
-              openBehavior={config.openBehavior ?? 'full'}
+              openBehavior={config.openBehavior ?? 'center'}
               onOpenBehaviorChange={(behavior) =>
                 mutateConfig((cfg) => ({ ...cfg, openBehavior: behavior }))
               }
               groupByCol={kanbanConfig?.groupByCol}
               onGroupByColChange={handleGroupByChange}
-              cardProperties={kanbanConfig?.cardProperties}
+              cardProperties={kanbanConfig?.cardProperties ?? calendarConfig?.cardProperties}
               onCardPropertiesChange={handleCardPropertiesChange}
-              showPropertyLabels={kanbanConfig?.showPropertyLabels ?? true}
+              showPropertyLabels={(kanbanConfig?.showPropertyLabels ?? calendarConfig?.showPropertyLabels) ?? true}
               onShowPropertyLabelsChange={handleShowPropertyLabelsChange}
-              propertyTextClamp={kanbanConfig?.propertyTextClamp ?? 'truncate'}
+              propertyTextClamp={(kanbanConfig?.propertyTextClamp ?? calendarConfig?.propertyTextClamp) ?? 'truncate'}
               onPropertyTextClampChange={handlePropertyTextClampChange}
               dateCol={calendarConfig?.dateCol}
               onDateColChange={handleDateColChange}
@@ -651,23 +684,23 @@ export default function DatabaseView({
           {/* Dark Glassmorphism Backdrop */}
           <div
             onClick={() => setPeekPageId(null)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 animate-fade-in transition-opacity cursor-pointer animate-duration-200"
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 animate-fade-in transition-opacity cursor-pointer animate-duration-200"
           />
 
           {/* Center Peek Modal */}
-          {(config.openBehavior ?? 'full') === 'center' && (
+          {(config.openBehavior ?? 'center') === 'center' && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-10 pointer-events-none">
-              <div className="relative w-full max-w-4xl max-h-[85vh] md:max-h-[90vh] bg-neutral-850 border border-neutral-800 flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden rounded-none pointer-events-auto animate-scale-in">
+              <div className="relative w-full max-w-4xl max-h-[85vh] md:max-h-[90vh] bg-neutral-850 border border-neutral-800 flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden rounded-lg pointer-events-auto animate-scale-in">
                 {/* Peek Sticky Header */}
                 <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setPeekPageId(null)}
-                      className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer"
+                      className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer rounded"
                     >
                       <X size={16} />
                     </button>
-                    <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded-none">
+                    <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded">
                       Center Peek
                     </span>
                   </div>
@@ -678,11 +711,57 @@ export default function DatabaseView({
                         router.push(`/db/${database.id}/${peekPageId}`);
                         setPeekPageId(null);
                       }}
-                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded-none"
+                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded"
                     >
                       <Maximize2 size={12} />
                       <span>Open in full page</span>
                     </button>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === peekPageId ? null : peekPageId);
+                        }}
+                        className="flex items-center justify-center p-1.5 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded transition-colors"
+                      >
+                        <MoreHorizontal size={12} />
+                      </button>
+                      {openMenuId === peekPageId && (
+                        <>
+                          <div className="fixed inset-0 z-40 cursor-default" onClick={() => setOpenMenuId(null)} />
+                          <div className="absolute right-0 top-full mt-1.5 z-50 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36 rounded overflow-hidden text-left animate-fade-in animate-duration-100">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                const newId = await handleDuplicatePage(peekPageId!);
+                                if (newId) {
+                                  setPeekPageId(newId);
+                                }
+                              }}
+                              className="w-full px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors border-b border-neutral-850"
+                            >
+                              <Copy size={13} />
+                              <span>Duplicate page</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                if (confirm('Are you sure you want to delete this page?')) {
+                                  handleDeletePage(peekPageId!);
+                                  setPeekPageId(null);
+                                }
+                              }}
+                              className="w-full px-3 py-2 text-xs text-red-400 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <Trash2 size={13} />
+                              <span>Delete page</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -710,18 +789,18 @@ export default function DatabaseView({
           )}
 
           {/* Side Peek Drawer */}
-          {(config.openBehavior ?? 'full') === 'side' && (
+          {(config.openBehavior ?? 'center') === 'side' && (
             <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-neutral-900 border-l border-neutral-800 shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-hidden rounded-none animate-slide-in-right">
               {/* Peek Sticky Header */}
               <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setPeekPageId(null)}
-                    className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer"
+                    className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer rounded"
                   >
                     <X size={16} />
                   </button>
-                  <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded-none">
+                  <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded">
                     Side Peek
                   </span>
                 </div>
@@ -732,11 +811,57 @@ export default function DatabaseView({
                       router.push(`/db/${database.id}/${peekPageId}`);
                       setPeekPageId(null);
                     }}
-                    className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded-none"
+                    className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded"
                   >
                     <Maximize2 size={12} />
                     <span>Open in full page</span>
                   </button>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === peekPageId ? null : peekPageId);
+                      }}
+                      className="flex items-center justify-center p-1.5 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded transition-colors"
+                    >
+                      <MoreHorizontal size={12} />
+                    </button>
+                    {openMenuId === peekPageId && (
+                      <>
+                        <div className="fixed inset-0 z-40 cursor-default" onClick={() => setOpenMenuId(null)} />
+                        <div className="absolute right-0 top-full mt-1.5 z-50 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-36 rounded overflow-hidden text-left animate-fade-in animate-duration-100">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              const newId = await handleDuplicatePage(peekPageId!);
+                              if (newId) {
+                                setPeekPageId(newId);
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors border-b border-neutral-850"
+                          >
+                            <Copy size={13} />
+                            <span>Duplicate page</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              if (confirm('Are you sure you want to delete this page?')) {
+                                handleDeletePage(peekPageId!);
+                                setPeekPageId(null);
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-xs text-red-400 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete page</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
