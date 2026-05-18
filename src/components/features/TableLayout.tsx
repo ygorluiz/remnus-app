@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { getOptionColorByValue } from '@/lib/types/properties';
 import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags } from 'lucide-react';
 
 function getPropertyIcon(type: string) {
@@ -321,17 +322,27 @@ export default function TableLayout({
                         {col.id === 'title' ? (
                           <span className="font-medium text-neutral-200">{val || 'Untitled'}</span>
                         ) : col.type === 'select' ? (
-                          <span className={`text-xs ${val ? 'text-neutral-400' : 'text-neutral-700'}`}>
-                            {val || '—'}
-                          </span>
+                          val ? (() => {
+                            const c = getOptionColorByValue(col.options || [], val);
+                            return (
+                              <span className="text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                                {val}
+                              </span>
+                            );
+                          })() : (
+                            <span className="text-neutral-700">—</span>
+                          )
                         ) : col.type === 'multi_select' ? (
                           <span className="flex flex-wrap gap-1">
                             {Array.isArray(val) && val.length > 0 ? (
-                              val.map((opt: string) => (
-                                <span key={opt} className="text-xs bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded border border-neutral-700/50">
-                                  {opt}
-                                </span>
-                              ))
+                              val.map((optVal: string) => {
+                                const c = getOptionColorByValue(col.options || [], optVal);
+                                return (
+                                  <span key={optVal} className="text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                                    {optVal}
+                                  </span>
+                                );
+                              })
                             ) : (
                               <span className="text-neutral-700">—</span>
                             )}

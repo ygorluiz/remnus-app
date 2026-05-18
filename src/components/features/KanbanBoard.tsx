@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GripVertical, Settings, Trash2 } from 'lucide-react';
+import { normalizeOption, getOptionColorByValue, getCardBorderDots } from '@/lib/types/properties';
+import type { SelectOption } from '@/lib/types/properties';
 
 function getEffectiveGroupOrder(options: string[], groupOrder: string[]): string[] {
   if (!groupOrder || groupOrder.length === 0) return options;
@@ -22,6 +24,11 @@ export default function KanbanBoard({
   onCardMove,
   onDeletePage,
   hasSorts,
+  cardProperties,
+  showPropertyLabels = true,
+  propertyTextClamp = 'truncate',
+  cardColorCol,
+  groupColBg = false,
 }: {
   database: any;
   pages: any[];
@@ -32,12 +39,24 @@ export default function KanbanBoard({
   onCardMove: (pageId: string, targetGroupId: string, targetPageId?: string) => void;
   onDeletePage: (pageId: string) => void;
   hasSorts: boolean;
+  cardProperties?: string[];
+  showPropertyLabels?: boolean;
+  propertyTextClamp?: 'truncate' | 'wrap';
+  cardColorCol?: string;
+  groupColBg?: boolean;
 }) {
   const router = useRouter();
   const schema = database.schema as any[];
 
   const groupColumn = schema.find((col) => col.id === groupByCol);
-  const options: string[] = groupColumn?.options ?? [];
+  const options: string[] = (groupColumn?.options ?? []).map((o: string | SelectOption) => normalizeOption(o).value);
+
+  const availableProps = schema.filter((c) => c.id !== 'title' && c.id !== groupByCol);
+  const propsToShow = cardProperties !== undefined && cardProperties.length > 0
+    ? cardProperties.map((id) => availableProps.find((c) => c.id === id)).filter(Boolean) as any[]
+    : availableProps.slice(0, 2);
+
+  const textClass = propertyTextClamp === 'wrap' ? 'break-words whitespace-pre-wrap' : 'truncate';
   const orderedOptions = getEffectiveGroupOrder(options, groupOrder);
   const allColumns = [...orderedOptions, 'Uncategorized'];
 
@@ -169,11 +188,16 @@ export default function KanbanBoard({
   }
 
   return (
-    <div className="flex gap-6 overflow-x-auto pb-4 h-full items-start">
+    <div className={`flex overflow-x-auto pb-4 h-full items-start ${groupColBg ? 'gap-2' : 'gap-6'}`}>
       {allColumns.map((columnName) => {
         const isUncategorized = columnName === 'Uncategorized';
         const isDraggingThis = draggedGroup === columnName;
         const isOver = dragOverGroup === columnName;
+        const groupBgStyle = groupColBg && !isUncategorized
+          ? { backgroundColor: getOptionColorByValue(groupColumn?.options || [], columnName).groupBg }
+          : undefined;
+
+        const hasBg = groupColBg && !isUncategorized;
 
         return (
           <div
@@ -183,14 +207,15 @@ export default function KanbanBoard({
             onDragOver={(e) => handleGroupDragOver(e, columnName)}
             onDrop={(e) => handleGroupDrop(e, columnName)}
             onDragEnd={handleGroupDragEnd}
-            className={`flex-shrink-0 w-68 flex flex-col max-h-full transition-opacity ${
-              isDraggingThis ? 'opacity-30' : ''
-            } ${isOver ? 'ring-1 ring-blue-500/40 rounded' : ''}`}
+            className={`shrink-0 w-68 flex flex-col max-h-full transition-opacity ${
+              hasBg ? 'p-3' : ''
+            } ${isDraggingThis ? 'opacity-30' : ''} ${isOver ? 'ring-1 ring-blue-500/40' : ''}`}
+            style={groupBgStyle}
           >
             <div
-              className={`pb-2 mb-1 flex justify-between items-baseline border-b border-neutral-800/50 ${
-                !isUncategorized ? 'cursor-grab active:cursor-grabbing' : ''
-              }`}
+              className={`pb-2 mb-2 flex justify-between items-baseline ${
+                hasBg ? 'border-b border-white/8' : 'border-b border-neutral-800/50'
+              } ${!isUncategorized ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
               <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-500">
                 {isUncategorized ? 'No Status' : columnName}
@@ -203,14 +228,17 @@ export default function KanbanBoard({
             <div
               onDragOver={(e) => handleColumnCardAreaDragOver(e, columnName)}
               onDrop={(e) => handleColumnCardAreaDrop(e, columnName)}
-              className={`flex-1 overflow-y-auto flex flex-col min-h-20 transition-colors ${
+              className={`flex-1 overflow-y-auto flex flex-col min-h-16 transition-colors ${
                 dragOverColumnName === columnName && !dragOverCardId ? 'bg-neutral-800/10' : ''
               }`}
             >
               {groupedPages[columnName].length === 0 ? (
                 <div className="text-xs text-neutral-700 py-4">No pages</div>
               ) : (
-                groupedPages[columnName].map((page) => (
+                groupedPages[columnName].map((page) => {
+                  const colorColSchema = cardColorCol ? schema.find((c) => c.id === cardColorCol) : null;
+                  const borderDots = getCardBorderDots(colorColSchema, page.properties[cardColorCol ?? '']);
+                  return (
                   <div
                     key={page.id}
                     onClick={() => onCardClick(page.id)}
@@ -222,11 +250,18 @@ export default function KanbanBoard({
                     onDragOver={(e) => handleCardDragOver(e, page.id, columnName)}
                     onDrop={(e) => handleCardDrop(e, page.id, columnName)}
                     onDragEnd={handleCardDragEnd}
-                    className={`relative py-3 px-3 mb-1.5 bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/70 transition-colors group
+                    className={`relative py-3 px-3 mb-1.5 bg-neutral-800/40 cursor-pointer hover:bg-neutral-800/70 transition-colors group overflow-hidden
                       ${draggedCardId === page.id ? 'opacity-25' : ''}
                       ${dragOverCardId === page.id ? 'border-t-2 border-t-blue-500/60' : ''}
                     `}
                   >
+                    {borderDots.length > 0 && (
+                      <div className="absolute left-0 inset-y-0 w-0.75 flex flex-col pointer-events-none" aria-hidden>
+                        {borderDots.map((dot, i) => (
+                          <div key={i} className="flex-1" style={{ backgroundColor: dot }} />
+                        ))}
+                      </div>
+                    )}
                     {/* Hover Card Actions */}
                     <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
                       {/* Settings button */}
@@ -293,10 +328,7 @@ export default function KanbanBoard({
                     </h4>
 
                     <div className="mt-1.5 flex flex-col gap-0.5">
-                      {schema
-                        .filter((c) => c.id !== 'title' && c.id !== groupByCol)
-                        .slice(0, 2)
-                        .map((c) => {
+                      {propsToShow.map((c) => {
                           const val = page.properties[c.id];
                           const isEmpty =
                             val === undefined ||
@@ -306,23 +338,30 @@ export default function KanbanBoard({
                           if (isEmpty) return null;
 
                           let display: React.ReactNode;
-                          if (c.type === 'multi_select' && Array.isArray(val)) {
+                          if (c.type === 'select' && typeof val === 'string') {
+                            const sc = getOptionColorByValue(c.options || [], val);
+                            display = (
+                              <span className="text-xs px-1.5 py-0 rounded-sm" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                {val}
+                              </span>
+                            );
+                          } else if (c.type === 'multi_select' && Array.isArray(val)) {
                             display = (
                               <span className="flex flex-wrap gap-1">
-                                {val.map((opt: string) => (
-                                  <span
-                                    key={opt}
-                                    className="bg-neutral-700/50 text-neutral-400 text-xs px-1.5 py-0 rounded"
-                                  >
-                                    {opt}
-                                  </span>
-                                ))}
+                                {val.map((optVal: string) => {
+                                  const mc = getOptionColorByValue(c.options || [], optVal);
+                                  return (
+                                    <span key={optVal} className="text-xs px-1.5 py-0 rounded-sm" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                      {optVal}
+                                    </span>
+                                  );
+                                })}
                               </span>
                             );
                           } else if (c.type === 'date' && val) {
                             const d = new Date(val);
                             display = (
-                              <span className="text-neutral-500 truncate">
+                              <span className={`text-neutral-500 ${textClass}`}>
                                 {isNaN(d.getTime())
                                   ? val
                                   : d.toLocaleDateString('en-US', {
@@ -335,7 +374,7 @@ export default function KanbanBoard({
                           } else if (c.type === 'datetime' && val) {
                             const d = new Date(val);
                             display = (
-                              <span className="text-neutral-500 truncate">
+                              <span className={`text-neutral-500 ${textClass}`}>
                                 {isNaN(d.getTime())
                                   ? val
                                   : d.toLocaleString('en-US', {
@@ -349,20 +388,23 @@ export default function KanbanBoard({
                             );
                           } else {
                             display = (
-                              <span className="text-neutral-500 truncate">{String(val)}</span>
+                              <span className={`text-neutral-500 ${textClass}`}>{String(val)}</span>
                             );
                           }
 
                           return (
-                            <div key={c.id} className="text-xs flex items-center gap-1.5">
-                              <span className="text-neutral-700 shrink-0">{c.name}</span>
+                            <div key={c.id} className={`text-xs flex gap-1.5 ${propertyTextClamp === 'wrap' ? 'items-start' : 'items-center'} overflow-hidden`}>
+                              {showPropertyLabels && (
+                                <span className="text-neutral-700 shrink-0">{c.name}</span>
+                              )}
                               {display}
                             </div>
                           );
                         })}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

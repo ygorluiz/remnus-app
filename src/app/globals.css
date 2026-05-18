@@ -1,27 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #d6d6d6;
-  --foreground: #181e26;
+  --background: #d7dae0;
+  --foreground: #1d1f23;
 }
 
 @theme {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Redefine neutral colors using the requested dark to light colors */
-  --color-neutral-50: #d6d6d6;      /* Pure requested light gray */
-  --color-neutral-100: #c6c6c6;
-  --color-neutral-200: #b6b6b6;
-  --color-neutral-300: #a6a6a6;
-  --color-neutral-400: #8a8a8a;
-  --color-neutral-500: #5f5f5f;      /* Requested medium gray */
-  --color-neutral-600: #505254;      /* Requested dark-medium gray */
-  --color-neutral-700: #404449;      /* Requested medium-dark gray */
-  --color-neutral-800: #30373e;      /* Requested border colors */
-  --color-neutral-850: #262e38;      /* Custom intermediate active/hover bg color */
-  --color-neutral-900: #202933;      /* Requested sidebar and card background */
-  --color-neutral-950: #181e26;      /* Pure requested dark black background */
+  /* Neutral scale — Carbon Black → Alabaster Grey */
+  --color-neutral-50:  #d7dae0;   /* Alabaster Grey  — lightest text / muted labels  */
+  --color-neutral-100: #cccfd5;
+  --color-neutral-200: #c4c7cd;
+  --color-neutral-300: #b8bbbe;
+  --color-neutral-400: #a0a3aa;
+  --color-neutral-500: #80838a;
+  --color-neutral-600: #5d6069;
+  --color-neutral-700: #4a4d54;
+  --color-neutral-800: #383b41;   /* Gunmetal        — borders / dividers            */
+  --color-neutral-850: #282c34;   /* One Dark Pro editor bg — content canvas          */
+  --color-neutral-900: #21252b;   /* Shadow Grey      — sidebar / card backgrounds   */
+  --color-neutral-950: #1d1f23;   /* Carbon Black     — main canvas background       */
+
+  /* Blue → Dusk Blue (#445c95) */
+  --color-blue-300: #7a94c5;
+  --color-blue-400: #5e75b0;
+  --color-blue-500: #445c95;
+  --color-blue-600: #3a4f82;
+
+  /* Red → Blushed Brick (#cd4d55) */
+  --color-red-400:  #cd4d55;
+  --color-red-500:  #b8424a;
+
+  /* Green → Moss Green (#7fc36d) */
+  --color-green-400: #7fc36d;
+  --color-green-500: #6aaa59;
+
+  /* Amber → Golden Chestnut (#cc7d45) */
+  --color-amber-400: #d9914d;
+  --color-amber-500: #cc7d45;
 
   --animate-slide-in-right: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   --animate-fade-in: fade-in 0.2s ease-out forwards;
@@ -43,8 +61,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #181e26;
-    --foreground: #d6d6d6;
+    --background: #1d1f23;
+    --foreground: #d7dae0;
   }
 }
 

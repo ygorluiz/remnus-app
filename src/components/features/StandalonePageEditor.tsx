@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ArrowLeftRight } from 'lucide-react';
 import { updateStandalonePageContent, updateWorkspaceItemTitle } from '@/lib/actions/workspace';
 import BlockEditor from '@/components/features/editor/BlockEditor';
 
@@ -19,6 +19,22 @@ type Page = { id: string; content: string };
 export default function StandalonePageEditor({ item, page }: { item: Item; page: Page }) {
   const [title, setTitle] = useState(item.title);
   const savedTitle = useRef(item.title);
+  type WidthMode = 'narrow' | 'wide' | 'full';
+  const [widthMode, setWidthMode] = useState<WidthMode>('narrow');
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`page-width-${item.id}`) as WidthMode | null;
+    if (saved === 'narrow' || saved === 'wide' || saved === 'full') setWidthMode(saved);
+    else if (saved === 'true') setWidthMode('full'); // migrate old boolean
+  }, [item.id]);
+
+  const cycleWidth = () => {
+    const next: WidthMode = widthMode === 'narrow' ? 'wide' : widthMode === 'wide' ? 'full' : 'narrow';
+    setWidthMode(next);
+    localStorage.setItem(`page-width-${item.id}`, next);
+  };
+
+  const widthLabels: Record<WidthMode, string> = { narrow: 'Narrow', wide: 'Wide', full: 'Full width' };
 
   useEffect(() => {
     if (title === savedTitle.current) return;
@@ -38,13 +54,25 @@ export default function StandalonePageEditor({ item, page }: { item: Item; page:
     [item.id]
   );
 
+  const containerClass =
+    widthMode === 'full' ? 'px-8 py-10' :
+    widthMode === 'wide' ? 'max-w-6xl mx-auto px-8 lg:px-12 py-10' :
+    'max-w-4xl mx-auto px-8 lg:px-16 py-10';
+
   return (
-    <div className="max-w-4xl mx-auto px-8 lg:px-16 py-10">
-      <div className="mb-6">
+    <div className={containerClass}>
+      <div className="mb-6 flex items-center justify-between">
         <Link href="/" className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-300 transition-colors">
           <ChevronLeft size={14} />
           Workspace
         </Link>
+        <button
+          onClick={cycleWidth}
+          className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-300 transition-colors p-1 cursor-pointer"
+        >
+          <ArrowLeftRight size={14} />
+          {widthLabels[widthMode]}
+        </button>
       </div>
       <input
         type="text"

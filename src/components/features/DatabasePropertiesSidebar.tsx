@@ -1,29 +1,34 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Settings, 
-  Columns3, 
-  Filter, 
-  ArrowUpDown, 
-  Plus, 
-  Trash2, 
-  Type, 
-  List, 
-  Hash, 
-  Calendar, 
-  Clock, 
-  AlignLeft, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  Plus,
+  Type,
+  List,
+  Hash,
+  Calendar,
+  Clock,
+  AlignLeft,
   Tags,
-  Database
+  GripVertical,
+  Database,
+  LayoutTemplate,
 } from 'lucide-react';
 import { updateDatabaseSchema } from '@/lib/actions/database';
-import type { 
-  DatabaseView, 
-  ViewFilter, 
-  ViewSort, 
-  FilterOperator 
+import {
+  type SelectOption,
+  type SelectOptionColor,
+  normalizeOption,
+  getOptionColor,
+  SELECT_COLOR_ORDER,
+  SELECT_COLORS,
+} from '@/lib/types/properties';
+import type {
+  DatabaseView,
+  ViewFilter,
+  ViewSort,
+  FilterOperator,
 } from '@/lib/types/views';
 
 interface DatabasePropertiesSidebarProps {
@@ -32,56 +37,68 @@ interface DatabasePropertiesSidebarProps {
   activeTab: 'properties' | 'layout';
   setActiveTab: (tab: 'properties' | 'layout') => void;
   onClose: () => void;
-  
-  // Columns visibility & order (Table view only)
   columnOrder: string[];
   hiddenColumns: string[];
   onToggleHideColumn: (colId: string) => void;
   onHiddenColumnsChange: (hidden: string[]) => void;
-  
-  // Filters & Sorts
   filters: ViewFilter[];
   sorts: ViewSort[];
   onFiltersChange: (filters: ViewFilter[]) => void;
   onSortsChange: (sorts: ViewSort[]) => void;
-
-  // Page Open behavior
   openBehavior: 'center' | 'side' | 'full';
   onOpenBehaviorChange: (behavior: 'center' | 'side' | 'full') => void;
-
-  // Kanban Group by
   groupByCol?: string;
   onGroupByColChange?: (colId: string) => void;
-
-  // Calendar settings
+  cardProperties?: string[];
+  onCardPropertiesChange?: (props: string[]) => void;
+  showPropertyLabels?: boolean;
+  onShowPropertyLabelsChange?: (show: boolean) => void;
+  propertyTextClamp?: 'truncate' | 'wrap';
+  onPropertyTextClampChange?: (clamp: 'truncate' | 'wrap') => void;
   dateCol?: string;
   onDateColChange?: (colId: string) => void;
   viewMode?: 'month' | 'week';
   onViewModeChange?: (mode: 'month' | 'week') => void;
   firstDayOfWeek?: 'sunday' | 'monday';
   onFirstDayOfWeekChange?: (day: 'sunday' | 'monday') => void;
+  cardColorCol?: string;
+  onCardColorColChange?: (colId: string) => void;
+  groupColBg?: boolean;
+  onGroupColBgChange?: (enabled: boolean) => void;
 }
 
 const OPERATORS: { value: FilterOperator; label: string; needsValue: boolean }[] = [
-  { value: 'contains',     label: 'contains',         needsValue: true  },
-  { value: 'not_contains', label: 'does not contain',  needsValue: true  },
-  { value: 'equals',       label: 'is',               needsValue: true  },
-  { value: 'not_equals',   label: 'is not',           needsValue: true  },
-  { value: 'is_empty',     label: 'is empty',         needsValue: false },
-  { value: 'is_not_empty', label: 'is not empty',     needsValue: false },
+  { value: 'contains',     label: 'contains',        needsValue: true  },
+  { value: 'not_contains', label: "doesn't contain", needsValue: true  },
+  { value: 'equals',       label: 'is',              needsValue: true  },
+  { value: 'not_equals',   label: 'is not',          needsValue: true  },
+  { value: 'is_empty',     label: 'is empty',        needsValue: false },
+  { value: 'is_not_empty', label: 'is not empty',    needsValue: false },
 ];
 
 function getPropertyIcon(type: string) {
   switch (type) {
-    case 'text':         return <Type size={12} className="text-neutral-500" />;
-    case 'select':       return <List size={12} className="text-neutral-500" />;
-    case 'multi_select': return <Tags size={12} className="text-neutral-500" />;
-    case 'number':       return <Hash size={12} className="text-neutral-500" />;
-    case 'date':         return <Calendar size={12} className="text-neutral-500" />;
-    case 'datetime':     return <Clock size={12} className="text-neutral-500" />;
-    default:             return <AlignLeft size={12} className="text-neutral-500" />;
+    case 'text':         return <Type size={11} className="text-neutral-500 shrink-0" />;
+    case 'select':       return <List size={11} className="text-neutral-500 shrink-0" />;
+    case 'multi_select': return <Tags size={11} className="text-neutral-500 shrink-0" />;
+    case 'number':       return <Hash size={11} className="text-neutral-500 shrink-0" />;
+    case 'date':         return <Calendar size={11} className="text-neutral-500 shrink-0" />;
+    case 'datetime':     return <Clock size={11} className="text-neutral-500 shrink-0" />;
+    default:             return <AlignLeft size={11} className="text-neutral-500 shrink-0" />;
   }
 }
+
+function Checkbox({ checked }: { checked: boolean }) {
+  return (
+    <span className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-colors ${
+      checked ? 'bg-blue-500 border-blue-500' : 'border-neutral-700'
+    }`}>
+      {checked && <span className="text-[8px] font-bold text-white leading-none">✓</span>}
+    </span>
+  );
+}
+
+const selectCls = 'bg-neutral-900 border border-neutral-800 text-neutral-300 outline-none cursor-pointer focus:border-neutral-700 transition-colors';
 
 export default function DatabasePropertiesSidebar({
   database,
@@ -89,7 +106,6 @@ export default function DatabasePropertiesSidebar({
   activeTab,
   setActiveTab,
   onClose,
-  columnOrder,
   hiddenColumns,
   onToggleHideColumn,
   onHiddenColumnsChange,
@@ -101,15 +117,38 @@ export default function DatabasePropertiesSidebar({
   onOpenBehaviorChange,
   groupByCol,
   onGroupByColChange,
+  cardProperties,
+  onCardPropertiesChange,
+  showPropertyLabels = true,
+  onShowPropertyLabelsChange,
+  propertyTextClamp = 'truncate',
+  onPropertyTextClampChange,
   dateCol,
   onDateColChange,
   viewMode,
   onViewModeChange,
   firstDayOfWeek,
   onFirstDayOfWeekChange,
+  cardColorCol,
+  onCardColorColChange,
+  groupColBg = false,
+  onGroupColBgChange,
 }: DatabasePropertiesSidebarProps) {
   const [schema, setSchema] = useState<any[]>(() => database.schema || []);
   const [isSavingSchema, setIsSavingSchema] = useState(false);
+  const [colorPickerOpen, setColorPickerOpen] = useState<string | null>(null);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!colorPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setColorPickerOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [colorPickerOpen]);
 
   useEffect(() => {
     setSchema(database.schema || []);
@@ -117,27 +156,23 @@ export default function DatabasePropertiesSidebar({
 
   const isSchemaDirty = JSON.stringify(schema) !== JSON.stringify(database.schema);
   const selectColumns = schema.filter((c: any) => c.type === 'select');
+  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select');
   const dateColumns = schema.filter((c: any) => c.type === 'date' || c.type === 'datetime');
 
-  // --- Schema mutations ---
-  const addColumn = () => {
-    setSchema([
-      ...schema,
-      { id: `col_${crypto.randomUUID().slice(0, 8)}`, name: 'New Column', type: 'text', options: [] }
-    ]);
-  };
+  const addColumn = () =>
+    setSchema([...schema, { id: `col_${crypto.randomUUID().slice(0, 8)}`, name: 'New Column', type: 'text', options: [] }]);
 
   const updateColumn = (index: number, updates: any) => {
-    const newSchema = [...schema];
-    newSchema[index] = { ...newSchema[index], ...updates };
-    setSchema(newSchema);
+    const next = [...schema];
+    next[index] = { ...next[index], ...updates };
+    setSchema(next);
   };
 
   const removeColumn = (index: number) => {
-    if (schema[index].id === 'title') return; // Cannot delete title
-    const newSchema = [...schema];
-    newSchema.splice(index, 1);
-    setSchema(newSchema);
+    if (schema[index].id === 'title') return;
+    const next = [...schema];
+    next.splice(index, 1);
+    setSchema(next);
   };
 
   const handleSaveSchema = async () => {
@@ -146,322 +181,481 @@ export default function DatabasePropertiesSidebar({
     setIsSavingSchema(false);
   };
 
-  // --- Filter mutations ---
   const addFilter = () => {
     const col = schema[0];
     if (!col) return;
-    onFiltersChange([
-      ...filters,
-      { id: crypto.randomUUID(), columnId: col.id, operator: 'contains', value: '' },
-    ]);
+    onFiltersChange([...filters, { id: crypto.randomUUID(), columnId: col.id, operator: 'contains', value: '' }]);
   };
-
   const updateFilter = (id: string, patch: Partial<ViewFilter>) =>
     onFiltersChange(filters.map((f) => (f.id === id ? { ...f, ...patch } : f)));
-
   const deleteFilter = (id: string) =>
     onFiltersChange(filters.filter((f) => f.id !== id));
 
-  // --- Sort mutations ---
   const addSort = () => {
     const usedIds = new Set(sorts.map((s) => s.columnId));
     const col = schema.find((c) => !usedIds.has(c.id));
     if (!col) return;
     onSortsChange([...sorts, { id: crypto.randomUUID(), columnId: col.id, direction: 'asc' }]);
   };
-
   const updateSort = (id: string, patch: Partial<ViewSort>) =>
     onSortsChange(sorts.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-
   const deleteSort = (id: string) =>
     onSortsChange(sorts.filter((s) => s.id !== id));
 
-  // --- Columns Visibility ---
   const handleShowAll = () => onHiddenColumnsChange([]);
-  const handleHideAll = () => {
-    const allIds = schema.map((c) => c.id).filter((id) => id !== 'title');
-    onHiddenColumnsChange(allIds);
+  const handleHideAll = () =>
+    onHiddenColumnsChange(schema.map((c) => c.id).filter((id) => id !== 'title'));
+
+  const [draggingCardProp, setDraggingCardProp] = useState<string | null>(null);
+  const [dragOverCardProp, setDragOverCardProp] = useState<string | null>(null);
+
+  const availableCardProps = schema.filter((c: any) => c.id !== 'title' && c.id !== groupByCol);
+  const effectiveVisible: string[] =
+    cardProperties !== undefined
+      ? cardProperties.filter((id) => availableCardProps.some((c: any) => c.id === id))
+      : availableCardProps.slice(0, 2).map((c: any) => c.id);
+
+  const visibleCardProps = effectiveVisible
+    .map((id) => availableCardProps.find((c: any) => c.id === id))
+    .filter(Boolean) as any[];
+  const hiddenCardProps = availableCardProps.filter((c: any) => !effectiveVisible.includes(c.id));
+
+  const toggleCardProp = (colId: string) => {
+    if (effectiveVisible.includes(colId)) {
+      onCardPropertiesChange?.(effectiveVisible.filter((id) => id !== colId));
+    } else {
+      onCardPropertiesChange?.([...effectiveVisible, colId]);
+    }
   };
 
-  const tabs = [
-    { id: 'properties', label: 'Properties', icon: Database },
-    { id: 'layout',     label: 'Layout',     icon: Settings },
-  ] as const;
+  const handleCardPropDragOver = (e: React.DragEvent, colId: string) => {
+    e.preventDefault();
+    if (draggingCardProp && draggingCardProp !== colId) setDragOverCardProp(colId);
+  };
+
+  const handleCardPropDrop = (targetColId: string) => {
+    if (!draggingCardProp || draggingCardProp === targetColId) return;
+    const current = [...effectiveVisible];
+    const fromIdx = current.indexOf(draggingCardProp);
+    const toIdx = current.indexOf(targetColId);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const [moved] = current.splice(fromIdx, 1);
+      current.splice(toIdx, 0, moved);
+      onCardPropertiesChange?.(current);
+    }
+    setDraggingCardProp(null);
+    setDragOverCardProp(null);
+  };
 
   return (
-    <div className="w-80 shrink-0 bg-neutral-950 border-l border-neutral-800 rounded-none flex flex-col h-full overflow-hidden z-20 animate-in slide-in-from-right duration-200">
+    <div className="w-72 shrink-0 bg-neutral-900 border-l border-neutral-800 flex flex-col h-full overflow-hidden animate-in slide-in-from-right duration-200">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-neutral-800 bg-neutral-900/30">
-        <h2 className="text-sm font-semibold text-neutral-100 flex items-center gap-2">
-          <span>Settings</span>
-          <span className="text-[10px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 rounded-none border border-neutral-700/40">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-800 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold text-neutral-200">Settings</span>
+          <span className="text-[10px] text-neutral-500 border border-neutral-800 px-1.5 py-0.5 shrink-0">
             {activeView.name}
           </span>
-        </h2>
-        <button onClick={onClose} className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer">
-          <X size={16} />
+        </div>
+        <button onClick={onClose} className="text-neutral-500 hover:text-neutral-200 transition-colors p-1 cursor-pointer ml-2">
+          <X size={14} />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-neutral-800 bg-neutral-950 shrink-0">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center gap-1.5 py-2 text-[10px] font-medium border-b-2 transition-all duration-150 rounded-none cursor-pointer ${
-                isActive
-                  ? 'border-blue-500 text-neutral-100 bg-neutral-800/10'
-                  : 'border-transparent text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/5'
-              }`}
-            >
-              <Icon size={13} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      <div className="flex border-b border-neutral-800 shrink-0">
+        {([
+          { id: 'properties', label: 'Properties', icon: Database },
+          { id: 'layout',     label: 'Layout',     icon: LayoutTemplate },
+        ] as const).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
+              activeTab === id
+                ? 'border-blue-500 text-white'
+                : 'border-transparent text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            <Icon size={12} />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-0">
-        {/* --- PROPERTIES / SCHEMA TAB --- */}
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+
+        {/* ── PROPERTIES TAB ── */}
         {activeTab === 'properties' && (
           <div className="flex flex-col">
-            <button 
-              onClick={addColumn}
-              className="w-full flex items-center gap-2 py-3 px-4 bg-transparent hover:bg-neutral-800/30 border-b border-neutral-850 text-xs text-neutral-400 hover:text-neutral-200 transition-all font-semibold cursor-pointer text-left"
-            >
-              <Plus size={13} />
-              <span>Add Property</span>
-            </button>
-
-            <div className="flex flex-col pb-24 border-t border-neutral-850">
-              {schema.map((col, idx) => {
-                const isTitle = col.id === 'title';
-                return (
-                  <div 
-                    key={col.id} 
-                    className="p-4 bg-transparent border-b border-neutral-850 flex flex-col gap-2.5 relative group/prop hover:bg-neutral-800/10 transition-colors"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <input 
-                        type="text" 
-                        value={col.name} 
-                        onChange={(e) => updateColumn(idx, { name: e.target.value })}
-                        disabled={isTitle}
-                        placeholder="Property Name"
-                        className="bg-transparent text-neutral-200 text-xs font-semibold focus:outline-none focus:border-neutral-700 border-b border-transparent flex-1 py-0.5 disabled:opacity-60 disabled:cursor-not-allowed transition-colors rounded-none"
-                      />
-                      
-                      {!isTitle && (
-                        <button 
-                          onClick={() => removeColumn(idx)}
-                          className="text-neutral-500 hover:text-red-400 transition-colors p-1 cursor-pointer"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 shrink-0">
-                        {getPropertyIcon(col.type)}
-                        <span>Type</span>
-                      </div>
-                      <select
-                        value={col.type}
-                        onChange={(e) => updateColumn(idx, { type: e.target.value, options: [] })}
-                        disabled={isTitle}
-                        className="flex-1 bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            {schema.map((col, idx) => {
+              const isTitle = col.id === 'title';
+              return (
+                <div key={col.id}>
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-800/50 hover:bg-neutral-800/10 group transition-colors">
+                    <GripVertical size={11} className={`shrink-0 ${isTitle ? 'invisible' : 'text-neutral-700 cursor-grab'}`} />
+                    {getPropertyIcon(col.type)}
+                    <input
+                      type="text"
+                      value={col.name}
+                      onChange={(e) => updateColumn(idx, { name: e.target.value })}
+                      disabled={isTitle}
+                      placeholder="Property name"
+                      className="flex-1 min-w-0 bg-transparent text-xs text-neutral-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <select
+                      value={col.type}
+                      onChange={(e) => updateColumn(idx, { type: e.target.value, options: [] })}
+                      disabled={isTitle}
+                      className={`${selectCls} text-[10px] text-neutral-400 py-0.5 px-1 shrink-0 disabled:opacity-40`}
+                    >
+                      <option value="text">Text</option>
+                      <option value="select">Select</option>
+                      <option value="multi_select">Multi</option>
+                      <option value="number">Number</option>
+                      <option value="date">Date</option>
+                      <option value="datetime">DateTime</option>
+                    </select>
+                    {!isTitle ? (
+                      <button
+                        onClick={() => removeColumn(idx)}
+                        className="opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-red-400 p-0.5 transition-all cursor-pointer shrink-0"
                       >
-                        <option value="text">Text</option>
-                        <option value="select">Select</option>
-                        <option value="multi_select">Multi-Select</option>
-                        <option value="number">Number</option>
-                        <option value="date">Date</option>
-                        <option value="datetime">Date & Time</option>
-                      </select>
-                    </div>
+                        <X size={12} />
+                      </button>
+                    ) : (
+                      <span className="w-5 shrink-0" />
+                    )}
+                  </div>
 
-                    {/* Select/Multi-select options */}
-                    {(col.type === 'select' || col.type === 'multi_select') && (
-                      <div className="pt-3 mt-1 border-t border-neutral-850/60">
-                        <span className="text-[10px] text-neutral-500 font-medium uppercase tracking-wider block mb-1.5">Options</span>
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {(col.options || []).map((opt: string, optIdx: number) => (
-                            <span 
-                              key={optIdx} 
-                              className="bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded-none text-[10px] flex items-center gap-1 border border-neutral-850"
-                            >
-                              <span>{opt}</span>
-                              <button 
+                  {(col.type === 'select' || col.type === 'multi_select') && (
+                    <div className="pl-10 pr-3 py-2 bg-neutral-900/30 border-b border-neutral-800/50">
+                      <div className="flex flex-wrap gap-1 mb-1.5">
+                        {(col.options || []).map((rawOpt: string | SelectOption, optIdx: number) => {
+                          const opt = normalizeOption(rawOpt);
+                          const c = getOptionColor(opt);
+                          const pickerKey = `${idx}-${optIdx}`;
+                          return (
+                            <span key={optIdx} className="relative flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 border border-neutral-700/30" style={{ backgroundColor: c.bg, color: c.text }}>
+                              <button
+                                title="Change color"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setColorPickerOpen(colorPickerOpen === pickerKey ? null : pickerKey);
+                                }}
+                                className="w-2.5 h-2.5 rounded-full shrink-0 mr-0.5 cursor-pointer border border-white/10 hover:scale-110 transition-transform"
+                                style={{ backgroundColor: c.dot }}
+                              />
+                              {opt.value}
+                              <button
                                 onClick={() => {
                                   const newOpts = [...(col.options || [])];
                                   newOpts.splice(optIdx, 1);
                                   updateColumn(idx, { options: newOpts });
                                 }}
-                                className="text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer"
+                                className="ml-0.5 cursor-pointer opacity-60 hover:opacity-100"
+                                style={{ color: c.text }}
                               >
-                                <X size={10} />
+                                <X size={8} />
                               </button>
-                            </span>
-                          ))}
-                        </div>
-                        <input 
-                          type="text" 
-                          placeholder="Add option and press Enter..."
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              const val = e.currentTarget.value.trim();
-                              if (val && !(col.options || []).includes(val)) {
-                                updateColumn(idx, { options: [...(col.options || []), val] });
-                                e.currentTarget.value = '';
-                              }
-                            }
-                          }}
-                          className="w-full bg-neutral-950 border border-neutral-850 rounded-none px-2 py-1.5 text-[10px] text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-neutral-700 transition-colors"
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
 
-            {/* Flat Save Banner */}
+                              {colorPickerOpen === pickerKey && (
+                                <div
+                                  ref={colorPickerRef}
+                                  className="absolute z-50 top-full left-0 mt-1 p-1.5 bg-neutral-900 border border-neutral-700 flex flex-wrap gap-1"
+                                  style={{ width: 110 }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {SELECT_COLOR_ORDER.map((colorKey) => {
+                                    const cc = SELECT_COLORS[colorKey as SelectOptionColor];
+                                    const isActive = (opt.color ?? 'default') === colorKey;
+                                    return (
+                                      <button
+                                        key={colorKey}
+                                        title={colorKey}
+                                        onClick={() => {
+                                          const newOpts = [...(col.options || [])].map((o: string | SelectOption, i: number) =>
+                                            i === optIdx
+                                              ? { ...normalizeOption(o), color: colorKey as SelectOptionColor }
+                                              : o,
+                                          );
+                                          updateColumn(idx, { options: newOpts });
+                                          setColorPickerOpen(null);
+                                        }}
+                                        className={`w-5 h-5 rounded-full border cursor-pointer hover:scale-110 transition-transform ${isActive ? 'border-white/60 ring-1 ring-white/30' : 'border-white/10'}`}
+                                        style={{ backgroundColor: cc.dot }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Add option…"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = e.currentTarget.value.trim();
+                            const existing = (col.options || []).map((o: string | SelectOption) => normalizeOption(o).value);
+                            if (val && !existing.includes(val)) {
+                              const newOpt: SelectOption = { value: val, color: 'default' };
+                              updateColumn(idx, { options: [...(col.options || []), newOpt] });
+                              e.currentTarget.value = '';
+                            }
+                          }
+                        }}
+                        className="w-full bg-transparent text-[10px] text-neutral-400 placeholder-neutral-600 focus:outline-none focus:text-neutral-200 transition-colors"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <button
+              onClick={addColumn}
+              className="flex items-center gap-1.5 px-4 py-2.5 w-full text-xs text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/10 transition-colors text-left cursor-pointer border-b border-neutral-800/50"
+            >
+              <Plus size={12} />
+              Add property
+            </button>
+
             {isSchemaDirty && (
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-neutral-950 border-t border-neutral-800 flex items-center justify-end gap-3 z-30 animate-in slide-in-from-bottom duration-200">
-                <button 
+              <div className="sticky bottom-0 flex items-center justify-end gap-2 px-4 py-2.5 bg-neutral-900 border-t border-neutral-800">
+                <button
                   onClick={() => setSchema(database.schema || [])}
                   disabled={isSavingSchema}
-                  className="px-3 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors rounded-none cursor-pointer"
+                  className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
                 >
                   Discard
                 </button>
                 <button
                   onClick={handleSaveSchema}
                   disabled={isSavingSchema}
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-none text-xs font-semibold shadow-md disabled:opacity-50 transition-all cursor-pointer"
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  {isSavingSchema ? 'Saving...' : 'Save changes'}
+                  {isSavingSchema ? 'Saving…' : 'Save'}
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* --- LAYOUT TAB --- */}
+        {/* ── LAYOUT TAB ── */}
         {activeTab === 'layout' && (
-          <div className="flex flex-col pb-24 divide-y divide-neutral-850">
-            {/* Section 1: Page Opening Behavior */}
-            <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
-              <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Page Opening Behavior</span>
+          <div className="flex flex-col divide-y divide-neutral-800/60">
+
+            {/* Open behavior */}
+            <div className="px-4 py-3">
+              <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-2">Open pages as</span>
               <select
                 value={openBehavior}
                 onChange={(e) => onOpenBehaviorChange(e.target.value as 'center' | 'side' | 'full')}
-                className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                className={`${selectCls} w-full text-xs py-1.5 px-2`}
               >
-                <option value="full">Full page (Default)</option>
+                <option value="full">Full page</option>
                 <option value="side">Side peek</option>
                 <option value="center">Center peek</option>
               </select>
             </div>
 
-            {/* Section 1.5: Group by (Kanban view only) */}
+            {/* Kanban: Group by */}
             {activeView.config.type === 'kanban' && (
-              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
-                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Group by</span>
+              <div className="px-4 py-3">
+                <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-2">Group by</span>
                 {selectColumns.length > 0 ? (
                   <select
                     value={groupByCol}
                     onChange={(e) => onGroupByColChange?.(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                    className={`${selectCls} w-full text-xs py-1.5 px-2`}
                   >
                     {selectColumns.map((col: any) => (
-                      <option key={col.id} value={col.id}>
-                        {col.name}
-                      </option>
+                      <option key={col.id} value={col.id}>{col.name}</option>
                     ))}
                   </select>
                 ) : (
-                  <span className="text-xs text-amber-500/80">
-                    Add a Select property to enable grouping
-                  </span>
+                  <span className="text-xs text-amber-500/80">Add a Select property to enable grouping</span>
                 )}
               </div>
             )}
 
-            {/* Section 1.6: Date Column (Calendar view only) */}
-            {activeView.config.type === 'calendar' && (
-              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
-                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Date Property</span>
-                {dateColumns.length > 0 ? (
+            {/* Kanban: Card properties */}
+            {activeView.config.type === 'kanban' && (
+              <div>
+                <div className="px-4 py-2.5">
+                  <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Card properties</span>
+                </div>
+                {availableCardProps.length === 0 ? (
+                  <p className="text-[11px] text-neutral-700 text-center pb-3">No additional properties.</p>
+                ) : (
+                  <div className="flex flex-col">
+                    {visibleCardProps.map((col) => (
+                      <div
+                        key={col.id}
+                        draggable
+                        onDragStart={() => setDraggingCardProp(col.id)}
+                        onDragOver={(e) => handleCardPropDragOver(e, col.id)}
+                        onDrop={() => handleCardPropDrop(col.id)}
+                        onDragEnd={() => { setDraggingCardProp(null); setDragOverCardProp(null); }}
+                        className={`flex items-center gap-2 px-4 py-2 border-b border-neutral-800/30 hover:bg-neutral-800/10 transition-colors cursor-default ${
+                          draggingCardProp === col.id ? 'opacity-30' : ''
+                        } ${dragOverCardProp === col.id ? 'border-t-2 border-t-blue-500/50' : ''}`}
+                      >
+                        <GripVertical size={11} className="text-neutral-600 cursor-grab shrink-0" />
+                        {getPropertyIcon(col.type)}
+                        <span className="flex-1 text-xs text-neutral-300 truncate">{col.name}</span>
+                        <button onClick={() => toggleCardProp(col.id)} className="cursor-pointer">
+                          <Checkbox checked={true} />
+                        </button>
+                      </div>
+                    ))}
+                    {hiddenCardProps.map((col: any) => (
+                      <button
+                        key={col.id}
+                        onClick={() => toggleCardProp(col.id)}
+                        className="flex items-center gap-2 px-4 py-2 border-b border-neutral-800/30 hover:bg-neutral-800/10 transition-colors cursor-pointer text-left"
+                      >
+                        <span className="w-[11px] shrink-0" />
+                        {getPropertyIcon(col.type)}
+                        <span className="flex-1 text-xs text-neutral-500 truncate">{col.name}</span>
+                        <Checkbox checked={false} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Kanban: Show labels + text wrap */}
+            {activeView.config.type === 'kanban' && (
+              <div>
+                <button
+                  onClick={() => onShowPropertyLabelsChange?.(!showPropertyLabels)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-neutral-800/10 transition-colors cursor-pointer border-b border-neutral-800/30"
+                >
+                  <span className="text-xs text-neutral-300">Show property labels</span>
+                  <Checkbox checked={showPropertyLabels} />
+                </button>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-xs text-neutral-300">Property text</span>
                   <select
-                    value={dateCol}
-                    onChange={(e) => onDateColChange?.(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                    value={propertyTextClamp}
+                    onChange={(e) => onPropertyTextClampChange?.(e.target.value as 'truncate' | 'wrap')}
+                    className={`${selectCls} text-[10px] text-neutral-400 py-1 px-1.5`}
                   >
-                    <option value="">Select a date property...</option>
-                    {dateColumns.map((col: any) => (
-                      <option key={col.id} value={col.id}>
-                        {col.name}
-                      </option>
-                    ))}
+                    <option value="truncate">Single line</option>
+                    <option value="wrap">Multi-line</option>
                   </select>
-                ) : (
-                  <span className="text-xs text-amber-500/80">
-                    Add a Date or Date & Time property to enable calendar
-                  </span>
-                )}
+                </div>
               </div>
             )}
 
-            {/* Section 1.7: View Mode (Calendar view only) */}
-            {activeView.config.type === 'calendar' && (
-              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
-                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Calendar View Mode</span>
+            {/* Kanban: Card color */}
+            {activeView.config.type === 'kanban' && (
+              <div className="px-4 py-3 border-b border-neutral-800/30 flex items-center justify-between gap-3">
+                <span className="text-xs text-neutral-300 shrink-0">Card color</span>
                 <select
-                  value={viewMode}
-                  onChange={(e) => onViewModeChange?.(e.target.value as 'month' | 'week')}
-                  className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                  value={cardColorCol ?? ''}
+                  onChange={(e) => onCardColorColChange?.(e.target.value)}
+                  className={`${selectCls} text-[10px] text-neutral-400 py-1 px-1.5 flex-1 min-w-0`}
                 >
-                  <option value="month">Month</option>
-                  <option value="week">Week</option>
+                  <option value="">None</option>
+                  {colorColumns.map((col: any) => (
+                    <option key={col.id} value={col.id}>{col.name}</option>
+                  ))}
                 </select>
               </div>
             )}
 
-            {/* Section 1.8: First Day of Week (Calendar view only) */}
-            {activeView.config.type === 'calendar' && (
-              <div className="p-4 flex flex-col gap-2 bg-neutral-900/10">
-                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Start Week On</span>
-                <select
-                  value={firstDayOfWeek || 'sunday'}
-                  onChange={(e) => onFirstDayOfWeekChange?.(e.target.value as 'sunday' | 'monday')}
-                  className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
-                >
-                  <option value="sunday">Sunday</option>
-                  <option value="monday">Monday</option>
-                </select>
-              </div>
+            {/* Kanban: Group column background */}
+            {activeView.config.type === 'kanban' && (
+              <button
+                onClick={() => onGroupColBgChange?.(!groupColBg)}
+                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-neutral-800/10 transition-colors cursor-pointer border-b border-neutral-800/30"
+              >
+                <span className="text-xs text-neutral-300">Group background color</span>
+                <Checkbox checked={groupColBg} />
+              </button>
             )}
 
-            {/* Section 2: Columns Visibility (Table view only) */}
-            {activeView.config.type === 'table' && (
-              <div className="flex flex-col">
-                <div className="flex items-center justify-between px-4 py-3 bg-neutral-900/5">
-                  <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Columns</span>
-                  <div className="flex gap-2.5">
-                    <button onClick={handleShowAll} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer">Show all</button>
-                    <button onClick={handleHideAll} className="text-[10px] text-neutral-500 hover:text-neutral-300 font-medium cursor-pointer">Hide all</button>
+            {/* Calendar settings */}
+            {activeView.config.type === 'calendar' && (
+              <div className="px-4 py-3 flex flex-col gap-3">
+                <div>
+                  <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5">Date property</span>
+                  {dateColumns.length > 0 ? (
+                    <select
+                      value={dateCol}
+                      onChange={(e) => onDateColChange?.(e.target.value)}
+                      className={`${selectCls} w-full text-xs py-1.5 px-2`}
+                    >
+                      <option value="">Select property…</option>
+                      {dateColumns.map((col: any) => (
+                        <option key={col.id} value={col.id}>{col.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs text-amber-500/80">Add a Date property to enable calendar</span>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5">View</span>
+                    <select
+                      value={viewMode}
+                      onChange={(e) => onViewModeChange?.(e.target.value as 'month' | 'week')}
+                      className={`${selectCls} w-full text-xs py-1.5 px-2`}
+                    >
+                      <option value="month">Month</option>
+                      <option value="week">Week</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5">Week starts</span>
+                    <select
+                      value={firstDayOfWeek || 'sunday'}
+                      onChange={(e) => onFirstDayOfWeekChange?.(e.target.value as 'sunday' | 'monday')}
+                      className={`${selectCls} w-full text-xs py-1.5 px-2`}
+                    >
+                      <option value="sunday">Sunday</option>
+                      <option value="monday">Monday</option>
+                    </select>
                   </div>
                 </div>
+                {colorColumns.length > 0 && (
+                  <div>
+                    <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5">Card color</span>
+                    <select
+                      value={cardColorCol ?? ''}
+                      onChange={(e) => onCardColorColChange?.(e.target.value)}
+                      className={`${selectCls} w-full text-xs py-1.5 px-2`}
+                    >
+                      <option value="">None</option>
+                      {colorColumns.map((col: any) => (
+                        <option key={col.id} value={col.id}>{col.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
 
-                <div className="flex flex-col border-t border-neutral-850/60">
+            {/* Table: Columns visibility */}
+            {activeView.config.type === 'table' && (
+              <div>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Columns</span>
+                  <div className="flex gap-3">
+                    <button onClick={handleShowAll} className="text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer">Show all</button>
+                    <button onClick={handleHideAll} className="text-[10px] text-neutral-500 hover:text-neutral-300 cursor-pointer">Hide all</button>
+                  </div>
+                </div>
+                <div className="flex flex-col">
                   {schema.map((col) => {
                     const isHidden = hiddenColumns.includes(col.id);
                     const isTitle = col.id === 'title';
@@ -470,24 +664,13 @@ export default function DatabasePropertiesSidebar({
                         key={col.id}
                         onClick={() => !isTitle && onToggleHideColumn(col.id)}
                         disabled={isTitle}
-                        className={`w-full flex items-center justify-between py-2 px-4 text-left border-b border-neutral-850/30 transition-all rounded-none ${
-                          isTitle 
-                            ? 'opacity-50 cursor-not-allowed bg-neutral-900/10'
-                            : 'hover:bg-neutral-800/15 cursor-pointer'
+                        className={`flex items-center gap-2 px-4 py-2 border-b border-neutral-800/30 text-left transition-colors ${
+                          isTitle ? 'opacity-40 cursor-not-allowed' : 'hover:bg-neutral-800/10 cursor-pointer'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          {getPropertyIcon(col.type)}
-                          <span className="text-xs text-neutral-300 font-medium">{col.name}</span>
-                        </div>
-                        
-                        <span className={`w-3.5 h-3.5 rounded-none border flex items-center justify-center transition-all ${
-                          !isHidden 
-                            ? 'bg-blue-500 border-blue-500 text-white' 
-                            : 'border-neutral-700 text-transparent'
-                        }`}>
-                          {!isHidden && <span className="text-[9px] font-bold leading-none">✓</span>}
-                        </span>
+                        {getPropertyIcon(col.type)}
+                        <span className="flex-1 text-xs text-neutral-300 truncate">{col.name}</span>
+                        <Checkbox checked={!isHidden} />
                       </button>
                     );
                   })}
@@ -495,71 +678,57 @@ export default function DatabasePropertiesSidebar({
               </div>
             )}
 
-            {/* Section 3: Filters */}
-            <div className="flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 bg-neutral-900/5">
-                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Filters</span>
-                <button 
-                  onClick={addFilter}
-                  className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
-                >
-                  <Plus size={11} />
-                  <span>Add Filter</span>
+            {/* Filters */}
+            <div>
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                  Filters{filters.length > 0 && ` (${filters.length})`}
+                </span>
+                <button onClick={addFilter} className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer">
+                  <Plus size={10} /> Add
                 </button>
               </div>
-
               {filters.length === 0 ? (
-                <p className="text-[11px] text-neutral-600 text-center py-6 border-t border-neutral-850/60">No filters applied.</p>
+                <p className="text-[11px] text-neutral-700 text-center py-4">No filters applied.</p>
               ) : (
-                <div className="flex flex-col border-t border-neutral-850/60 divide-y divide-neutral-850/40 bg-neutral-900/5">
+                <div className="flex flex-col">
                   {filters.map((filter) => {
                     const opDef = OPERATORS.find((o) => o.value === filter.operator);
                     return (
-                      <div 
-                        key={filter.id} 
-                        className="p-4 flex flex-col gap-2 relative group/item hover:bg-neutral-800/5 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">Filter rule</span>
-                          <button 
-                            onClick={() => deleteFilter(filter.id)} 
-                            className="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
+                      <div key={filter.id} className="px-4 py-2.5 border-b border-neutral-800/40 flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5">
                           <select
                             value={filter.columnId}
                             onChange={(e) => updateFilter(filter.id, { columnId: e.target.value })}
-                            className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                            className={`${selectCls} flex-1 min-w-0 text-[10px] py-1 px-1.5`}
                           >
                             {schema.map((col) => (
                               <option key={col.id} value={col.id}>{col.name}</option>
                             ))}
                           </select>
-
                           <select
                             value={filter.operator}
-                            onChange={(e) =>
-                              updateFilter(filter.id, { operator: e.target.value as FilterOperator })
-                            }
-                            className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
+                            onChange={(e) => updateFilter(filter.id, { operator: e.target.value as FilterOperator })}
+                            className={`${selectCls} flex-1 min-w-0 text-[10px] py-1 px-1.5`}
                           >
                             {OPERATORS.map((op) => (
                               <option key={op.value} value={op.value}>{op.label}</option>
                             ))}
                           </select>
+                          <button
+                            onClick={() => deleteFilter(filter.id)}
+                            className="text-neutral-600 hover:text-red-400 transition-colors cursor-pointer shrink-0 p-0.5"
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
-
                         {opDef?.needsValue && (
                           <input
                             type="text"
                             value={filter.value}
                             onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
-                            placeholder="Value..."
-                            className="w-full bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1.5 px-2 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors"
+                            placeholder="Value…"
+                            className={`${selectCls} w-full text-xs py-1 px-2 focus:border-neutral-700`}
                           />
                         )}
                       </div>
@@ -569,65 +738,49 @@ export default function DatabasePropertiesSidebar({
               )}
             </div>
 
-            {/* Section 4: Sorts */}
-            <div className="flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 bg-neutral-900/5">
-                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">Sorts</span>
-                <button 
-                  onClick={addSort}
-                  className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
-                >
-                  <Plus size={11} />
-                  <span>Add Sort</span>
+            {/* Sorts */}
+            <div>
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                  Sorts{sorts.length > 0 && ` (${sorts.length})`}
+                </span>
+                <button onClick={addSort} className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 cursor-pointer">
+                  <Plus size={10} /> Add
                 </button>
               </div>
-
               {sorts.length === 0 ? (
-                <p className="text-[11px] text-neutral-600 text-center py-6 border-t border-neutral-850/60">No sorts applied.</p>
+                <p className="text-[11px] text-neutral-700 text-center py-4">No sorts applied.</p>
               ) : (
-                <div className="flex flex-col border-t border-neutral-850/60 divide-y divide-neutral-850/40 bg-neutral-900/5">
+                <div className="flex flex-col">
                   {sorts.map((sort) => (
-                    <div 
-                      key={sort.id} 
-                      className="p-4 flex flex-col gap-2 relative group/item hover:bg-neutral-800/5 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] text-neutral-500 uppercase font-semibold tracking-wider">Sort rule</span>
-                        <button 
-                          onClick={() => deleteSort(sort.id)} 
-                          className="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={sort.columnId}
-                          onChange={(e) => updateSort(sort.id, { columnId: e.target.value })}
-                          className="bg-neutral-950 border border-neutral-850 text-neutral-300 text-xs py-1 px-1.5 rounded-none outline-none hover:border-neutral-750 focus:border-neutral-600 transition-colors cursor-pointer"
-                        >
-                          {schema.map((col) => (
-                            <option key={col.id} value={col.id}>{col.name}</option>
-                          ))}
-                        </select>
-
-                        <button
-                          onClick={() =>
-                            updateSort(sort.id, {
-                              direction: sort.direction === 'asc' ? 'desc' : 'asc',
-                            })
-                          }
-                          className="bg-neutral-950 hover:bg-neutral-850 border border-neutral-850 text-neutral-300 text-xs py-1 px-2 rounded-none text-center transition-colors font-medium shrink-0 cursor-pointer"
-                        >
-                          {sort.direction === 'asc' ? 'A → Z' : 'Z → A'}
-                        </button>
-                      </div>
+                    <div key={sort.id} className="flex items-center gap-1.5 px-4 py-2.5 border-b border-neutral-800/40">
+                      <select
+                        value={sort.columnId}
+                        onChange={(e) => updateSort(sort.id, { columnId: e.target.value })}
+                        className={`${selectCls} flex-1 min-w-0 text-[10px] py-1 px-1.5`}
+                      >
+                        {schema.map((col) => (
+                          <option key={col.id} value={col.id}>{col.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => updateSort(sort.id, { direction: sort.direction === 'asc' ? 'desc' : 'asc' })}
+                        className={`${selectCls} text-[10px] py-1 px-2 shrink-0 hover:bg-neutral-800 transition-colors`}
+                      >
+                        {sort.direction === 'asc' ? 'A → Z' : 'Z → A'}
+                      </button>
+                      <button
+                        onClick={() => deleteSort(sort.id)}
+                        className="text-neutral-600 hover:text-red-400 transition-colors cursor-pointer p-0.5 shrink-0"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+
           </div>
         )}
       </div>

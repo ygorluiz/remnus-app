@@ -37,6 +37,11 @@ export interface KanbanViewConfig {
   filters: ViewFilter[];
   sorts: ViewSort[];
   openBehavior?: OpenBehavior;
+  cardProperties?: string[];              // visible property IDs in display order; undefined = first 2
+  showPropertyLabels?: boolean;           // show property name before value; default true
+  propertyTextClamp?: 'truncate' | 'wrap'; // single-line truncate or multi-line wrap; default truncate
+  cardColorCol?: string;                  // property ID whose select value drives the card's left-border color
+  groupColBg?: boolean;                   // tint each column background with the group option's color
 }
 
 export interface CalendarViewConfig {
@@ -47,6 +52,7 @@ export interface CalendarViewConfig {
   filters: ViewFilter[];
   sorts: ViewSort[];
   openBehavior?: OpenBehavior;
+  cardColorCol?: string;                  // property ID whose select value drives the card's left-border color
 }
 
 export interface DatabaseView {

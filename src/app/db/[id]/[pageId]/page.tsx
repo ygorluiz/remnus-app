@@ -11,7 +11,7 @@ export default async function PageDetail(props: { params: Promise<{ id: string, 
   if (!db || !page) return notFound();
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-950">
+    <div className="flex-1 overflow-auto bg-neutral-850">
       <PageEditor database={db} initialPage={page} />
     </div>
   );

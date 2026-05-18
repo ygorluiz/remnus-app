@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { createPage, getPage, deletePage, reorderPages, updatePageProperties } from '@/lib/actions/page';
 import { updateDatabaseViews } from '@/lib/actions/database';
-import { Plus, Settings, Columns3, Filter, ArrowUpDown, X, Maximize2, Database } from 'lucide-react';
+import { Plus, Settings, Columns3, Filter, ArrowUpDown, X, Maximize2, Database, ArrowLeftRight } from 'lucide-react';
 import TableLayout from './TableLayout';
 import KanbanBoard from './KanbanBoard';
 import CalendarView from './CalendarView';
@@ -125,16 +125,7 @@ export default function DatabaseView({
     return [defaultTableView()];
   });
 
-  const [activeViewId, setActiveViewId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const v = urlParams.get('v');
-      if (v && views.some((vw) => vw.id === v)) {
-        return v;
-      }
-    }
-    return views[0].id;
-  });
+  const [activeViewId, setActiveViewId] = useState(() => views[0].id);
   const [isAdding, setIsAdding] = useState(false);
 
   const searchParams = useSearchParams();
@@ -149,6 +140,23 @@ export default function DatabaseView({
   }, [searchParams, views, activeViewId]);
 
 
+
+  type WidthMode = 'narrow' | 'wide' | 'full';
+  const [widthMode, setWidthMode] = useState<WidthMode>('narrow');
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`db-width-${database.id}`) as WidthMode | null;
+    if (saved === 'narrow' || saved === 'wide' || saved === 'full') setWidthMode(saved);
+    else if (saved === 'true') setWidthMode('full'); // migrate old boolean
+  }, [database.id]);
+
+  const cycleWidth = () => {
+    const next: WidthMode = widthMode === 'narrow' ? 'wide' : widthMode === 'wide' ? 'full' : 'narrow';
+    setWidthMode(next);
+    localStorage.setItem(`db-width-${database.id}`, next);
+  };
+
+  const widthLabels: Record<WidthMode, string> = { narrow: 'Narrow', wide: 'Wide', full: 'Full width' };
 
   // Sidebar states
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -409,6 +417,15 @@ export default function DatabaseView({
   const handleGroupOrderChange = (groupOrder: string[]) =>
     mutateConfig((cfg) => ({ ...cfg, groupOrder }));
 
+  const handleCardPropertiesChange = (cardProperties: string[]) =>
+    mutateConfig((cfg) => ({ ...cfg, cardProperties }));
+
+  const handleShowPropertyLabelsChange = (showPropertyLabels: boolean) =>
+    mutateConfig((cfg) => ({ ...cfg, showPropertyLabels }));
+
+  const handlePropertyTextClampChange = (propertyTextClamp: 'truncate' | 'wrap') =>
+    mutateConfig((cfg) => ({ ...cfg, propertyTextClamp }));
+
   const toggleHideColumn = (colId: string) => {
     const tc = config as TableViewConfig;
     const hidden = tc.hiddenColumns ?? [];
@@ -432,6 +449,12 @@ export default function DatabaseView({
 
   const handleFirstDayOfWeekChange = (firstDayOfWeek: 'sunday' | 'monday') =>
     mutateConfig((cfg) => ({ ...cfg, firstDayOfWeek }));
+
+  const handleCardColorColChange = (cardColorCol: string) =>
+    mutateConfig((cfg) => ({ ...cfg, cardColorCol: cardColorCol || undefined }));
+
+  const handleGroupColBgChange = (groupColBg: boolean) =>
+    mutateConfig((cfg) => ({ ...cfg, groupColBg }));
 
   const handleCardDateChange = async (pageId: string, newDate: string | null) => {
     const page = localPages.find((p) => p.id === pageId);
@@ -472,7 +495,11 @@ export default function DatabaseView({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex flex-col min-h-0 px-8 pt-8 w-full ${widthMode === 'full' ? '' : widthMode === 'wide' ? 'max-w-screen-xl mx-auto' : 'max-w-6xl mx-auto'}`}>
+      {/* Title */}
+      <h1 className="text-3xl font-bold mb-8 text-white shrink-0">{database.name}</h1>
+
       {/* Top bar */}
       <div className="flex items-end justify-between border-b border-neutral-800">
         <ViewsBar
@@ -486,6 +513,15 @@ export default function DatabaseView({
         />
 
         <div className="flex items-center gap-0 pb-1.5">
+          {/* Full Width Toggle */}
+          <button
+            onClick={cycleWidth}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-200 transition-colors cursor-pointer"
+          >
+            <ArrowLeftRight size={13} />
+            {widthLabels[widthMode]}
+          </button>
+
           {/* Settings Button */}
           <button
             onClick={() => handleToggleSidebar(sidebarTab)}
@@ -535,6 +571,11 @@ export default function DatabaseView({
               onCardMove={handleCardReorder}
               onDeletePage={handleDeletePage}
               hasSorts={(config.sorts?.length ?? 0) > 0}
+              cardProperties={kanbanConfig.cardProperties}
+              showPropertyLabels={kanbanConfig.showPropertyLabels ?? true}
+              propertyTextClamp={kanbanConfig.propertyTextClamp ?? 'truncate'}
+              cardColorCol={kanbanConfig.cardColorCol}
+              groupColBg={kanbanConfig.groupColBg ?? false}
             />
           ) : calendarConfig ? (
             <CalendarView
@@ -546,6 +587,7 @@ export default function DatabaseView({
               onCardClick={handlePageClick}
               onCardDateChange={handleCardDateChange}
               onDeletePage={handleDeletePage}
+              cardColorCol={calendarConfig.cardColorCol}
             />
           ) : null}
         </div>
@@ -560,7 +602,7 @@ export default function DatabaseView({
 
         {/* Sidebar Panel Overlay */}
         {sidebarOpen && (
-          <div className="absolute top-0 right-0 h-full z-30 shadow-2xl flex">
+          <div className="absolute top-0 right-0 h-full z-30 flex">
             <DatabasePropertiesSidebar
               database={database}
               activeView={activeView}
@@ -581,15 +623,26 @@ export default function DatabaseView({
               }
               groupByCol={kanbanConfig?.groupByCol}
               onGroupByColChange={handleGroupByChange}
+              cardProperties={kanbanConfig?.cardProperties}
+              onCardPropertiesChange={handleCardPropertiesChange}
+              showPropertyLabels={kanbanConfig?.showPropertyLabels ?? true}
+              onShowPropertyLabelsChange={handleShowPropertyLabelsChange}
+              propertyTextClamp={kanbanConfig?.propertyTextClamp ?? 'truncate'}
+              onPropertyTextClampChange={handlePropertyTextClampChange}
               dateCol={calendarConfig?.dateCol}
               onDateColChange={handleDateColChange}
               viewMode={calendarConfig?.viewMode}
               onViewModeChange={handleViewModeChange}
               firstDayOfWeek={calendarConfig?.firstDayOfWeek}
               onFirstDayOfWeekChange={handleFirstDayOfWeekChange}
+              cardColorCol={kanbanConfig?.cardColorCol ?? calendarConfig?.cardColorCol}
+              onCardColorColChange={handleCardColorColChange}
+              groupColBg={kanbanConfig?.groupColBg ?? false}
+              onGroupColBgChange={handleGroupColBgChange}
             />
           </div>
         )}
+      </div>
       </div>
 
       {/* Peek Overlay & Container (Center / Side Peek) */}
@@ -604,7 +657,7 @@ export default function DatabaseView({
           {/* Center Peek Modal */}
           {(config.openBehavior ?? 'full') === 'center' && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-10 pointer-events-none">
-              <div className="relative w-full max-w-4xl max-h-[85vh] md:max-h-[90vh] bg-neutral-950 border border-neutral-800 flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden rounded-none pointer-events-auto animate-scale-in">
+              <div className="relative w-full max-w-4xl max-h-[85vh] md:max-h-[90vh] bg-neutral-850 border border-neutral-800 flex flex-col shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden rounded-none pointer-events-auto animate-scale-in">
                 {/* Peek Sticky Header */}
                 <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                   <div className="flex items-center gap-3">
@@ -634,7 +687,7 @@ export default function DatabaseView({
                 </div>
 
                 {/* Peek Editor Scrollable Content */}
-                <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-950">
+                <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-850">
                   {isPageLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 text-neutral-500 gap-2 animate-fade-in">
                       <div className="w-5 h-5 border-2 border-neutral-800 border-t-neutral-500 rounded-full animate-spin" />
@@ -658,7 +711,7 @@ export default function DatabaseView({
 
           {/* Side Peek Drawer */}
           {(config.openBehavior ?? 'full') === 'side' && (
-            <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-neutral-950 border-l border-neutral-800 shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-hidden rounded-none animate-slide-in-right">
+            <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-neutral-900 border-l border-neutral-800 shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-hidden rounded-none animate-slide-in-right">
               {/* Peek Sticky Header */}
               <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                 <div className="flex items-center gap-3">
@@ -688,7 +741,7 @@ export default function DatabaseView({
               </div>
 
               {/* Peek Editor Scrollable Content */}
-              <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-950">
+              <div className="flex-1 overflow-y-auto min-h-0 bg-neutral-850">
                 {isPageLoading ? (
                   <div className="flex flex-col items-center justify-center py-20 text-neutral-500 gap-2 animate-fade-in">
                     <div className="w-5 h-5 border-2 border-neutral-800 border-t-neutral-500 rounded-full animate-spin" />

@@ -10,7 +10,7 @@ export default async function StandalonePageRoute(
   if (!data || !data.page) return notFound();
 
   return (
-    <div className="flex-1 overflow-auto bg-neutral-950">
+    <div className="flex-1 overflow-auto bg-neutral-850">
       <StandalonePageEditor item={data.item} page={data.page} />
     </div>
   );

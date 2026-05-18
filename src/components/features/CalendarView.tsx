@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { getOptionColorByValue, getCardBorderDots } from '@/lib/types/properties';
 import { ChevronLeft, ChevronRight, GripVertical, Settings, Trash2, Calendar as CalendarIcon, Clock } from 'lucide-react';
 
 interface CalendarViewProps {
@@ -12,6 +13,7 @@ interface CalendarViewProps {
   onCardClick: (pageId: string) => void;
   onCardDateChange: (pageId: string, newDateStr: string) => void;
   onDeletePage: (pageId: string) => void;
+  cardColorCol?: string;
 }
 
 const formatYYYYMMDD = (d: Date) => {
@@ -92,6 +94,7 @@ export default function CalendarView({
   onCardClick,
   onCardDateChange,
   onDeletePage,
+  cardColorCol,
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
@@ -196,7 +199,7 @@ export default function CalendarView({
   const todayStr = formatYYYYMMDD(new Date());
 
   return (
-    <div className="flex flex-col h-full bg-neutral-950 text-neutral-200">
+    <div className="flex flex-col h-full bg-neutral-850 text-neutral-200">
       {/* Calendar Header Nav */}
       <div className="flex items-center justify-between pb-3.5 mb-2.5 border-b border-neutral-850/60 shrink-0 select-none">
         <div className="flex items-center gap-1.5">
@@ -245,7 +248,7 @@ export default function CalendarView({
       {/* Grid Container */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div
-          className={`grid grid-cols-7 border-l border-t border-neutral-800/80 bg-neutral-950 h-full ${
+          className={`grid grid-cols-7 border-l border-t border-neutral-800/80 bg-neutral-850 h-full ${
             viewMode === 'month' ? 'grid-rows-6' : 'grid-rows-1 min-h-87.5'
           }`}
         >
@@ -305,7 +308,10 @@ export default function CalendarView({
 
                 {/* Cards Container inside day */}
                 <div className="flex-1 flex flex-col gap-1.5 min-h-10">
-                  {dayPages.map((page) => (
+                  {dayPages.map((page) => {
+                    const colorColSchema = cardColorCol ? schema.find((c) => c.id === cardColorCol) : null;
+                    const borderDots = getCardBorderDots(colorColSchema, page.properties[cardColorCol ?? '']);
+                    return (
                     <div
                       key={page.id}
                       onClick={() => onCardClick(page.id)}
@@ -320,10 +326,17 @@ export default function CalendarView({
                         setDraggedCardId(page.id);
                         setIsCardDragReady(false);
                       }}
-                      className={`relative py-2.5 px-2 bg-neutral-800/45 cursor-pointer hover:bg-neutral-800/75 transition-colors group flex flex-col select-none ${
+                      className={`relative py-2.5 px-2 bg-neutral-800/45 cursor-pointer hover:bg-neutral-800/75 transition-colors group flex flex-col select-none overflow-hidden ${
                         draggedCardId === page.id ? 'opacity-25' : ''
                       }`}
                     >
+                      {borderDots.length > 0 && (
+                        <div className="absolute left-0 inset-y-0 w-0.75 flex flex-col pointer-events-none" aria-hidden>
+                          {borderDots.map((dot, i) => (
+                            <div key={i} className="flex-1" style={{ backgroundColor: dot }} />
+                          ))}
+                        </div>
+                      )}
                       {/* Hover Actions */}
                       <div
                         className="absolute right-1 top-1.5 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity z-10"
@@ -407,17 +420,24 @@ export default function CalendarView({
                             if (isEmpty) return null;
 
                             let display: React.ReactNode;
-                            if (c.type === 'multi_select' && Array.isArray(val)) {
+                            if (c.type === 'select' && typeof val === 'string') {
+                              const sc = getOptionColorByValue(c.options || [], val);
+                              display = (
+                                <span className="text-[9px] px-1 py-0 rounded-sm" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                  {val}
+                                </span>
+                              );
+                            } else if (c.type === 'multi_select' && Array.isArray(val)) {
                               display = (
                                 <span className="flex flex-wrap gap-0.5">
-                                  {val.map((opt: string) => (
-                                    <span
-                                      key={opt}
-                                      className="bg-neutral-700/60 text-neutral-400 text-[9px] px-1 py-0"
-                                    >
-                                      {opt}
-                                    </span>
-                                  ))}
+                                  {val.map((optVal: string) => {
+                                    const mc = getOptionColorByValue(c.options || [], optVal);
+                                    return (
+                                      <span key={optVal} className="text-[9px] px-1 py-0 rounded-sm" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                        {optVal}
+                                      </span>
+                                    );
+                                  })}
                                 </span>
                               );
                             } else if (c.type === 'date' && val) {
@@ -461,7 +481,8 @@ export default function CalendarView({
                           })}
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
             );

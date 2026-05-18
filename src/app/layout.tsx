@@ -29,14 +29,14 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-neutral-950 text-neutral-50 flex h-screen overflow-hidden`}>
-        <aside className="w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col">
+        <aside className="w-72 bg-neutral-900 border-r border-neutral-800 flex flex-col">
           <WorkspaceSidebar 
             items={items} 
             workspaces={workspacesList}
             activeWorkspace={activeWorkspace}
           />
         </aside>
-        <main className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-950">
+        <main className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-850">
           {children}
         </main>
       </body>

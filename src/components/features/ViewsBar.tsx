@@ -158,7 +158,7 @@ export default function ViewsBar({
             </button>
 
             {isActive && !isRenaming && menuOpenId === view.id && (
-              <div className="absolute top-full left-0 mt-1 w-36 bg-neutral-950 border border-neutral-800 rounded-none shadow-none z-50 py-0 animate-in fade-in duration-100">
+              <div className="absolute top-full left-0 mt-1 w-36 bg-neutral-900 border border-neutral-800 rounded-none shadow-none z-50 py-0 animate-in fade-in duration-100">
                 <button
                   onClick={() => startRename(view)}
                   className="w-full text-left px-3 py-2 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 transition-colors rounded-none border-b border-neutral-850/60"
@@ -192,7 +192,7 @@ export default function ViewsBar({
         </button>
 
         {addOpen && (
-          <div className="absolute top-full left-0 mt-1 w-44 bg-neutral-950 border border-neutral-800 rounded-none shadow-none z-50 py-0 animate-in fade-in duration-100">
+          <div className="absolute top-full left-0 mt-1 w-44 bg-neutral-900 border border-neutral-800 rounded-none shadow-none z-50 py-0 animate-in fade-in duration-100">
             <button
               onClick={() => {
                 onAdd('table');
