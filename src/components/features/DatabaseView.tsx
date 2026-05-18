@@ -163,7 +163,7 @@ export default function DatabaseView({
 
   // Sidebar states
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'properties' | 'layout'>('properties');
+  const [sidebarTab, setSidebarTab] = useState<'properties' | 'layout'>('layout');
 
   const saveTimer = useRef<any>(null);
 
@@ -583,6 +583,11 @@ export default function DatabaseView({
               hasSorts={(config.sorts?.length ?? 0) > 0}
               onUpdatePageProperties={handleUpdatePageProperties}
               onCreatePage={handleAddRow}
+              filters={config.filters}
+              sorts={config.sorts}
+              onFiltersChange={handleFiltersChange}
+              onSortsChange={handleSortsChange}
+              onToggleHideColumn={toggleHideColumn}
             />
           ) : kanbanConfig ? (
             <KanbanBoard

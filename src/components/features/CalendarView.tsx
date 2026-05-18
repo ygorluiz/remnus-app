@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { getOptionColorByValue, getCardBorderDots } from '@/lib/types/properties';
+import { getOptionColorByValue, getCardBorderDots, formatDateValue } from '@/lib/types/properties';
 import { ChevronLeft, ChevronRight, GripVertical, Settings, Trash2, Calendar as CalendarIcon, Clock, Plus, Copy } from 'lucide-react';
 
 interface CalendarViewProps {
@@ -471,30 +471,10 @@ export default function CalendarView({
                                   })}
                                 </span>
                               );
-                            } else if (c.type === 'date' && val) {
-                              const d = new Date(val);
+                            } else if ((c.type === 'date' || c.type === 'datetime') && val) {
                               display = (
                                 <span className={`text-neutral-500 text-[9px] ${textClass}`}>
-                                  {isNaN(d.getTime())
-                                    ? val
-                                    : d.toLocaleDateString('en-US', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                      })}
-                                </span>
-                              );
-                            } else if (c.type === 'datetime' && val) {
-                              const d = new Date(val);
-                              display = (
-                                <span className={`text-neutral-500 text-[9px] ${textClass}`}>
-                                  {isNaN(d.getTime())
-                                    ? val
-                                    : d.toLocaleString('en-US', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })}
+                                  {formatDateValue(val, c.type as 'date' | 'datetime', c.dateFormat)}
                                 </span>
                               );
                             } else {

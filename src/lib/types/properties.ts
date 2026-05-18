@@ -69,3 +69,99 @@ export function getCardBorderDots(
 
   return [];
 }
+
+export function formatDateValue(val: string, type: 'date' | 'datetime', format?: string): string {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+
+  const showTime = type === 'datetime';
+  const formatStr = format || 'default';
+
+  if (formatStr === 'relative') {
+    if (type === 'datetime') {
+      const now = new Date();
+      const diffMs = d.getTime() - now.getTime();
+      const diffMins = Math.round(diffMs / 60000);
+      const diffHours = Math.round(diffMs / 3600000);
+      const diffDays = Math.round(diffMs / 86400000);
+
+      if (Math.abs(diffMins) < 1) return 'Just now';
+      if (Math.abs(diffMins) < 60) {
+        return diffMins > 0 ? `in ${diffMins}m` : `${Math.abs(diffMins)}m ago`;
+      }
+      if (Math.abs(diffHours) < 24) {
+        return diffHours > 0 ? `in ${diffHours}h` : `${Math.abs(diffHours)}h ago`;
+      }
+      if (Math.abs(diffDays) < 30) {
+        if (diffDays === 1) return 'Tomorrow';
+        if (diffDays === -1) return 'Yesterday';
+        return diffDays > 0 ? `in ${diffDays}d` : `${Math.abs(diffDays)}d ago`;
+      }
+    } else {
+      // Just 'date' property: work exclusively with calendar days
+      const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const nowTemp = new Date();
+      const nowDate = new Date(nowTemp.getFullYear(), nowTemp.getMonth(), nowTemp.getDate());
+      const diffMs = dDate.getTime() - nowDate.getTime();
+      const diffDays = Math.round(diffMs / 86400000);
+
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      if (diffDays === -1) return 'Yesterday';
+      if (Math.abs(diffDays) < 30) {
+        return diffDays > 0 ? `in ${diffDays}d` : `${Math.abs(diffDays)}d ago`;
+      }
+    }
+  }
+
+  // YYYY-MM-DD
+  if (formatStr === 'iso') {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const datePart = `${yyyy}-${mm}-${dd}`;
+    if (showTime) {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${datePart} ${hh}:${min}`;
+    }
+    return datePart;
+  }
+
+  // DD/MM/YYYY
+  if (formatStr === 'uk') {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const datePart = `${dd}/${mm}/${yyyy}`;
+    if (showTime) {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${datePart} ${hh}:${min}`;
+    }
+    return datePart;
+  }
+
+  // MM/DD/YYYY
+  if (formatStr === 'us') {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const datePart = `${mm}/${dd}/${yyyy}`;
+    if (showTime) {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${datePart} ${hh}:${min}`;
+    }
+    return datePart;
+  }
+
+  // Default: Month Day, Year (e.g. May 19, 2026)
+  const datePart = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (showTime) {
+    const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${datePart} ${timePart}`;
+  }
+  return datePart;
+}

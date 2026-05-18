@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { getOptionColorByValue } from '@/lib/types/properties';
+import { getOptionColorByValue, formatDateValue } from '@/lib/types/properties';
 import InlineCellEditor from './InlineCellEditor';
-import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, Plus, Copy } from 'lucide-react';
+import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, Plus, Copy, EyeOff, ArrowUp, ArrowDown, Filter, X } from 'lucide-react';
+import type { ViewFilter, ViewSort, FilterOperator } from '@/lib/types/views';
 
 function getPropertyIcon(type: string) {
   switch (type) {
@@ -17,24 +18,7 @@ function getPropertyIcon(type: string) {
   }
 }
 
-function formatDate(val: string) {
-  if (!val) return '';
-  const d = new Date(val);
-  return isNaN(d.getTime())
-    ? val
-    : d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-}
 
-function formatDatetime(val: string) {
-  if (!val) return '';
-  const d = new Date(val);
-  return isNaN(d.getTime())
-    ? val
-    : d.toLocaleString('en-US', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      });
-}
 
 function getVisibleColumns(schema: any[], columnOrder: string[], hiddenColumns: string[]): any[] {
   const hiddenSet = new Set(hiddenColumns ?? []);
@@ -63,6 +47,11 @@ export default function TableLayout({
   hasSorts,
   onUpdatePageProperties,
   onCreatePage,
+  filters,
+  sorts,
+  onFiltersChange,
+  onSortsChange,
+  onToggleHideColumn,
 }: {
   database: any;
   pages: any[];
@@ -76,11 +65,79 @@ export default function TableLayout({
   hasSorts: boolean;
   onUpdatePageProperties: (pageId: string, properties: Record<string, any>) => void;
   onCreatePage?: (initialProperties?: Record<string, any>) => void;
+  filters: ViewFilter[];
+  sorts: ViewSort[];
+  onFiltersChange: (filters: ViewFilter[]) => void;
+  onSortsChange: (sorts: ViewSort[]) => void;
+  onToggleHideColumn: (colId: string) => void;
 }) {
   const schema: any[] = database.schema ?? [];
   const visibleCols = getVisibleColumns(schema, columnOrder, hiddenColumns);
 
   const [editingCell, setEditingCell] = useState<{ pageId: string; colId: string } | null>(null);
+
+  // Header menu state
+  const [activeHeaderMenuColId, setActiveHeaderMenuColId] = useState<string | null>(null);
+  const [headerMenuPos, setHeaderMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  const OPERATORS: { value: FilterOperator; label: string; needsValue: boolean }[] = [
+    { value: 'contains',     label: 'contains',        needsValue: true  },
+    { value: 'not_contains', label: "doesn't contain", needsValue: true  },
+    { value: 'equals',       label: 'is',              needsValue: true  },
+    { value: 'not_equals',   label: 'is not',          needsValue: true  },
+    { value: 'is_empty',     label: 'is empty',        needsValue: false },
+    { value: 'is_not_empty', label: 'is not empty',    needsValue: false },
+  ];
+
+  const handleHeaderClick = (e: React.MouseEvent, colId: string) => {
+    e.stopPropagation();
+    if (activeHeaderMenuColId === colId) {
+      closeHeaderMenu();
+    } else {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const menuWidth = 240; // w-60 width of dropdown is 240px
+      let x = rect.left;
+      if (typeof window !== 'undefined' && x + menuWidth > window.innerWidth) {
+        x = Math.max(8, window.innerWidth - menuWidth - 8);
+      }
+      setHeaderMenuPos({ x, y: rect.bottom + 4 });
+      setActiveHeaderMenuColId(colId);
+    }
+  };
+
+  const closeHeaderMenu = () => {
+    setActiveHeaderMenuColId(null);
+    setHeaderMenuPos(null);
+  };
+
+  const handleSortCol = (colId: string, direction: 'asc' | 'desc') => {
+    const existing = sorts.find((s) => s.columnId === colId);
+    let nextSorts: ViewSort[];
+    if (existing) {
+      nextSorts = sorts.map((s) => s.columnId === colId ? { ...s, direction } : s);
+    } else {
+      nextSorts = [...sorts, { id: crypto.randomUUID().slice(0, 8), columnId: colId, direction }];
+    }
+    onSortsChange(nextSorts);
+    closeHeaderMenu();
+  };
+
+  const handleRemoveSort = (colId: string) => {
+    onSortsChange(sorts.filter((s) => s.columnId !== colId));
+    closeHeaderMenu();
+  };
+
+  const handleAddFilter = (colId: string) => {
+    onFiltersChange([...filters, { id: crypto.randomUUID().slice(0, 8), columnId: colId, operator: 'contains', value: '' }]);
+  };
+
+  const handleUpdateFilter = (filterId: string, patch: Partial<ViewFilter>) => {
+    onFiltersChange(filters.map((f) => f.id === filterId ? { ...f, ...patch } : f));
+  };
+
+  const handleDeleteFilter = (filterId: string) => {
+    onFiltersChange(filters.filter((f) => f.id !== filterId));
+  };
 
   const handleCellSave = (pageId: string, colId: string, newVal: any) => {
     const page = pages.find((p) => p.id === pageId);
@@ -277,7 +334,11 @@ export default function TableLayout({
                     `}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 overflow-hidden">
+                      <div
+                        onClick={(e) => handleHeaderClick(e, col.id)}
+                        className="flex items-center gap-1.5 overflow-hidden cursor-pointer hover:bg-neutral-800/30 px-1.5 py-0.5 rounded transition-colors"
+                        title="Click for options (sort, filter, hide)"
+                      >
                         {getPropertyIcon(col.type)}
                         <span className="truncate text-neutral-600 group-hover:text-neutral-400 text-xs uppercase tracking-wider transition-colors">
                           {col.name}
@@ -389,10 +450,8 @@ export default function TableLayout({
                               <span className="text-neutral-700">—</span>
                             )}
                           </span>
-                        ) : col.type === 'date' ? (
-                          <span className="text-xs text-neutral-400">{val ? formatDate(val) : '—'}</span>
-                        ) : col.type === 'datetime' ? (
-                          <span className="text-xs text-neutral-400">{val ? formatDatetime(val) : '—'}</span>
+                        ) : (col.type === 'date' || col.type === 'datetime') ? (
+                          <span className="text-xs text-neutral-400">{val ? formatDateValue(val, col.type, col.dateFormat) : '—'}</span>
                         ) : (
                           <span className="text-neutral-500">{val || ''}</span>
                         )}
@@ -482,6 +541,166 @@ export default function TableLayout({
               <Trash2 size={13} />
               <span>Delete page</span>
             </button>
+          </div>
+        </>
+      )}
+      {/* Header Column Menu Dropdown */}
+      {activeHeaderMenuColId && headerMenuPos && (
+        <>
+          <div className="fixed inset-0 z-40 cursor-default bg-transparent" onClick={closeHeaderMenu} />
+          <div
+            className="fixed z-50 bg-neutral-900 border border-neutral-800 shadow-2xl py-1.5 w-60 rounded overflow-hidden text-left"
+            style={{ left: headerMenuPos.x, top: headerMenuPos.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sorts section */}
+            <div className="px-1 pb-1 border-b border-neutral-800/40 flex flex-col gap-0.5">
+              {(() => {
+                const activeSort = sorts.find((s) => s.columnId === activeHeaderMenuColId);
+                return (
+                  <>
+                    <button
+                      onClick={() => handleSortCol(activeHeaderMenuColId, 'asc')}
+                      className={`w-full px-2 py-1 text-xs flex items-center justify-between text-neutral-300 hover:bg-neutral-800 transition-colors rounded ${
+                        activeSort?.direction === 'asc' ? 'bg-neutral-800 font-semibold' : ''
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <ArrowUp size={13} className="text-neutral-500" />
+                        Sort Ascending (A → Z)
+                      </span>
+                      {activeSort?.direction === 'asc' && <span className="text-[10px] text-blue-400">✓</span>}
+                    </button>
+                    <button
+                      onClick={() => handleSortCol(activeHeaderMenuColId, 'desc')}
+                      className={`w-full px-2 py-1 text-xs flex items-center justify-between text-neutral-300 hover:bg-neutral-800 transition-colors rounded ${
+                        activeSort?.direction === 'desc' ? 'bg-neutral-800 font-semibold' : ''
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <ArrowDown size={13} className="text-neutral-500" />
+                        Sort Descending (Z → A)
+                      </span>
+                      {activeSort?.direction === 'desc' && <span className="text-[10px] text-blue-400">✓</span>}
+                    </button>
+                    {activeSort && (
+                      <button
+                        onClick={() => handleRemoveSort(activeHeaderMenuColId)}
+                        className="w-full px-2 py-1 text-xs flex items-center gap-2 text-red-400 hover:bg-neutral-800 transition-colors rounded"
+                      >
+                        <X size={13} />
+                        Remove Sort
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Visibility - Hide column (Only if not Title) */}
+            {activeHeaderMenuColId !== 'title' && (
+              <div className="px-1 py-1 border-b border-neutral-800/40">
+                <button
+                  onClick={() => {
+                    onToggleHideColumn(activeHeaderMenuColId);
+                    closeHeaderMenu();
+                  }}
+                  className="w-full px-2 py-1 text-xs flex items-center gap-2 text-neutral-300 hover:bg-neutral-800 transition-colors rounded"
+                >
+                  <EyeOff size={13} className="text-neutral-500" />
+                  Hide Column
+                </button>
+              </div>
+            )}
+
+            {/* Filter section */}
+            <div className="px-3 py-2 border-b border-neutral-800/40 flex flex-col gap-1.5">
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold flex items-center justify-between">
+                <span>Filter</span>
+                <Filter size={10} />
+              </div>
+              {(() => {
+                const activeFilter = filters.find((f) => f.columnId === activeHeaderMenuColId);
+                if (activeFilter) {
+                  const opDef = OPERATORS.find((o) => o.value === activeFilter.operator);
+                  return (
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={activeFilter.operator}
+                          onChange={(e) => handleUpdateFilter(activeFilter.id, { operator: e.target.value as FilterOperator })}
+                          className="bg-neutral-950 border border-neutral-800 text-neutral-300 text-xs py-1 px-2 rounded outline-none cursor-pointer flex-1 min-w-0"
+                        >
+                          {OPERATORS.map((op) => (
+                            <option key={op.value} value={op.value}>{op.label}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleDeleteFilter(activeFilter.id)}
+                          className="text-neutral-600 hover:text-red-400 transition-colors cursor-pointer p-0.5"
+                          title="Delete Filter"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                      {opDef?.needsValue && (
+                        <input
+                          type="text"
+                          value={activeFilter.value}
+                          onChange={(e) => handleUpdateFilter(activeFilter.id, { value: e.target.value })}
+                          placeholder="Filter value…"
+                          className="bg-neutral-950 border border-neutral-800 text-neutral-300 text-xs py-1 px-2 rounded outline-none w-full focus:border-neutral-700 font-sans"
+                        />
+                      )}
+                    </div>
+                  );
+                } else {
+                  return (
+                    <button
+                      onClick={() => handleAddFilter(activeHeaderMenuColId)}
+                      className="w-full mt-1 py-1 text-xs flex items-center justify-center gap-1.5 text-blue-400 hover:text-blue-300 hover:bg-neutral-800/40 border border-dashed border-neutral-800/80 rounded transition-colors"
+                    >
+                      <Plus size={11} />
+                      Add Filter
+                    </button>
+                  );
+                }
+              })()}
+            </div>
+
+            {/* Toggle Columns Visibility section */}
+            <div className="px-1 pt-1">
+              <div className="px-2 py-1 text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
+                Toggle Columns
+              </div>
+              <div className="max-h-36 overflow-y-auto flex flex-col gap-0.5 mt-0.5">
+                {schema.map((c) => {
+                  const isHidden = hiddenColumns.includes(c.id);
+                  const isTitleCol = c.id === 'title';
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => !isTitleCol && onToggleHideColumn(c.id)}
+                      disabled={isTitleCol}
+                      className={`w-full px-2 py-1 text-xs flex items-center justify-between text-neutral-300 hover:bg-neutral-800 transition-colors rounded ${
+                        isTitleCol ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        {getPropertyIcon(c.type)}
+                        <span className="truncate text-neutral-400">{c.name}</span>
+                      </div>
+                      <span className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 rounded-sm transition-colors ${
+                        !isHidden ? 'bg-blue-500 border-blue-500' : 'border-neutral-700'
+                      }`}>
+                        {!isHidden && <span className="text-[9px] font-bold text-white leading-none">✓</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         </>
       )}

@@ -98,7 +98,7 @@ function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
-const selectCls = 'bg-neutral-900 border border-neutral-800 text-neutral-300 outline-none cursor-pointer focus:border-neutral-700 transition-colors rounded';
+const selectCls = 'bg-neutral-900 border border-neutral-800 text-neutral-300 outline-none cursor-pointer focus:border-neutral-700 transition-colors rounded text-xs py-1.5 px-2';
 
 export default function DatabasePropertiesSidebar({
   database,
@@ -307,8 +307,8 @@ export default function DatabasePropertiesSidebar({
       {/* Tabs */}
       <div className="flex border-b border-neutral-800 shrink-0">
         {([
-          { id: 'properties', label: 'Properties', icon: Database },
           { id: 'layout',     label: 'Layout',     icon: LayoutTemplate },
+          { id: 'properties', label: 'Properties', icon: Database },
         ] as const).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -350,7 +350,7 @@ export default function DatabasePropertiesSidebar({
                       value={col.type}
                       onChange={(e) => updateColumn(idx, { type: e.target.value, options: [] })}
                       disabled={isTitle}
-                      className={`${selectCls} text-[10px] text-neutral-400 py-0.5 px-1 shrink-0 disabled:opacity-40`}
+                      className={`${selectCls} text-neutral-400 py-1 px-1.5 shrink-0 disabled:opacity-40 w-28 cursor-pointer truncate`}
                     >
                       <option value="text">Text</option>
                       <option value="select">Select</option>
@@ -362,7 +362,7 @@ export default function DatabasePropertiesSidebar({
                     {!isTitle ? (
                       <button
                         onClick={() => removeColumn(idx)}
-                        className="opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-red-400 p-0.5 transition-all cursor-pointer shrink-0"
+                        className="text-neutral-500 hover:text-red-400 p-0.5 transition-colors cursor-pointer shrink-0"
                       >
                         <X size={12} />
                       </button>
@@ -370,6 +370,28 @@ export default function DatabasePropertiesSidebar({
                       <span className="w-5 shrink-0" />
                     )}
                   </div>
+
+                  {(col.type === 'date' || col.type === 'datetime') && (
+                    <div className="pl-10 pr-3 py-2 bg-neutral-900/30 border-b border-neutral-800/50 flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Date format</span>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={col.dateFormat || 'default'}
+                            onChange={(e) => updateColumn(idx, { dateFormat: e.target.value })}
+                            className={`${selectCls} text-neutral-400 py-1 px-1.5 cursor-pointer w-28 truncate`}
+                          >
+                            <option value="default">Month Day, Year</option>
+                            <option value="iso">YYYY-MM-DD</option>
+                            <option value="uk">DD/MM/YYYY</option>
+                            <option value="us">MM/DD/YYYY</option>
+                            <option value="relative">Relative time</option>
+                          </select>
+                          <span className="w-5 shrink-0" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {(col.type === 'select' || col.type === 'multi_select') && (
                     <div className="pl-10 pr-3 py-2 bg-neutral-900/30 border-b border-neutral-800/50">
@@ -585,14 +607,17 @@ export default function DatabasePropertiesSidebar({
                 </button>
                 <div className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-xs text-neutral-300">Property text</span>
-                  <select
-                    value={propertyTextClamp}
-                    onChange={(e) => onPropertyTextClampChange?.(e.target.value as 'truncate' | 'wrap')}
-                    className={`${selectCls} text-[10px] text-neutral-400 py-1 px-1.5`}
-                  >
-                    <option value="truncate">Single line</option>
-                    <option value="wrap">Multi-line</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={propertyTextClamp}
+                      onChange={(e) => onPropertyTextClampChange?.(e.target.value as 'truncate' | 'wrap')}
+                      className={`${selectCls} text-neutral-400 py-1 px-1.5 w-28 cursor-pointer truncate`}
+                    >
+                      <option value="truncate">Single line</option>
+                      <option value="wrap">Multi-line</option>
+                    </select>
+                    <span className="w-5 shrink-0" />
+                  </div>
                 </div>
               </div>
             )}
@@ -601,16 +626,19 @@ export default function DatabasePropertiesSidebar({
             {activeView.config.type === 'kanban' && (
               <div className="px-4 py-3 border-b border-neutral-800/30 flex items-center justify-between gap-3">
                 <span className="text-xs text-neutral-300 shrink-0">Card color</span>
-                <select
-                  value={cardColorCol ?? ''}
-                  onChange={(e) => onCardColorColChange?.(e.target.value)}
-                  className={`${selectCls} text-[10px] text-neutral-400 py-1 px-1.5 flex-1 min-w-0`}
-                >
-                  <option value="">None</option>
-                  {colorColumns.map((col: any) => (
-                    <option key={col.id} value={col.id}>{col.name}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={cardColorCol ?? ''}
+                    onChange={(e) => onCardColorColChange?.(e.target.value)}
+                    className={`${selectCls} text-neutral-400 py-1 px-1.5 w-28 shrink-0 cursor-pointer truncate`}
+                  >
+                    <option value="">None</option>
+                    {colorColumns.map((col: any) => (
+                      <option key={col.id} value={col.id}>{col.name}</option>
+                    ))}
+                  </select>
+                  <span className="w-5 shrink-0" />
+                </div>
               </div>
             )}
 
@@ -746,14 +774,17 @@ export default function DatabasePropertiesSidebar({
                 </button>
                 <div className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-xs text-neutral-300">Property text</span>
-                  <select
-                    value={propertyTextClamp}
-                    onChange={(e) => onPropertyTextClampChange?.(e.target.value as 'truncate' | 'wrap')}
-                    className={`${selectCls} text-[10px] text-neutral-400 py-1 px-1.5`}
-                  >
-                    <option value="truncate">Single line</option>
-                    <option value="wrap">Multi-line</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={propertyTextClamp}
+                      onChange={(e) => onPropertyTextClampChange?.(e.target.value as 'truncate' | 'wrap')}
+                      className={`${selectCls} text-neutral-400 py-1 px-1.5 w-28 cursor-pointer truncate`}
+                    >
+                      <option value="truncate">Single line</option>
+                      <option value="wrap">Multi-line</option>
+                    </select>
+                    <span className="w-5 shrink-0" />
+                  </div>
                 </div>
               </div>
             )}
@@ -813,7 +844,7 @@ export default function DatabasePropertiesSidebar({
                           <select
                             value={filter.columnId}
                             onChange={(e) => updateFilter(filter.id, { columnId: e.target.value })}
-                            className={`${selectCls} flex-1 min-w-0 text-[10px] py-1 px-1.5`}
+                            className={`${selectCls} flex-1 min-w-0`}
                           >
                             {schema.map((col) => (
                               <option key={col.id} value={col.id}>{col.name}</option>
@@ -822,7 +853,7 @@ export default function DatabasePropertiesSidebar({
                           <select
                             value={filter.operator}
                             onChange={(e) => updateFilter(filter.id, { operator: e.target.value as FilterOperator })}
-                            className={`${selectCls} flex-1 min-w-0 text-[10px] py-1 px-1.5`}
+                            className={`${selectCls} flex-1 min-w-0`}
                           >
                             {OPERATORS.map((op) => (
                               <option key={op.value} value={op.value}>{op.label}</option>
@@ -841,7 +872,7 @@ export default function DatabasePropertiesSidebar({
                             value={filter.value}
                             onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
                             placeholder="Value…"
-                            className={`${selectCls} w-full text-xs py-1 px-2 focus:border-neutral-700`}
+                            className={`${selectCls} w-full focus:border-neutral-700`}
                           />
                         )}
                       </div>
@@ -870,7 +901,7 @@ export default function DatabasePropertiesSidebar({
                       <select
                         value={sort.columnId}
                         onChange={(e) => updateSort(sort.id, { columnId: e.target.value })}
-                        className={`${selectCls} flex-1 min-w-0 text-[10px] py-1 px-1.5`}
+                        className={`${selectCls} flex-1 min-w-0`}
                       >
                         {schema.map((col) => (
                           <option key={col.id} value={col.id}>{col.name}</option>
@@ -878,7 +909,7 @@ export default function DatabasePropertiesSidebar({
                       </select>
                       <button
                         onClick={() => updateSort(sort.id, { direction: sort.direction === 'asc' ? 'desc' : 'asc' })}
-                        className={`${selectCls} text-[10px] py-1 px-2 shrink-0 hover:bg-neutral-800 transition-colors`}
+                        className={`${selectCls} shrink-0 hover:bg-neutral-800 transition-colors`}
                       >
                         {sort.direction === 'asc' ? 'A → Z' : 'Z → A'}
                       </button>

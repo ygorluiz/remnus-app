@@ -132,7 +132,7 @@ export default function ViewsBar({
                   onActivate(view.id);
                 }
               }}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px cursor-pointer ${
                 isActive
                   ? 'border-neutral-300 text-neutral-100'
                   : 'border-transparent text-neutral-500 hover:text-neutral-300'
@@ -150,7 +150,7 @@ export default function ViewsBar({
                     if (e.key === 'Escape') setRenamingId(null);
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className="bg-transparent border-b border-neutral-400 outline-none text-neutral-100 text-sm w-24"
+                  className="bg-transparent border-b border-neutral-400 outline-none text-neutral-100 text-sm w-24 cursor-text"
                 />
               ) : (
                 <span>{view.name}</span>
@@ -161,7 +161,7 @@ export default function ViewsBar({
               <div className="absolute top-full left-0 mt-1 w-36 bg-neutral-900 border border-neutral-800 rounded shadow-xl overflow-hidden z-50 py-0 animate-in fade-in duration-100">
                 <button
                   onClick={() => startRename(view)}
-                  className="w-full text-left px-3 py-2 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 transition-colors rounded-none border-b border-neutral-850/60"
+                  className="w-full text-left px-3 py-2 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 transition-colors rounded-none border-b border-neutral-850/60 cursor-pointer"
                 >
                   Rename
                 </button>
@@ -171,7 +171,7 @@ export default function ViewsBar({
                       onDelete(view.id);
                       setMenuOpenId(null);
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-red-400 hover:bg-neutral-800/20 transition-colors rounded-none"
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-red-400 hover:bg-neutral-800/20 transition-colors rounded-none cursor-pointer"
                   >
                     Delete
                   </button>
@@ -185,7 +185,7 @@ export default function ViewsBar({
       <div className="relative ml-0.5" ref={addRef}>
         <button
           onClick={() => setAddOpen((o) => !o)}
-          className="p-2 text-neutral-600 hover:text-neutral-400 transition-colors"
+          className="p-2 text-neutral-600 hover:text-neutral-400 transition-colors cursor-pointer"
           title="Add view"
         >
           <Plus size={14} />
@@ -198,7 +198,7 @@ export default function ViewsBar({
                 onAdd('table');
                 setAddOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none border-b border-neutral-850/60"
+              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none border-b border-neutral-850/60 cursor-pointer"
             >
               <LayoutList size={13} /> Table view
             </button>
@@ -207,7 +207,7 @@ export default function ViewsBar({
                 onAdd('kanban');
                 setAddOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none border-b border-neutral-850/60"
+              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none border-b border-neutral-850/60 cursor-pointer"
             >
               <KanbanSquare size={13} /> Kanban view
             </button>
@@ -216,7 +216,7 @@ export default function ViewsBar({
                 onAdd('calendar');
                 setAddOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none"
+              className="w-full text-left px-3 py-2.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800/20 flex items-center gap-2 transition-colors rounded-none cursor-pointer"
             >
               <CalendarIcon size={13} /> Calendar view
             </button>

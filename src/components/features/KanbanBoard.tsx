@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GripVertical, Settings, Trash2, Plus, Copy } from 'lucide-react';
-import { normalizeOption, getOptionColorByValue, getCardBorderDots } from '@/lib/types/properties';
+import { normalizeOption, getOptionColorByValue, getCardBorderDots, formatDateValue } from '@/lib/types/properties';
 import type { SelectOption } from '@/lib/types/properties';
 import InlineCellEditor from './InlineCellEditor';
 
@@ -89,6 +89,7 @@ export default function KanbanBoard({
 
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
+  const [isGroupDragReady, setIsGroupDragReady] = useState<string | null>(null);
 
   // Card dragging states
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
@@ -218,17 +219,27 @@ export default function KanbanBoard({
         return (
           <div
             key={columnName}
-            draggable={!isUncategorized}
+            draggable={!isUncategorized && isGroupDragReady === columnName}
             onDragStart={(e) => handleGroupDragStart(e, columnName)}
             onDragOver={(e) => handleGroupDragOver(e, columnName)}
             onDrop={(e) => handleGroupDrop(e, columnName)}
-            onDragEnd={handleGroupDragEnd}
+            onDragEnd={() => {
+              handleGroupDragEnd();
+              setIsGroupDragReady(null);
+            }}
+            onMouseLeave={() => setIsGroupDragReady(null)}
             className={`shrink-0 w-68 flex flex-col max-h-full transition-opacity group/col ${
               hasBg ? 'p-3 rounded' : ''
             } ${isDraggingThis ? 'opacity-30' : ''} ${isOver ? 'ring-1 ring-blue-500/40' : ''}`}
             style={groupBgStyle}
           >
             <div
+              onMouseDown={() => {
+                if (!isUncategorized) {
+                  setIsGroupDragReady(columnName);
+                }
+              }}
+              onMouseUp={() => setIsGroupDragReady(null)}
               className={`pb-2 mb-2 flex justify-between items-baseline ${
                 hasBg ? 'border-b border-white/8' : 'border-b border-neutral-800/50'
               } ${!isUncategorized ? 'cursor-grab active:cursor-grabbing' : ''}`}
@@ -381,32 +392,10 @@ export default function KanbanBoard({
                                 })}
                               </span>
                             );
-                          } else if (c.type === 'date' && val) {
-                            const d = new Date(val);
+                          } else if ((c.type === 'date' || c.type === 'datetime') && val) {
                             display = (
                               <span className={`text-neutral-500 ${textClass}`}>
-                                {isNaN(d.getTime())
-                                  ? val
-                                  : d.toLocaleDateString('en-US', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric',
-                                    })}
-                              </span>
-                            );
-                          } else if (c.type === 'datetime' && val) {
-                            const d = new Date(val);
-                            display = (
-                              <span className={`text-neutral-500 ${textClass}`}>
-                                {isNaN(d.getTime())
-                                  ? val
-                                  : d.toLocaleString('en-US', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })}
+                                {formatDateValue(val, c.type as 'date' | 'datetime', c.dateFormat)}
                               </span>
                             );
                           } else {
@@ -450,7 +439,7 @@ export default function KanbanBoard({
               {/* "+ New" Button at the bottom of the group, visible on hover of the column */}
               <button
                 onClick={() => onCreatePage?.(isUncategorized ? {} : { [groupByCol]: columnName })}
-                className="w-full text-left py-1.5 px-2 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/20 rounded transition-colors text-xs font-medium flex items-center gap-1.5 cursor-pointer mt-1 opacity-0 group-hover/col:opacity-100 transition-opacity duration-150 shrink-0"
+                className="w-full text-left py-1.5 px-2 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/20 rounded text-xs font-medium flex items-center gap-1.5 cursor-pointer mt-1 opacity-0 group-hover/col:opacity-100 transition duration-150 shrink-0"
               >
                 <Plus size={13} />
                 <span>New</span>
