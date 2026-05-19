@@ -84,7 +84,6 @@ export async function getActiveWorkspaceId(): Promise<string | null> {
   // Fall back to first accessible workspace
   const accessible = await getWorkspaces();
   if (accessible[0]) {
-    cookieStore.set('remna_workspace_id', accessible[0].id, { path: '/' });
     return accessible[0].id;
   }
 
