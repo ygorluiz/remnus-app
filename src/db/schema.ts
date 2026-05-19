@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const workspaces = sqliteTable('workspaces', {
@@ -50,4 +50,57 @@ export const pages = sqliteTable('pages', {
   iconColor: text('icon_color'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ── Auth tables (matching @auth/drizzle-adapter expected schema) ──────────────
+
+export const users = sqliteTable('user', {
+  id:            text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name:          text('name'),
+  email:         text('email').unique(),
+  emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
+  image:         text('image'),
+  passwordHash:  text('password_hash'),
+  role:          text('role').notNull().default('user'),
+  createdAt:     integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const accounts = sqliteTable('account', {
+  userId:            text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type:              text('type').notNull(),
+  provider:          text('provider').notNull(),
+  providerAccountId: text('providerAccountId').notNull(),
+  refresh_token:     text('refresh_token'),
+  access_token:      text('access_token'),
+  expires_at:        integer('expires_at'),
+  token_type:        text('token_type'),
+  scope:             text('scope'),
+  id_token:          text('id_token'),
+  session_state:     text('session_state'),
+}, (table) => [
+  primaryKey({ columns: [table.provider, table.providerAccountId] }),
+]);
+
+export const sessions = sqliteTable('session', {
+  sessionToken: text('sessionToken').primaryKey(),
+  userId:       text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  expires:      integer('expires', { mode: 'timestamp_ms' }).notNull(),
+});
+
+export const verificationTokens = sqliteTable('verificationToken', {
+  identifier: text('identifier').notNull(),
+  token:      text('token').notNull(),
+  expires:    integer('expires', { mode: 'timestamp_ms' }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.identifier, table.token] }),
+]);
+
+// ── Workspace membership ──────────────────────────────────────────────────────
+
+export const workspaceMembers = sqliteTable('workspace_members', {
+  id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId:      text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role:        text('role').notNull().default('member'), // 'owner' | 'member' | 'viewer'
+  createdAt:   integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });

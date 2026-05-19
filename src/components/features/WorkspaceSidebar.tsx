@@ -13,35 +13,48 @@ import {
   Briefcase,
   MoreHorizontal,
   Copy,
+  LogOut,
+  Shield,
+  Settings,
 } from 'lucide-react';
 import PageIcon from './PageIcon';
 import {
   createWorkspace,
-  deleteWorkspace,
-  renameWorkspace,
   switchWorkspace,
   updateWorkspaceItemIcon,
   updateWorkspaceItemTitle,
   deleteWorkspaceItem,
   duplicateWorkspaceItem,
 } from '@/lib/actions/workspace';
+import { logout } from '@/lib/actions/auth';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 import IconPicker from './IconPicker';
 import TemplatePickerModal from './TemplatePickerModal';
+import WorkspaceSettingsModal from './WorkspaceSettingsModal';
 
 type WorkspaceType = {
   id: string;
   name: string;
 };
 
+type CurrentUser = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  role: string;
+};
+
 export default function WorkspaceSidebar({
   items,
   workspaces,
   activeWorkspace,
+  currentUser,
 }: {
   items: WorkspaceItemRow[];
   workspaces: WorkspaceType[];
   activeWorkspace: WorkspaceType;
+  currentUser: CurrentUser;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -90,8 +103,7 @@ export default function WorkspaceSidebar({
 
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
-  const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(null);
-  const [editingWorkspaceName, setEditingWorkspaceName] = useState('');
+  const [settingsModalWorkspace, setSettingsModalWorkspace] = useState<{ id: string; name: string } | null>(null);
 
   // Expand / collapse states for workspaces (All expanded by default)
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Record<string, boolean>>(() => {
@@ -135,29 +147,6 @@ export default function WorkspaceSidebar({
       setExpandedWorkspaces(prev => ({ ...prev, [id]: true }));
       router.push('/');
     });
-  };
-
-  const handleRenameWorkspace = (id: string) => {
-    const name = editingWorkspaceName.trim();
-    if (!name) return;
-
-    startTransition(async () => {
-      await renameWorkspace(id, name);
-      setEditingWorkspaceId(null);
-    });
-  };
-
-  const handleDeleteWorkspace = (id: string) => {
-    if (confirm('Are you sure you want to delete this workspace and all its contents?')) {
-      startTransition(async () => {
-        const res = await deleteWorkspace(id);
-        if (res && 'error' in res) {
-          alert(res.error);
-        } else {
-          router.push('/');
-        }
-      });
-    }
   };
 
   const handleItemClick = (item: WorkspaceItemRow) => {
@@ -272,71 +261,31 @@ export default function WorkspaceSidebar({
                     {w.name[0]?.toUpperCase() || 'W'}
                   </div>
 
-                  {editingWorkspaceId === w.id ? (
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="text"
-                        value={editingWorkspaceName}
-                        onChange={(e) => setEditingWorkspaceName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameWorkspace(w.id);
-                          if (e.key === 'Escape') setEditingWorkspaceId(null);
-                        }}
-                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-neutral-500"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => handleRenameWorkspace(w.id)}
-                        className="p-1 rounded hover:bg-neutral-700 text-green-400"
-                      >
-                        <Check size={12} />
-                      </button>
-                      <button
-                        onClick={() => setEditingWorkspaceId(null)}
-                        className="p-1 rounded hover:bg-neutral-700 text-neutral-400"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="truncate flex-1 font-medium">{w.name}</span>
-                  )}
+                  <span className="truncate flex-1 font-medium">{w.name}</span>
                 </div>
 
                 {/* Workspace actions on hover */}
-                {editingWorkspaceId !== w.id && (
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover/root:opacity-100 transition-opacity shrink-0 ml-1" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => {
-                        setTemplatePickerWorkspaceId(w.id);
-                        setExpandedWorkspaces(prev => ({ ...prev, [w.id]: true }));
-                      }}
-                      className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
-                      title="New item"
-                    >
-                      <Plus size={12} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingWorkspaceId(w.id);
-                        setEditingWorkspaceName(w.name);
-                      }}
-                      className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
-                      title="Rename workspace"
-                    >
-                      <Edit3 size={12} />
-                    </button>
-                    {workspaces.length > 1 && (
-                      <button
-                        onClick={() => handleDeleteWorkspace(w.id)}
-                        className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-red-400"
-                        title="Delete workspace"
-                      >
-                        <Trash size={12} />
-                      </button>
-                    )}
-                  </div>
-                )}
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/root:opacity-100 transition-opacity shrink-0 ml-1" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => {
+                      setTemplatePickerWorkspaceId(w.id);
+                      setExpandedWorkspaces(prev => ({ ...prev, [w.id]: true }));
+                    }}
+                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
+                    title="New item"
+                  >
+                    <Plus size={12} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsModalWorkspace({ id: w.id, name: w.name });
+                    }}
+                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
+                    title="Workspace settings"
+                  >
+                    <Settings size={12} />
+                  </button>
+                </div>
               </div>
 
               {/* Workspace Children Subtree */}
@@ -540,6 +489,68 @@ export default function WorkspaceSidebar({
           }}
         />
       )}
+
+      {settingsModalWorkspace && (
+        <WorkspaceSettingsModal
+          workspaceId={settingsModalWorkspace.id}
+          workspaceName={settingsModalWorkspace.name}
+          currentUser={currentUser}
+          onClose={() => setSettingsModalWorkspace(null)}
+          onRenamed={(newName) => {
+            setSettingsModalWorkspace(prev => prev ? { ...prev, name: newName } : null);
+            router.refresh();
+          }}
+          onDeleted={() => {
+            router.push('/');
+            router.refresh();
+          }}
+        />
+      )}
+
+      {/* User panel */}
+      <div className="shrink-0 border-t border-neutral-800 px-3 py-2.5 flex items-center gap-2.5 group/user">
+        {/* Avatar */}
+        <div className="shrink-0">
+          {currentUser.image ? (
+            <img
+              src={currentUser.image}
+              alt={currentUser.name ?? 'User'}
+              className="w-7 h-7 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-semibold text-neutral-200">
+              {(currentUser.name ?? currentUser.email ?? 'U')[0].toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        {/* Name + role */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-medium text-neutral-200 truncate">
+              {currentUser.name ?? currentUser.email ?? 'User'}
+            </span>
+            {currentUser.role === 'admin' && (
+              <span className="shrink-0 flex items-center gap-0.5 text-[9px] font-semibold text-blue-400 bg-blue-500/10 px-1 py-0.5 rounded">
+                <Shield size={8} />
+                Admin
+              </span>
+            )}
+          </div>
+          {currentUser.name && currentUser.email && (
+            <p className="text-[10px] text-neutral-500 truncate">{currentUser.email}</p>
+          )}
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={() => logout()}
+          className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors opacity-0 group-hover/user:opacity-100"
+          title="Sign out"
+        >
+          <LogOut size={13} />
+        </button>
+      </div>
     </div>
   );
 }
