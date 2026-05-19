@@ -5,7 +5,7 @@ import { auth } from '@/auth';
 import bcrypt from 'bcryptjs';
 import { db } from '@/db';
 import { users, workspaceMembers, workspaces, accounts } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSeedWorkspace } from '@/lib/seed';
@@ -38,9 +38,9 @@ export async function registerUser(_prevState: unknown, formData: FormData) {
   // Seed default workspace with tasks database and welcome page
   await createSeedWorkspace(id, name || email.split('@')[0]);
 
-  // Promote to admin and claim orphaned workspaces if this is the first user
-  const allUsers = await db.select({ id: users.id }).from(users);
-  if (allUsers.length === 1) {
+  // Promote to admin and claim orphaned workspaces if this is the first real (non-demo) user
+  const allRealUsers = await db.select({ id: users.id }).from(users).where(ne(users.role, 'demo'));
+  if (allRealUsers.length === 1) {
     await db.update(users).set({ role: 'admin' }).where(eq(users.id, id));
     const allWorkspaces = await db.select({ id: workspaces.id }).from(workspaces);
     for (const ws of allWorkspaces) {

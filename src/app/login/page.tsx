@@ -3,9 +3,11 @@ import { useActionState } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { loginWithCredentials } from '@/lib/actions/auth';
+import { loginAsDemo } from '@/lib/actions/demo';
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginWithCredentials, null);
+  const [demoState, demoFormAction, isDemoPending] = useActionState(loginAsDemo, null);
 
   return (
     <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
@@ -85,6 +87,31 @@ export default function LoginPage() {
             Create one
           </Link>
         </p>
+
+        {/* Demo mode */}
+        <div className="mt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 border-t border-neutral-800" />
+            <span className="text-xs text-neutral-600">or</span>
+            <div className="flex-1 border-t border-neutral-800" />
+          </div>
+          <form action={demoFormAction}>
+            <button
+              type="submit"
+              disabled={isDemoPending}
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50 border border-neutral-800 text-neutral-400 hover:text-neutral-200 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors"
+            >
+              <span className="text-base">🧪</span>
+              {isDemoPending ? 'Loading demo…' : 'Try Demo'}
+            </button>
+          </form>
+          {demoState?.error && (
+            <p className="text-xs text-red-400 text-center mt-2">{demoState.error}</p>
+          )}
+          <p className="text-center text-xs text-neutral-700 mt-2">
+            Explore without signing up — changes reset each session
+          </p>
+        </div>
       </div>
     </div>
   );

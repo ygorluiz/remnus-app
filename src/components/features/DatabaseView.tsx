@@ -202,7 +202,7 @@ export default function DatabaseView({
 
 
   type WidthMode = 'narrow' | 'wide' | 'full';
-  const [widthMode, setWidthMode] = useState<WidthMode>('narrow');
+  const [widthMode, setWidthMode] = useState<WidthMode>('full');
 
   useEffect(() => {
     const saved = localStorage.getItem(`db-width-${database.id}`) as WidthMode | null;

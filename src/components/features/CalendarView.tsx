@@ -328,8 +328,8 @@ export default function CalendarView({
                       isToday
                         ? 'bg-blue-600 text-white font-bold'
                         : isCurrentMonth
-                        ? 'text-neutral-400'
-                        : 'text-neutral-600'
+                        ? 'text-neutral-200'
+                        : 'text-neutral-500'
                     }`}
                   >
                     {date.getDate()}
@@ -451,7 +451,7 @@ export default function CalendarView({
                       )}
 
                       {/* Page Title */}
-                      <h4 className="text-sm text-neutral-200 group-hover:text-neutral-100 font-medium leading-snug wrap-break-word whitespace-normal pr-8 mb-1 flex items-center gap-1 overflow-visible">
+                      <h4 className={`text-sm text-neutral-100 group-hover:text-neutral-50 font-medium leading-snug pr-8 mb-1 flex items-center gap-1 ${propertyTextClamp === 'truncate' ? 'overflow-hidden' : 'wrap-break-word whitespace-normal overflow-visible'}`}>
                         <div className="relative shrink-0 select-none">
                           <button
                             ref={(el) => { itemRefs.current[page.id] = el; }}
@@ -481,7 +481,7 @@ export default function CalendarView({
                             />
                           )}
                         </div>
-                        <span>{page.properties['title'] || 'Untitled'}</span>
+                        <span className={propertyTextClamp === 'truncate' ? 'truncate min-w-0' : ''}>{page.properties['title'] || 'Untitled'}</span>
                       </h4>
 
                       {/* Card properties */}
@@ -518,13 +518,13 @@ export default function CalendarView({
                               );
                             } else if ((c.type === 'date' || c.type === 'datetime') && val) {
                               display = (
-                                <span className={`text-neutral-500 text-[9px] ${textClass}`}>
+                                <span className={`text-neutral-100 text-[9px] ${textClass}`}>
                                   {formatDateValue(val, c.type as 'date' | 'datetime', c.dateFormat)}
                                 </span>
                               );
                             } else {
                               display = (
-                                <span className={`text-neutral-500 text-[9px] ${textClass}`}>{val !== undefined && val !== null ? String(val) : ''}</span>
+                                <span className={`text-neutral-100 text-[9px] ${textClass}`}>{val !== undefined && val !== null ? String(val) : ''}</span>
                               );
                             }
 
@@ -534,7 +534,7 @@ export default function CalendarView({
                                  className={`text-[9px] leading-relaxed flex gap-1 ${propertyTextClamp === 'wrap' ? 'items-start' : 'items-center'}`}
                                >
                                  {showPropertyLabels && (
-                                   <span className="text-neutral-600 shrink-0">{c.name}:</span>
+                                   <span className="text-neutral-300 shrink-0">{c.name}:</span>
                                  )}
                                  {display}
                                </div>

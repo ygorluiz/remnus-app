@@ -19,7 +19,7 @@ export const authConfig: NextAuthConfig = {
       if (isApiAuth || isPublicAsset) return true;
 
       if (isAuthRoute) {
-        // Logged-in users visiting /login are sent to home
+        // Logged-in users visiting /login or /register are sent to home
         if (isLoggedIn) return Response.redirect(new URL('/', nextUrl));
         return true;
       }

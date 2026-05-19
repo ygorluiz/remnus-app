@@ -44,7 +44,7 @@ export default function PageEditor({
   const iconButtonRef = useRef<HTMLButtonElement>(null);
 
   type WidthMode = 'narrow' | 'wide' | 'full';
-  const [widthMode, setWidthMode] = useState<WidthMode>('narrow');
+  const [widthMode, setWidthMode] = useState<WidthMode>('full');
 
   useEffect(() => {
     const saved = localStorage.getItem(`page-width-${initialPage.id}`) as WidthMode | null;

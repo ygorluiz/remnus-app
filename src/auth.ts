@@ -5,7 +5,7 @@ import type { DefaultSession } from 'next-auth';
 import bcrypt from 'bcryptjs';
 import { db } from '@/db';
 import { users, accounts, sessions, verificationTokens, workspaces, workspaceMembers } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, ne } from 'drizzle-orm';
 import { authConfig } from './auth.config';
 import { createSeedWorkspace } from '@/lib/seed';
 
@@ -95,9 +95,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Seed default workspace with tasks database and welcome page
       await createSeedWorkspace(user.id, user.name);
 
-      // Count total users; if this is the first one, promote to admin and claim orphaned workspaces
-      const allUsers = await db.select({ id: users.id }).from(users);
-      if (allUsers.length !== 1) return;
+      // Count real (non-demo) users; if this is the first one, promote to admin and claim orphaned workspaces
+      const allRealUsers = await db.select({ id: users.id }).from(users).where(ne(users.role, 'demo'));
+      if (allRealUsers.length !== 1) return;
 
       await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
 

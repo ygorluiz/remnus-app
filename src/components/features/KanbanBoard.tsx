@@ -258,10 +258,10 @@ export default function KanbanBoard({
                 hasBg ? 'border-b border-white/8' : 'border-b border-neutral-800/50'
               } ${!isUncategorized ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-              <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-400">
                 {isUncategorized ? 'No Status' : columnName}
               </h3>
-              <span className="text-xs text-neutral-700 tabular-nums">
+              <span className="text-xs text-neutral-500 tabular-nums">
                 {groupedPages[columnName].length}
               </span>
             </div>
@@ -274,7 +274,7 @@ export default function KanbanBoard({
               }`}
             >
               {groupedPages[columnName].length === 0 ? (
-                <div className="text-xs text-neutral-700 py-4">No pages</div>
+                <div className="text-xs text-neutral-500 py-4">No pages</div>
               ) : (
                 groupedPages[columnName].map((page) => {
                   const colorColSchema = cardColorCol ? schema.find((c) => c.id === cardColorCol) : null;
@@ -370,7 +370,7 @@ export default function KanbanBoard({
                       </>
                     )}
 
-                    <h4 className="text-base font-medium text-neutral-200 group-hover:text-neutral-100 transition-colors wrap-break-word whitespace-normal pr-12 flex items-center gap-1.5 overflow-visible">
+                    <h4 className={`text-sm font-medium text-neutral-100 group-hover:text-neutral-50 transition-colors pr-8 flex items-center gap-1.5 ${propertyTextClamp === 'truncate' ? 'overflow-hidden' : 'wrap-break-word whitespace-normal overflow-visible'}`}>
                       <div className="relative shrink-0 select-none">
                         <button
                           ref={(el) => { itemRefs.current[page.id] = el; }}
@@ -400,7 +400,7 @@ export default function KanbanBoard({
                           />
                         )}
                       </div>
-                      <span>{page.properties['title'] || 'Untitled'}</span>
+                      <span className={propertyTextClamp === 'truncate' ? 'truncate min-w-0' : ''}>{page.properties['title'] || 'Untitled'}</span>
                     </h4>
 
                     <div className="mt-1.5 flex flex-col gap-1.5">
@@ -437,13 +437,13 @@ export default function KanbanBoard({
                             );
                           } else if ((c.type === 'date' || c.type === 'datetime') && val) {
                             display = (
-                              <span className={`text-neutral-500 ${textClass}`}>
+                              <span className={`text-neutral-100 ${textClass}`}>
                                 {formatDateValue(val, c.type as 'date' | 'datetime', c.dateFormat)}
                               </span>
                             );
                           } else {
                             display = (
-                              <span className={`text-neutral-500 ${textClass}`}>{val !== undefined && val !== null ? String(val) : ''}</span>
+                              <span className={`text-neutral-100 ${textClass}`}>{val !== undefined && val !== null ? String(val) : ''}</span>
                             );
                           }
 
@@ -459,7 +459,7 @@ export default function KanbanBoard({
                               className={`text-xs leading-relaxed flex gap-1.5 ${propertyTextClamp === 'wrap' ? 'items-start' : 'items-center'} overflow-visible relative cursor-pointer`}
                             >
                               {showPropertyLabels && (
-                                <span className="text-neutral-700 shrink-0">{c.name}</span>
+                                <span className="text-neutral-300 shrink-0">{c.name}</span>
                               )}
                               {isEditing ? (
                                 <InlineCellEditor

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { auth } from '@/auth';
+import { auth, signOut } from '@/auth';
 import { getActiveWorkspaceId, getAllWorkspaceItems, getWorkspaces } from '@/lib/actions/workspace';
 import WorkspaceSidebar from '@/components/features/WorkspaceSidebar';
 
@@ -61,6 +61,28 @@ export default async function RootLayout({
           />
         </aside>
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-850">
+          {session.user.role === 'demo' && (
+            <div className="shrink-0 flex items-center justify-between gap-4 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20">
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <span className="font-semibold">Demo Mode</span>
+                <span className="text-amber-500/70">—</span>
+                <span className="text-amber-400/80">Changes are temporary and reset for each visitor.</span>
+              </div>
+              <form
+                action={async () => {
+                  'use server';
+                  await signOut({ redirectTo: '/register' });
+                }}
+              >
+                <button
+                  type="submit"
+                  className="shrink-0 text-xs font-medium text-amber-300 hover:text-amber-100 transition-colors"
+                >
+                  Create a free account →
+                </button>
+              </form>
+            </div>
+          )}
           {children}
         </main>
       </body>

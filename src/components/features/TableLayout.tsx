@@ -432,7 +432,7 @@ export default function TableLayout({
         <table
           className="text-left text-sm border-collapse"
           style={{
-            tableLayout: 'fixed',
+            tableLayout: hasAnyCustomWidth ? 'fixed' : 'auto',
             width: hasAnyCustomWidth ? totalCalculatedWidth : '100%',
             minWidth: '100%'
           }}
@@ -469,7 +469,7 @@ export default function TableLayout({
                         title="Click for options (sort, filter, hide)"
                       >
                         {getPropertyIcon(col.type)}
-                        <span className="truncate text-neutral-600 group-hover:text-neutral-400 text-xs uppercase tracking-wider transition-colors">
+                        <span className="truncate text-neutral-400 group-hover:text-neutral-200 text-xs uppercase tracking-wider transition-colors">
                           {col.name}
                         </span>
                         {(filters ?? []).some((f) => f.columnId === col.id) && (
@@ -606,7 +606,7 @@ export default function TableLayout({
                                 e.stopPropagation();
                                 setEditingCell({ pageId: page.id, colId: col.id });
                               }}
-                              className="font-medium text-neutral-200 hover:text-white cursor-text hover:underline truncate"
+                              className="font-medium text-neutral-100 hover:text-white cursor-text hover:underline truncate"
                             >
                               {val || 'Untitled'}
                             </span>
@@ -620,7 +620,7 @@ export default function TableLayout({
                               </span>
                             );
                           })() : (
-                            <span className="text-neutral-700">—</span>
+                            <span className="text-neutral-500">—</span>
                           )
                         ) : col.type === 'multi_select' ? (
                           <span className="flex flex-wrap gap-1">
@@ -634,13 +634,13 @@ export default function TableLayout({
                                 );
                               })
                             ) : (
-                              <span className="text-neutral-700">—</span>
+                              <span className="text-neutral-500">—</span>
                             )}
                           </span>
                         ) : (col.type === 'date' || col.type === 'datetime') ? (
-                          <span className="text-xs text-neutral-400">{val ? formatDateValue(val, col.type, col.dateFormat) : '—'}</span>
+                          <span className="text-xs text-neutral-100">{val ? formatDateValue(val, col.type, col.dateFormat) : '—'}</span>
                         ) : (
-                          <span className="text-neutral-500">{val || ''}</span>
+                          <span className="text-neutral-100">{val || ''}</span>
                         )}
                       </td>
                     );
