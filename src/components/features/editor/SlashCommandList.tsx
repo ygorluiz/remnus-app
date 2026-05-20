@@ -1,6 +1,7 @@
 'use client';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { CheckSquare, Heading1, Heading2, Heading3, List, ListOrdered, Minus, Quote, Code2, Table } from 'lucide-react';
+import { CheckSquare, Heading1, Heading2, Heading3, List, ListOrdered, Minus, Quote, Code2, Table, FileText, Database } from 'lucide-react';
+import { createStandalonePage, createWorkspaceDatabase } from '@/lib/actions/workspace';
 
 export type SlashCommandItem = {
   id: string;
@@ -9,6 +10,41 @@ export type SlashCommandItem = {
   icon: React.ReactNode;
   command: (props: { editor: any; range: any }) => void;
 };
+
+export function buildChildCommands(workspaceId: string, parentId: string): SlashCommandItem[] {
+  return [
+    {
+      id: 'child-page',
+      label: 'Page',
+      description: 'Embed a nested page',
+      icon: <FileText size={15} />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).run();
+        createStandalonePage(workspaceId, 'Untitled', parentId).then(({ itemId }) => {
+          editor.commands.insertContent({
+            type: 'childBlock',
+            attrs: { itemId, title: 'Untitled', itemType: 'page', icon: null, iconColor: null },
+          });
+        });
+      },
+    },
+    {
+      id: 'child-database',
+      label: 'Database',
+      description: 'Embed a nested database',
+      icon: <Database size={15} />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).run();
+        createWorkspaceDatabase(workspaceId, 'Untitled', { parentId }).then(result => {
+          editor.commands.insertContent({
+            type: 'childBlock',
+            attrs: { itemId: result.dbId, title: 'Untitled', itemType: 'database', icon: null, iconColor: null },
+          });
+        });
+      },
+    },
+  ];
+}
 
 export const SLASH_COMMANDS: SlashCommandItem[] = [
   {
@@ -124,25 +160,31 @@ const SlashCommandList = forwardRef<{ onKeyDown: (props: { event: KeyboardEvent 
 
     if (!items.length) return null;
 
+    const hasChildItems = items.some(i => i.id.startsWith('child-'));
+
     return (
       <div className="min-w-[220px] bg-neutral-900 border border-neutral-800 rounded-md shadow-xl overflow-hidden py-1">
-        {items.map((item, index) => (
-          <button
-            key={item.id}
-            onClick={() => command(item)}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
-              index === selectedIndex
-                ? 'bg-neutral-800 text-neutral-100'
-                : 'text-neutral-400 hover:bg-neutral-800/60 hover:text-neutral-200'
-            }`}
-          >
-            <span className="text-neutral-500 shrink-0">{item.icon}</span>
-            <div>
-              <div className="text-sm font-medium leading-none mb-0.5">{item.label}</div>
-              <div className="text-xs text-neutral-600">{item.description}</div>
+        {items.map((item, index) => {
+          // Separator above the first child-block command (Page/Database at the bottom)
+          const isFirstChild = hasChildItems && item.id.startsWith('child-') && (index === 0 || !items[index - 1].id.startsWith('child-'));
+          return (
+            <div key={item.id}>
+              {isFirstChild && <div className="border-t border-neutral-800 my-1" />}
+              <button
+                onClick={() => command(item)}
+                title={item.description}
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors ${
+                  index === selectedIndex
+                    ? 'bg-neutral-800 text-neutral-100'
+                    : 'text-neutral-400 hover:bg-neutral-800/60 hover:text-neutral-200'
+                }`}
+              >
+                <span className="text-neutral-500 shrink-0">{item.icon}</span>
+                <span className="text-sm font-medium leading-none">{item.label}</span>
+              </button>
             </div>
-          </button>
-        ))}
+          );
+        })}
       </div>
     );
   }

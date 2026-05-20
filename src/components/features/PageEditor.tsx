@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { updatePageContent, updatePageProperties, duplicatePage, deletePage, updatePageIcon } from '@/lib/actions/page';
 import { ArrowLeft, X, ChevronDown, MoreHorizontal, Trash2, Copy, Smile, ArrowLeftRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -7,8 +7,8 @@ import Link from 'next/link';
 import BlockEditor from '@/components/features/editor/BlockEditor';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
-import SubItemsPanel from './SubItemsPanel';
 import SaveStatus, { type SaveState } from './SaveStatus';
+import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 import {
   type SelectOption,
   normalizeOption,
@@ -30,12 +30,14 @@ export default function PageEditor({
   isPeek = false,
   onClose,
   onPageUpdated,
+  subItems,
 }: {
   database: any;
   initialPage: any;
   isPeek?: boolean;
   onClose?: () => void;
   onPageUpdated?: (updatedPage: any) => void;
+  subItems?: WorkspaceItemRow[];
 }) {
   const [properties, setProperties] = useState<Record<string, any>>(initialPage.properties || {});
   const [icon, setIcon] = useState<string | null>(initialPage.icon);
@@ -104,19 +106,23 @@ export default function PageEditor({
     }
   }, [pageTitle, isPeek]);
 
-  const handleContentChange = useMemo(
-    () =>
-      debounce((md: string) => {
-        setSaveState('saving');
-        updatePageContent(initialPage.id, md)
-          .then(() => setSaveState('saved'))
-          .catch(() => setSaveState('error'));
-        if (onPageUpdated) {
-          onPageUpdated({ ...initialPage, properties, content: md });
-        }
-      }, 1000),
+  const saveContent = useCallback(async (md: string) => {
+    setSaveState('saving');
+    try {
+      await updatePageContent(initialPage.id, md);
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
+    }
+    if (onPageUpdated) {
+      onPageUpdated({ ...initialPage, properties, content: md });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [initialPage.id]
+  }, [initialPage.id]);
+
+  const handleContentChange = useMemo(
+    () => debounce(saveContent, 1000),
+    [saveContent]
   );
 
   // Debounced save for free-text and number fields
@@ -399,15 +405,16 @@ export default function PageEditor({
         })}
       </div>
 
-      {/* Sub-items Panel */}
-      <SubItemsPanel parentId={initialPage.id} workspaceId={database.workspaceId} />
-
       {/* Content Editor */}
       <BlockEditor
         key={initialPage.id}
         initialContent={initialPage.content || ''}
         onChange={handleContentChange}
         placeholder="Press '/' for commands or start writing..."
+        workspaceId={database.workspaceId}
+        parentId={initialPage.id}
+        initialSubItems={subItems}
+        onImmediateSave={saveContent}
       />
     </div>
   );

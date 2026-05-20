@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
@@ -12,6 +12,8 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import BubbleMenuBar from './BubbleMenuBar';
 import { SlashCommand } from './SlashCommandMenu';
+import { ChildBlock } from './ChildBlockExtension';
+import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timer: ReturnType<typeof setTimeout>;
@@ -24,14 +26,56 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
 type Props = {
   initialContent: string;
   onChange: (markdown: string) => void;
+  onImmediateSave?: (markdown: string) => void;
   placeholder?: string;
+  workspaceId?: string;
+  parentId?: string;
+  initialSubItems?: WorkspaceItemRow[];
 };
 
 // Block-level markdown patterns that HTML clipboard cannot reliably represent.
 const BLOCK_MARKDOWN_RE = /^#{1,6} |^[-*+] |^\d+\. |^> |^```|^\|/m;
 
-export default function BlockEditor({ initialContent, onChange, placeholder }: Props) {
+function buildInitialContent(markdown: string, subItems: WorkspaceItemRow[]): string {
+  if (!subItems.length) return markdown;
+
+  // Find which item IDs are already serialized in the markdown
+  const inMarkdown = new Set<string>();
+  const idRe = /data-cb-id="([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = idRe.exec(markdown)) !== null) inMarkdown.add(m[1]);
+
+  const missing = subItems.filter(i => !inMarkdown.has(i.id));
+  if (!missing.length) return markdown;
+
+  // Prepend any items that weren't saved yet (e.g. debounce didn't fire before navigation)
+  const blocks = missing
+    .map(item => {
+      const safeTitle = (item.title || '').replace(/"/g, '&quot;');
+      return `<div data-cb-id="${item.id}" data-cb-type="${item.type}" data-cb-title="${safeTitle}" data-cb-icon="${item.icon || ''}" data-cb-iconcolor="${item.iconColor || ''}"></div>`;
+    })
+    .join('\n\n');
+
+  return blocks + (markdown ? '\n\n' + markdown : '');
+}
+
+export default function BlockEditor({
+  initialContent,
+  onChange,
+  onImmediateSave,
+  placeholder,
+  workspaceId,
+  parentId,
+  initialSubItems,
+}: Props) {
   const editorRef = useRef<any>(null);
+
+  const computedInitial = useMemo(
+    () => buildInitialContent(initialContent, initialSubItems ?? []),
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -53,9 +97,17 @@ export default function BlockEditor({ initialContent, onChange, placeholder }: P
       TableRow,
       TableCell,
       TableHeader,
-      SlashCommand,
+      ChildBlock.configure({
+        workspaceId: workspaceId ?? null,
+        parentId: parentId ?? null,
+        onImmediateSave: onImmediateSave ?? null,
+      }),
+      SlashCommand.configure({
+        workspaceId: workspaceId ?? null,
+        parentId: parentId ?? null,
+      }),
     ],
-    content: initialContent,
+    content: computedInitial,
     contentType: 'markdown',
     onUpdate: ({ editor }) => {
       const md = (editor as any).getMarkdown();
@@ -71,11 +123,9 @@ export default function BlockEditor({ initialContent, onChange, placeholder }: P
         const { selection } = state;
         const { $from, empty } = selection;
 
-        // Only intercept when cursor is at the very start of an empty paragraph
         if (!empty || $from.parentOffset !== 0) return false;
         if ($from.parent.type.name !== 'paragraph' || $from.parent.content.size !== 0) return false;
 
-        // If the node immediately before this paragraph is an hr, delete only the hr
         const pos = $from.before($from.depth);
         if (pos === 0) return false;
         const nodeBefore = state.doc.resolve(pos).nodeBefore;
@@ -93,7 +143,6 @@ export default function BlockEditor({ initialContent, onChange, placeholder }: P
         if (!ed) return false;
 
         try {
-          // editor.markdown is set by @tiptap/markdown and exposes parse()
           const manager: any = (ed as any).markdown;
           if (!manager?.parse) return false;
 

@@ -116,7 +116,7 @@ export async function createWorkspace(name: string) {
 
   const cookieStore = await cookies();
   cookieStore.set('remna_workspace_id', id, { path: '/' });
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { id };
 }
 
@@ -140,7 +140,7 @@ export async function deleteWorkspace(id: string) {
     }
   }
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { success: true };
 }
 
@@ -150,7 +150,7 @@ export async function renameWorkspace(id: string, name: string) {
     .set({ name: name.trim() || 'Untitled Workspace', updatedAt: new Date() })
     .where(eq(workspaces.id, id));
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { success: true };
 }
 
@@ -158,7 +158,7 @@ export async function switchWorkspace(workspaceId: string) {
   await assertWorkspaceAccess(workspaceId);
   const cookieStore = await cookies();
   cookieStore.set('remna_workspace_id', workspaceId, { path: '/' });
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { success: true };
 }
 
@@ -257,7 +257,7 @@ export async function createStandalonePage(
     content: options?.initialContent ?? '',
   });
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { itemId, pageId };
 }
 
@@ -293,7 +293,7 @@ export async function createWorkspaceDatabase(
     views: options?.views ?? null,
   });
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { itemId, dbId };
 }
 
@@ -328,7 +328,7 @@ export async function updateWorkspaceItemTitle(itemId: string, title: string) {
     .set({ name: title, updatedAt: new Date() })
     .where(eq(databases.itemId, itemId));
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function getDatabaseByItemId(itemId: string) {
@@ -347,7 +347,7 @@ export async function updateWorkspaceItemIcon(itemId: string, icon: string | nul
     .set({ icon, iconColor, updatedAt: new Date() })
     .where(eq(workspaceItems.id, itemId));
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function deleteWorkspaceItem(itemId: string) {
@@ -357,7 +357,7 @@ export async function deleteWorkspaceItem(itemId: string) {
   await assertWorkspaceAccess(item[0].workspaceId);
 
   await deleteWorkspaceItemRecursive(itemId, item[0].type);
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function checkItemHasContent(itemId: string): Promise<boolean> {
@@ -489,11 +489,11 @@ export async function duplicateWorkspaceItem(itemId: string) {
       itemId: newItemId,
       content: sp[0]?.content ?? '',
     });
-    revalidatePath('/');
+    revalidatePath('/', 'layout');
     return { type: 'page' as const, itemId: newItemId };
   } else {
     const dbRow = await db.select().from(databases).where(eq(databases.itemId, itemId));
-    if (!dbRow[0]) { revalidatePath('/'); return null; }
+    if (!dbRow[0]) { revalidatePath('/', 'layout'); return null; }
 
     const newDbId = crypto.randomUUID();
     await db.insert(databases).values({
@@ -518,7 +518,7 @@ export async function duplicateWorkspaceItem(itemId: string) {
       });
     }
 
-    revalidatePath('/');
+    revalidatePath('/', 'layout');
     return { type: 'database' as const, dbId: newDbId };
   }
 }
@@ -537,7 +537,7 @@ export async function updateWorkspacesOrder(workspaceIds: string[]) {
     }
     await db.update(workspaces).set({ sortOrder: i }).where(eq(workspaces.id, wsId));
   }
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function updateWorkspaceItemsOrder(itemIds: string[]) {
@@ -562,7 +562,7 @@ export async function updateWorkspaceItemsOrder(itemIds: string[]) {
       await tx.update(workspaceItems).set({ sortOrder: i }).where(eq(workspaceItems.id, itemIds[i]));
     }
   });
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function moveWorkspaceItemToWorkspace(itemId: string, targetWorkspaceId: string, itemIdsOrder: string[]) {
@@ -579,7 +579,7 @@ export async function moveWorkspaceItemToWorkspace(itemId: string, targetWorkspa
     await db.update(workspaceItems).set({ sortOrder: i }).where(eq(workspaceItems.id, id));
   }
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function getAdminWorkspacesOverview() {
@@ -629,6 +629,6 @@ export async function adminDeleteWorkspace(workspaceId: string) {
   if (user.role !== 'admin') throw new Error('Admin access required');
 
   await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { success: true };
 }

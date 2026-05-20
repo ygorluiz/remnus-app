@@ -263,7 +263,10 @@ button {
   pointer-events: none;
 }
 
-/* ProseMirror selection */
+/* ProseMirror selection — suppress outline on React NodeViews (child blocks) */
 .prose-editor .ProseMirror-selectednode {
   outline: 2px solid var(--color-neutral-700);
+}
+.prose-editor .ProseMirror-selectednode[data-node-view-wrapper] {
+  outline: none;
 }

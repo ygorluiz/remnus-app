@@ -1,13 +1,14 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+
 import Link from 'next/link';
 import { ChevronLeft, ArrowLeftRight } from 'lucide-react';
 import { updateStandalonePageContent, updateWorkspaceItemTitle, updateWorkspaceItemIcon } from '@/lib/actions/workspace';
 import BlockEditor from '@/components/features/editor/BlockEditor';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
-import SubItemsPanel from './SubItemsPanel';
 import SaveStatus, { type SaveState } from './SaveStatus';
+import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timer: ReturnType<typeof setTimeout>;
@@ -17,10 +18,18 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   };
 }
 
-type Item = { id: string; workspaceId: string; title: string; icon?: string | null; iconColor?: string | null };
+type Item = { id: string; workspaceId: string; title: string; parentId?: string | null; icon?: string | null; iconColor?: string | null };
 type Page = { id: string; content: string };
 
-export default function StandalonePageEditor({ item, page }: { item: Item; page: Page }) {
+export default function StandalonePageEditor({
+  item,
+  page,
+  subItems,
+}: {
+  item: Item;
+  page: Page;
+  subItems?: WorkspaceItemRow[];
+}) {
   const [title, setTitle] = useState(item.title);
   const savedTitle = useRef(item.title);
   const [icon, setIcon] = useState(item.icon);
@@ -64,14 +73,19 @@ export default function StandalonePageEditor({ item, page }: { item: Item; page:
     document.title = `${title || 'Untitled'} | Remna`;
   }, [title]);
 
+  const saveContent = useCallback(async (md: string) => {
+    setSaveState('saving');
+    try {
+      await updateStandalonePageContent(item.id, md);
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
+    }
+  }, [item.id]);
+
   const handleContentChange = useMemo(
-    () => debounce((md: string) => {
-      setSaveState('saving');
-      updateStandalonePageContent(item.id, md)
-        .then(() => setSaveState('saved'))
-        .catch(() => setSaveState('error'));
-    }, 1000),
-    [item.id]
+    () => debounce(saveContent, 1000),
+    [saveContent]
   );
 
   const containerClass =
@@ -82,9 +96,12 @@ export default function StandalonePageEditor({ item, page }: { item: Item; page:
   return (
     <div className={containerClass}>
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-300 transition-colors">
+        <Link
+          href={item.parentId ? `/page/${item.parentId}` : '/'}
+          className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
+        >
           <ChevronLeft size={14} />
-          Workspace
+          {item.parentId ? 'Back' : 'Workspace'}
         </Link>
         <div className="flex items-center gap-3">
           <SaveStatus state={saveState} />
@@ -142,13 +159,15 @@ export default function StandalonePageEditor({ item, page }: { item: Item; page:
         </div>
       </div>
 
-      <SubItemsPanel parentId={item.id} workspaceId={item.workspaceId} />
-
       <BlockEditor
         key={page.id}
         initialContent={page.content}
         onChange={handleContentChange}
         placeholder="Start writing..."
+        workspaceId={item.workspaceId}
+        parentId={item.id}
+        initialSubItems={subItems}
+        onImmediateSave={saveContent}
       />
     </div>
   );

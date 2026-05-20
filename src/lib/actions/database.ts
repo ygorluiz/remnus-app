@@ -40,7 +40,7 @@ export async function createDatabase(name: string) {
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) throw new Error('No active workspace');
   const { dbId } = await createWorkspaceDatabase(workspaceId, name);
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return dbId;
 }
 
