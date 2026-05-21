@@ -228,7 +228,13 @@
     "operatorGreaterOrEqual": "≥",
     "operatorLessOrEqual": "≤",
     "sortAscending": "Artan",
-    "sortDescending": "Azalan"
+    "sortDescending": "Azalan",
+    "settings": "Ayarlar",
+    "new": "Yeni",
+    "toggleOptions": "Seçenekleri değiştir",
+    "openInFullPage": "Tam sayfada aç",
+    "duplicatePage": "Sayfayı çoğalt",
+    "deletePageConfirm": "Bu sayfayı silmek istediğinizden emin misiniz?"
   },
 
   "Editor": {

@@ -228,7 +228,13 @@
     "operatorGreaterOrEqual": "≥",
     "operatorLessOrEqual": "≤",
     "sortAscending": "Croissant",
-    "sortDescending": "Décroissant"
+    "sortDescending": "Décroissant",
+    "settings": "Paramètres",
+    "new": "Nouveau",
+    "toggleOptions": "Activer/désactiver les options",
+    "openInFullPage": "Ouvrir en pleine page",
+    "duplicatePage": "Dupliquer la page",
+    "deletePageConfirm": "Êtes-vous sûr de vouloir supprimer cette page ?"
   },
 
   "Editor": {

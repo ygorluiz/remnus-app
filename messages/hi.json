@@ -228,7 +228,13 @@
     "operatorGreaterOrEqual": "≥",
     "operatorLessOrEqual": "≤",
     "sortAscending": "आरोही",
-    "sortDescending": "अवरोही"
+    "sortDescending": "अवरोही",
+    "settings": "सेटिंग्स",
+    "new": "नया",
+    "toggleOptions": "विकल्प टॉगल करें",
+    "openInFullPage": "पूरे पृष्ठ में खोलें",
+    "duplicatePage": "पृष्ठ की प्रतिलिपि बनाएँ",
+    "deletePageConfirm": "क्या आप वाकई इस पृष्ठ को हटाना चाहते हैं?"
   },
 
   "Editor": {

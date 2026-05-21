@@ -38,6 +38,13 @@ import TemplatePickerModal from './TemplatePickerModal';
 import WorkspaceSettingsModal from './WorkspaceSettingsModal';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 
+function isDescendant(items: WorkspaceItemRow[], targetId: string, ancestorId: string): boolean {
+  const target = items.find(i => i.id === targetId);
+  if (!target?.parentId) return false;
+  if (target.parentId === ancestorId) return true;
+  return isDescendant(items, target.parentId, ancestorId);
+}
+
 type WorkspaceType = {
   id: string;
   name: string;
@@ -310,6 +317,7 @@ export default function WorkspaceSidebar({
 
   const handleItemDragOver = (e: React.DragEvent, id: string, workspaceId: string) => {
     if (!draggedItemId || draggedItemId === id) return;
+    if (isDescendant(localItems, id, draggedItemId)) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -330,6 +338,7 @@ export default function WorkspaceSidebar({
     e.stopPropagation();
     setDragOverItemId(null);
     if (!draggedItemId || draggedItemId === targetId) return;
+    if (isDescendant(localItems, targetId, draggedItemId)) return;
 
     const draggedItem = localItems.find(i => i.id === draggedItemId);
     const targetItem = localItems.find(i => i.id === targetId);
@@ -644,7 +653,7 @@ export default function WorkspaceSidebar({
                 onDragOver={(e) => handleWorkspaceItemDragOverRoot(e, w.id)}
                 onDragLeave={handleWorkspaceItemDragLeaveRoot}
                 onDrop={(e) => handleWorkspaceItemDropOnRoot(e, w.id)}
-                className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-sm transition-all group/root cursor-grab active:cursor-grabbing ${
+                className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-sm transition-all group/root cursor-pointer ${
                   isCurrentActive
                     ? 'bg-neutral-850 text-white font-medium shadow-sm'
                     : 'text-neutral-400 hover:bg-neutral-850/50 hover:text-neutral-200'
@@ -731,7 +740,7 @@ export default function WorkspaceSidebar({
                       return (
                         <div key={item.id} className="space-y-0.5">
                           <div
-                            className={`flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm transition-all duration-200 group/item cursor-grab active:cursor-grabbing relative ${
+                            className={`flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm transition-all duration-200 group/item cursor-pointer relative ${
                               isActive(item)
                                 ? 'bg-neutral-850 text-white font-medium'
                                 : 'text-neutral-400 hover:bg-neutral-850/50 hover:text-neutral-200'

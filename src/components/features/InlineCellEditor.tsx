@@ -33,8 +33,14 @@ export default function InlineCellEditor({
     setMounted(true);
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
+      const DROPDOWN_H = 244; // max-h-60 = 240px + 4px margin
+      const MARGIN = 4;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const top = spaceBelow >= DROPDOWN_H
+        ? rect.bottom + window.scrollY + MARGIN
+        : rect.top + window.scrollY - DROPDOWN_H - MARGIN;
       setCoords({
-        top: rect.bottom + window.scrollY,
+        top,
         left: rect.left + window.scrollX,
         width: rect.width,
       });
@@ -85,7 +91,7 @@ export default function InlineCellEditor({
             <div
               className="absolute z-9999 bg-neutral-900 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-40 max-h-60 overflow-y-auto text-left"
               style={{
-                top: coords ? coords.top + 4 : 0,
+                top: coords ? coords.top : 0,
                 left: coords ? coords.left : 0,
                 width: coords ? Math.max(160, coords.width) : 160,
                 visibility: coords ? 'visible' : 'hidden',
@@ -98,7 +104,7 @@ export default function InlineCellEditor({
                 }}
                 className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer"
               >
-                Empty
+                {t('empty')}
               </button>
               {(column.options || []).map((rawOpt: string | SelectOption) => {
                 const opt = normalizeOption(rawOpt);
@@ -165,14 +171,14 @@ export default function InlineCellEditor({
             <div
               className="absolute z-9999 bg-neutral-900 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-45 max-h-60 overflow-y-auto text-left"
               style={{
-                top: coords ? coords.top + 4 : 0,
+                top: coords ? coords.top : 0,
                 left: coords ? coords.left : 0,
                 width: coords ? Math.max(180, coords.width) : 180,
                 visibility: coords ? 'visible' : 'hidden',
               }}
             >
               <div className="px-3 py-1 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider border-b border-neutral-850 mb-1">
-                Toggle Options
+                {t('toggleOptions')}
               </div>
               {(column.options || []).map((rawOpt: string | SelectOption) => {
                 const opt = normalizeOption(rawOpt);

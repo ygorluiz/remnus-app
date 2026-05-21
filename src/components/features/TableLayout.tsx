@@ -409,7 +409,7 @@ export default function TableLayout({
   const handleDeleteConfirm = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeMenuRowId) return;
-    if (confirm('Are you sure you want to delete this page?')) {
+    if (confirm(t('deletePageConfirm'))) {
       onDeletePage(activeMenuRowId);
     }
     closeMenu();
@@ -695,11 +695,11 @@ export default function TableLayout({
               e.stopPropagation();
               handleMenuToggle(e);
             }}
-            className={`text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 transition-colors rounded flex items-center justify-center ${
-              hasSorts ? 'cursor-not-allowed opacity-30' : 'cursor-grab active:cursor-grabbing'
+            className={`text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 transition-colors rounded flex items-center justify-center cursor-pointer ${
+              hasSorts ? 'opacity-50' : 'cursor-grab active:cursor-grabbing'
             }`}
             style={{ width: 22, height: 24 }}
-            title={t('dragReorder')}
+            title={hasSorts ? t('dragMove') : t('dragReorder')}
           >
             <GripVertical size={14} />
           </button>
@@ -722,14 +722,14 @@ export default function TableLayout({
               className="w-full px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors border-b border-neutral-850"
             >
               <Copy size={13} />
-              <span>Duplicate page</span>
+              <span>{t('duplicatePage')}</span>
             </button>
             <button
               onClick={handleDeleteConfirm}
               className="w-full px-3 py-2 text-xs text-red-400 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors"
             >
               <Trash2 size={13} />
-              <span>Delete page</span>
+              <span>{tPage('deletePage')}</span>
             </button>
           </div>
         </>

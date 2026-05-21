@@ -156,6 +156,7 @@ export default function DatabaseView({
   initialPages: any[];
 }) {
   const t = useTranslations('Database');
+  const tPage = useTranslations('Page');
   const schema: any[] = database.schema ?? [];
   const router = useRouter();
 
@@ -223,7 +224,7 @@ export default function DatabaseView({
     localStorage.setItem(`db-width-${database.id}`, next);
   };
 
-  const widthLabels: Record<WidthMode, string> = { narrow: 'Narrow', wide: 'Wide', full: 'Full width' };
+  const widthLabels: Record<WidthMode, string> = { narrow: tPage('narrow'), wide: tPage('wide'), full: tPage('full') };
 
   // Sidebar states
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -659,7 +660,7 @@ export default function DatabaseView({
                 : 'text-neutral-500 hover:text-neutral-200'
             }`}
           >
-            <Settings size={13} /> Settings
+            <Settings size={13} /> {t('settings')}
           </button>
 
           {/* New Page button */}
@@ -668,7 +669,7 @@ export default function DatabaseView({
             disabled={isAdding}
             className="flex items-center gap-1.5 bg-neutral-100 text-neutral-900 hover:bg-white px-4 py-1.5 transition-colors text-sm font-medium disabled:opacity-50 ml-1 cursor-pointer rounded"
           >
-            <Plus size={14} /> New
+            <Plus size={14} /> {t('new')}
           </button>
         </div>
       </div>
@@ -836,7 +837,7 @@ export default function DatabaseView({
                       <X size={16} />
                     </button>
                     <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded">
-                      Center Peek
+                      {t('openCenter')}
                     </span>
                   </div>
 
@@ -849,7 +850,7 @@ export default function DatabaseView({
                       className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded"
                     >
                       <Maximize2 size={12} />
-                      <span>Open in full page</span>
+                      <span>{t('openInFullPage')}</span>
                     </button>
                     <div className="relative">
                       <button
@@ -877,13 +878,13 @@ export default function DatabaseView({
                               className="w-full px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors border-b border-neutral-850"
                             >
                               <Copy size={13} />
-                              <span>Duplicate page</span>
+                              <span>{t('duplicatePage')}</span>
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenMenuId(null);
-                                if (confirm('Are you sure you want to delete this page?')) {
+                                if (confirm(t('deletePageConfirm'))) {
                                   handleDeletePage(peekPageId!);
                                   setPeekPageId(null);
                                 }
@@ -891,7 +892,7 @@ export default function DatabaseView({
                               className="w-full px-3 py-2 text-xs text-red-400 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-colors"
                             >
                               <Trash2 size={13} />
-                              <span>Delete page</span>
+                              <span>{tPage('deletePage')}</span>
                             </button>
                           </div>
                         </>
@@ -936,7 +937,7 @@ export default function DatabaseView({
                     <X size={16} />
                   </button>
                   <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded">
-                    Side Peek
+                    {t('openSide')}
                   </span>
                 </div>
 
@@ -983,7 +984,7 @@ export default function DatabaseView({
                             onClick={(e) => {
                               e.stopPropagation();
                               setOpenMenuId(null);
-                              if (confirm('Are you sure you want to delete this page?')) {
+                              if (confirm(t('deletePageConfirm'))) {
                                 handleDeletePage(peekPageId!);
                                 setPeekPageId(null);
                               }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getOptionColorByValue, getCardBorderDots, formatDateValue } from '@/lib/types/properties';
 import { ChevronLeft, ChevronRight, GripVertical, Settings, Trash2, Calendar as CalendarIcon, Clock, Plus, Copy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -134,6 +135,7 @@ export default function CalendarView({
   const [isCardDragReady, setIsCardDragReady] = useState(false);
   const [dragOverDayStr, setDragOverDayStr] = useState<string | null>(null);
   const [activeMenuCardId, setActiveMenuCardId] = useState<string | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
 
   const schema = database.schema as any[];
   const dateProperty = schema.find((c) => c.id === dateCol);
@@ -402,7 +404,14 @@ export default function CalendarView({
                           onMouseLeave={() => setIsCardDragReady(false)}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveMenuCardId(activeMenuCardId === page.id ? null : page.id);
+                            if (activeMenuCardId === page.id) {
+                              setActiveMenuCardId(null);
+                              setMenuCoords(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setMenuCoords({ top: rect.bottom + 4, left: rect.right - 128 });
+                              setActiveMenuCardId(page.id);
+                            }
                           }}
                           className="p-1 hover:bg-neutral-700/60 text-neutral-400 hover:text-neutral-200 cursor-grab active:cursor-grabbing transition-colors rounded"
                           title={t('dragReschedule')}
@@ -411,46 +420,46 @@ export default function CalendarView({
                         </button>
                       </div>
 
-                      {/* Card Dropdown Menu */}
-                      {activeMenuCardId === page.id && (
-                        <>
+                      {/* Card Dropdown Menu — rendered via portal to escape overflow-hidden */}
+                      {activeMenuCardId === page.id && menuCoords && createPortal(
+                        <div onClick={(e) => e.stopPropagation()}>
                           <div
-                            className="fixed inset-0 z-20 cursor-default"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuCardId(null);
-                            }}
+                            className="fixed inset-0 z-9998 cursor-default"
+                            onClick={(e) => { e.stopPropagation(); setActiveMenuCardId(null); setMenuCoords(null); }}
                           />
                           <div
-                            className="absolute right-0 top-6 z-30 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-32 rounded text-left animate-fade-in animate-duration-100 overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
+                            className="fixed z-9999 bg-neutral-900 border border-neutral-800 shadow-xl py-1 w-32 rounded text-left animate-fade-in animate-duration-100 overflow-hidden"
+                            style={{ top: menuCoords.top, left: menuCoords.left }}
                           >
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onDuplicatePage(page.id);
                                 setActiveMenuCardId(null);
+                                setMenuCoords(null);
                               }}
                               className="w-full px-2.5 py-1.5 text-[11px] text-neutral-300 hover:bg-neutral-800 flex items-center gap-1.5 cursor-pointer transition-colors border-b border-neutral-850"
                             >
                               <Copy size={11} />
-                              <span>Duplicate page</span>
+                              <span>{t('duplicatePage')}</span>
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm('Are you sure you want to delete this page?')) {
+                                if (confirm(t('deletePageConfirm'))) {
                                   onDeletePage(page.id);
                                 }
                                 setActiveMenuCardId(null);
+                                setMenuCoords(null);
                               }}
                               className="w-full px-2.5 py-1.5 text-[11px] text-red-400 hover:bg-neutral-800 flex items-center gap-1.5 cursor-pointer transition-colors"
                             >
                               <Trash2 size={11} />
-                              <span>Delete page</span>
+                              <span>{tPage('deletePage')}</span>
                             </button>
                           </div>
-                        </>
+                        </div>,
+                        document.body
                       )}
 
                       {/* Page Title */}
