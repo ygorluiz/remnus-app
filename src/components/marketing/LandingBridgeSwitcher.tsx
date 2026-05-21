@@ -9,10 +9,10 @@ import LandingPricing from './LandingPricing';
 import LandingClosing from './LandingClosing';
 import LandingFooter from './LandingFooter';
 
-export default function LandingBridgeSwitcher({ appUrl }: { appUrl?: string }) {
+export default function LandingBridgeSwitcher() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <LandingNav appUrl={appUrl} />
+      <LandingNav />
       <main>
         <LandingHero />
         <LandingWhy />

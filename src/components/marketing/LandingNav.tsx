@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { auth } from '@/auth';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 
-export default async function LandingNav({ appUrl }: { appUrl?: string }) {
+export default async function LandingNav() {
   const t = await getTranslations('Landing');
   const session = await auth();
   const isAuthed = !!session?.user;
@@ -49,7 +49,7 @@ export default async function LandingNav({ appUrl }: { appUrl?: string }) {
           <div className="flex items-center gap-2 ml-2">
             {isAuthed ? (
               <Link
-                href={appUrl ?? '/'}
+                href="/app"
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-blue-500 hover:bg-accent-strong text-white rounded-md transition-colors duration-150"
               >
                 {t('navGoToApp')}
