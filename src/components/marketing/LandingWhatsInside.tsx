@@ -1,8 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import ViewTab from './mini/ViewTab';
-import KanbanMini from './mini/KanbanMini';
-import TableMini from './mini/TableMini';
-import CalendarMini from './mini/CalendarMini';
+import WhatsInsideViewer from './WhatsInsideViewer';
 import MarkdownPageMini from './mini/MarkdownPageMini';
 
 export default async function LandingWhatsInside() {
@@ -38,48 +35,16 @@ export default async function LandingWhatsInside() {
           </p>
         </div>
 
-        {/* workspace frame */}
-        <div
-          className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden"
-          style={{ boxShadow: '0 30px 60px -20px rgba(0,0,0,0.4)' }}
-        >
-          {/* breadcrumb / view bar */}
-          <div className="flex items-center gap-3 px-5 py-3 border-b border-neutral-800 bg-neutral-850 text-[13px]">
-            <span className="text-dim">{t('bridgeInsideBreadcrumb1')}</span>
-            <span className="text-neutral-100">{t('bridgeInsideBreadcrumb2')}</span>
-            <span className="flex-1" />
-            <span className="text-dim text-[12px]">{t('bridgeInsideViewLabel')}</span>
-            <span
-              className="text-neutral-100 font-medium text-[12.5px] pb-0.5"
-              style={{ borderBottom: '1.5px solid var(--color-accent-strong)' }}
-            >
-              {t('bridgeInsideTabBoard')}
-            </span>
-            <span className="text-dim text-[12px]">{t('bridgeInsideTabTable')}</span>
-            <span className="text-dim text-[12px]">{t('bridgeInsideTabCalendar')}</span>
-          </div>
-
-          {/* three view thumbnails */}
-          <div className="grid grid-cols-3 gap-4 p-6 min-h-[320px]">
-            <ViewTab active label={t('bridgeInsideTabBoard')} sub={t('bridgeInsideTabBoardSub')}>
-              <KanbanMini width={340} />
-            </ViewTab>
-            <ViewTab label={t('bridgeInsideTabTable')} sub={t('bridgeInsideTabTableSub')}>
-              <TableMini width={340} rows={6} />
-            </ViewTab>
-            <ViewTab label={t('bridgeInsideTabCalendar')} sub={t('bridgeInsideTabCalendarSub')}>
-              <CalendarMini width={340} />
-            </ViewTab>
-          </div>
-
-          {/* footer strip */}
-          <div className="flex items-center gap-2.5 flex-wrap px-6 py-3.5 border-t border-neutral-800 bg-neutral-850 text-[12.5px] text-dim">
-            <span className="w-[7px] h-[7px] rounded-full shrink-0 bg-accent-strong" />
-            <span className="text-neutral-100">{t('bridgeInsideFrameFooter1')}</span>
-            <span className="flex-1" />
-            <span className="font-mono text-accent-strong">{t('bridgeInsideFrameFooter2')}</span>
-          </div>
-        </div>
+        {/* workspace frame — animated viewer */}
+        <WhatsInsideViewer
+          breadcrumb1={t('bridgeInsideBreadcrumb1')}
+          breadcrumb2={t('bridgeInsideBreadcrumb2')}
+          viewLabel={t('bridgeInsideViewLabel')}
+          labels={[t('bridgeInsideTabBoard'), t('bridgeInsideTabTable'), t('bridgeInsideTabCalendar')]}
+          subs={[t('bridgeInsideTabBoardSub'), t('bridgeInsideTabTableSub'), t('bridgeInsideTabCalendarSub')]}
+          footer1={t('bridgeInsideFrameFooter1')}
+          footer2={t('bridgeInsideFrameFooter2')}
+        />
 
         {/* Pages adjunct */}
         <div className="mt-7 grid gap-8 items-stretch" style={{ gridTemplateColumns: '1.1fr 0.9fr' }}>

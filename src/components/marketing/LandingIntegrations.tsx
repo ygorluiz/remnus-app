@@ -1,15 +1,16 @@
 import { getTranslations } from 'next-intl/server';
 import AIMark from './AIMark';
+import SetupGuideModal from './SetupGuideModal';
 
 type AIId = 'claude' | 'cursor' | 'windsurf' | 'chatgpt' | 'continue' | 'zed';
 
 const CLIENTS: { id: AIId; name: string; sub: string; descKey: string; status: 'native' | 'beta' }[] = [
-  { id: 'claude',   name: 'Claude',   sub: 'Desktop · Sonnet 4.5', descKey: 'bridgeIntClaudeDesc',    status: 'native' },
-  { id: 'cursor',   name: 'Cursor',   sub: 'IDE · gpt-5',          descKey: 'bridgeIntCursorDesc',    status: 'native' },
-  { id: 'windsurf', name: 'Windsurf', sub: 'IDE · Cascade',        descKey: 'bridgeIntWindsurfDesc',  status: 'native' },
-  { id: 'chatgpt',  name: 'ChatGPT',  sub: 'Desktop · 5.0',        descKey: 'bridgeIntChatgptDesc',   status: 'beta'   },
-  { id: 'continue', name: 'Continue', sub: 'VS Code · any model',  descKey: 'bridgeIntContinueDesc',  status: 'native' },
-  { id: 'zed',      name: 'Zed',      sub: 'Editor · gpt-5',       descKey: 'bridgeIntZedDesc',       status: 'native' },
+  { id: 'claude',   name: 'Claude',   sub: 'Desktop · Claude Code', descKey: 'bridgeIntClaudeDesc',   status: 'native' },
+  { id: 'cursor',   name: 'Cursor',   sub: 'IDE · Composer',        descKey: 'bridgeIntCursorDesc',   status: 'native' },
+  { id: 'windsurf', name: 'Windsurf', sub: 'IDE · Cascade',         descKey: 'bridgeIntWindsurfDesc', status: 'native' },
+  { id: 'chatgpt',  name: 'ChatGPT',  sub: 'Desktop · OAuth',       descKey: 'bridgeIntChatgptDesc',  status: 'beta'   },
+  { id: 'continue', name: 'Continue', sub: 'VS Code · open source', descKey: 'bridgeIntContinueDesc', status: 'native' },
+  { id: 'zed',      name: 'Zed',      sub: 'Editor · Zed AI',       descKey: 'bridgeIntZedDesc',      status: 'native' },
 ];
 
 export default async function LandingIntegrations() {
@@ -80,21 +81,30 @@ export default async function LandingIntegrations() {
               <p className="m-0 text-sm text-dim leading-[1.6] flex-1">
                 {t(c.descKey as Parameters<typeof t>[0])}
               </p>
-              <a
-                href="#"
-                className="mt-[18px] inline-flex items-center gap-1.5 font-mono text-[12px] text-accent-strong"
-              >
-                {t('bridgeIntSetupLink')}{' '}
-                <span aria-hidden className="text-[11px]">→</span>
-              </a>
+              <SetupGuideModal
+                linkLabel={t('bridgeIntSetupLink')}
+                title={t('bridgeSetupModalTitle')}
+                subtitle={t('bridgeSetupModalSubtitle')}
+                s1Label={t('bridgeSetupModalS1Label')}
+                s1Title={t('bridgeSetupModalS1Title')}
+                s1Body={t('bridgeSetupModalS1Body')}
+                s2Label={t('bridgeSetupModalS2Label')}
+                s2Title={t('bridgeSetupModalS2Title')}
+                s2Body={t('bridgeSetupModalS2Body')}
+                s3Label={t('bridgeSetupModalS3Label')}
+                s3Title={t('bridgeSetupModalS3Title')}
+                s3Body={t('bridgeSetupModalS3Body')}
+                endpointLabel={t('bridgeSetupModalEndpointLabel')}
+                headerLabel={t('bridgeSetupModalHeaderLabel')}
+                docsNote={t('bridgeSetupModalDocsNote')}
+                closeLabel={t('bridgeSetupModalClose')}
+              />
             </div>
           ))}
         </div>
 
         <p className="mt-[22px] text-[13px] text-dim text-center">
-          {t('bridgeIntFootnote').split('@remnus/mcp-sdk')[0]}
-          <a href="#" className="font-mono text-accent-strong">@remnus/mcp-sdk</a>
-          {t('bridgeIntFootnote').split('@remnus/mcp-sdk')[1]}
+          {t('bridgeIntFootnote')}
         </p>
       </div>
     </section>

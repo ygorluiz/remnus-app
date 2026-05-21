@@ -119,9 +119,9 @@ export default async function LandingHero() {
           </div>
 
           {/* right — AI dock + workspace */}
-          <div className="relative" style={{ height: 540 }}>
+          <div className="relative" style={{ height: 580 }}>
             {/* AI tiles */}
-            <div className="absolute top-0 left-4 right-0 grid grid-cols-3 gap-2 z-10">
+            <div className="absolute top-0 left-0 right-0 grid grid-cols-3 gap-2 z-10">
               {AI_TILES.map((tile) => (
                 <div
                   key={tile.id}
@@ -157,7 +157,7 @@ export default async function LandingHero() {
 
             {/* Workspace shot */}
             <div
-              className="absolute right-0 left-4"
+              className="absolute right-0 left-1"
               style={{ top: 124, transform: 'rotate(-0.8deg)' }}
             >
               <HeroWorkspaceShot />
@@ -174,8 +174,8 @@ function HeroWorkspaceShot() {
     <div
       className="bg-neutral-950 border border-neutral-800 rounded-[10px] overflow-hidden flex"
       style={{
-        width: 640,
-        height: 395,
+        width: 720,
+        height: 445,
         fontSize: 11,
         boxShadow: '0 32px 64px -16px rgba(0,0,0,0.55), 0 10px 20px -8px rgba(0,0,0,0.4)',
       }}

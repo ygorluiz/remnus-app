@@ -7,7 +7,7 @@ export default async function LandingWhy() {
     <section id="why" className="px-14 py-16">
       <div className="max-w-[1200px] mx-auto">
         {/* section header */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-12">
           <span className="font-mono text-[11px] text-dim uppercase tracking-[0.18em]">
             {t('bridgeWhySnum')}
           </span>
