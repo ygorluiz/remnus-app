@@ -15,7 +15,12 @@ export default authMiddleware(function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
-  return intlMiddleware(req);
+  const response = intlMiddleware(req);
+  // Expose the clean external pathname to server layouts via header
+  if (response instanceof NextResponse) {
+    response.headers.set('x-pathname', req.nextUrl.pathname);
+  }
+  return response;
 }) as (req: NextRequest) => Response | Promise<Response>;
 
 export const config = {

@@ -19,8 +19,13 @@ export const authConfig: NextAuthConfig = {
       const isAuthRoute = cleanPath.startsWith('/login') || cleanPath.startsWith('/register');
       const isApiAuth = cleanPath.startsWith('/api/auth');
       const isPublicAsset = /\.(png|ico|svg|jpg|jpeg|webp|woff2?)$/.test(path);
-
+      const isMarketingRoute =
+        cleanPath === '/' ||
+        cleanPath.startsWith('/pricing') ||
+        cleanPath.startsWith('/contact');
       if (isApiAuth || isPublicAsset) return true;
+
+      if (isMarketingRoute) return true;
 
       if (isAuthRoute) {
         // Logged-in users visiting /login or /register are sent to home

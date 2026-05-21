@@ -10,7 +10,9 @@ src/
     layout.tsx              # Root passthrough (no HTML/body)
     [locale]/
       layout.tsx            # Full locale-aware layout, auth check, sidebar
-      page.tsx              # Home — redirect to first workspace item
+      page.tsx              # Home — unauthenticated: marketing landing page; authenticated: redirect to first workspace item
+      pricing/page.tsx      # Public pricing page (MarketingShell + PricingSection)
+      contact/page.tsx      # Public contact page (MarketingShell + ContactSection)
       login/page.tsx        # Auth page (client component)
       register/page.tsx     # Auth page (client component)
       db/[id]/page.tsx      # Database view (table/kanban/calendar)
@@ -21,7 +23,17 @@ src/
   auth.config.ts            # Edge-compatible Auth.js config (no DB)
   auth.ts                   # Full Auth.js config (DrizzleAdapter + callbacks)
   middleware.ts             # Route protection + locale rewrite
+  components/marketing/     # Marketing/landing page components (public, no auth)
+    # MarketingShell (auth-aware wrapper), MarketingHeader (client, sticky nav),
+    # MarketingFooter, HeroSection, FeaturesSection, PricingSection, ContactSection
   components/features/      # All feature React components (see mem:conventions)
+    # Key components: WorkspaceSidebar, DatabaseView, MobileNavWrapper, ViewsBar,
+    # StandalonePageEditor, PageEditor, TemplatePickerModal, WorkspaceSettingsModal,
+    # DatabasePropertiesSidebar, TableLayout, KanbanBoard, CalendarView,
+    # InlineCellEditor, IconPicker, PageIcon, SaveStatus, LanguageSwitcher,
+    # AdminUsersTable, AdminWorkspacesTable
+    # editor/: BlockEditor, ChildBlockExtension, ChildBlockView, BubbleMenuBar,
+    #           SlashCommandMenu, SlashCommandList
   components/providers/     # QueryProvider (TanStack Query)
   db/
     schema.ts               # Drizzle ORM schema (all tables)

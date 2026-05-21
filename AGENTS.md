@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 # Keeping This File Up to Date
@@ -9,6 +11,23 @@ This version has breaking changes — APIs, conventions, and file structure may 
 **Every agent that makes structural changes to the project MUST update this file before finishing.**
 Structural changes include: adding/removing tables, adding routes, adding/removing components, adding server actions, or changing architectural patterns.
 If you skip this step, future agents will work from a stale map and make mistakes.
+
+## Serena Memory Sync
+
+Serena is an MCP code-intelligence assistant with its own persistent memory. Its memories must be kept in sync with this file.
+
+**After updating AGENTS.md, also sync Serena:**
+
+1. Activate the project: call `mcp__plugin_serena_serena__activate_project` with `"remnus-app"`.
+2. List existing memories: call `mcp__plugin_serena_serena__list_memories` to see what needs updating.
+3. Edit stale entries: call `mcp__plugin_serena_serena__edit_memory` for any memory whose content no longer matches AGENTS.md.
+
+**Key memories to check:**
+
+- `conventions` — i18n namespace list and count, coding rules
+- `core` — source map, DB tables, component inventory
+
+Do NOT create new Serena memories for every change — prefer editing existing ones. Only create a new memory if it covers a clearly standalone domain not already tracked.
 
 ---
 
@@ -21,28 +40,32 @@ If you skip this step, future agents will work from a stale map and make mistake
 Remnus is fully internationalized using **next-intl v4** (App Router native). All user-facing text is loaded from translation files — **no hardcoded strings in components**.
 
 ### Supported Languages
-| Code | Language |
-|------|----------|
+
+| Code | Language          |
+| ---- | ----------------- |
 | `en` | English (default) |
-| `tr` | Türkçe |
-| `hi` | हिन्दी |
-| `es` | Español |
-| `fr` | Français |
-| `de` | Deutsch |
+| `tr` | Türkçe            |
+| `hi` | हिन्दी            |
+| `es` | Español           |
+| `fr` | Français          |
+| `de` | Deutsch           |
 
 ### How Locale is Resolved (priority order)
+
 1. **`NEXT_LOCALE` cookie** — set when the user manually picks a language via `LanguageSwitcher`; persists for 1 year.
 2. **`Accept-Language` header** — the browser/OS language, negotiated against the 6 supported locales via `negotiator` + `@formatjs/intl-localematcher`. **Automatic OS language detection works out of the box on first visit** — no configuration required, `localeDetection: true` is the next-intl default.
 3. **`en` fallback** — used when the OS language is not in the supported list.
 
 ### Architecture
+
 - **Clean URLs:** `localePrefix: 'never'` — all URLs stay as `/db/123`, never `/en/db/123`. next-intl internally rewrites to `[locale]` segment transparently.
 - **Route segment:** All pages live under `src/app/[locale]/`. The locale flows from middleware rewrite.
-- **Translation files:** `messages/{locale}.json` — 13 namespaces per file (~200 keys total). `en.json` is the source of truth.
-- **Namespaces:** `Layout`, `Home`, `Auth`, `Workspace`, `WorkspaceSettings`, `Templates`, `Database`, `Editor`, `Page`, `IconPicker`, `Admin`, `Errors`, `LanguageSwitcher`.
+- **Translation files:** `messages/{locale}.json` — 14 namespaces per file (~210 keys total). `en.json` is the source of truth.
+- **Namespaces:** `Layout`, `Home`, `Auth`, `Workspace`, `WorkspaceSettings`, `Templates`, `Database`, `Editor`, `Page`, `IconPicker`, `Admin`, `Errors`, `LanguageSwitcher`, `MobileNav`, `Landing`, `Pricing`, `Contact`.
 - **Infrastructure files:** `src/i18n/routing.ts` (defineRouting), `src/i18n/request.ts` (getRequestConfig + message loader), `src/lib/actions/locale.ts` (setLocale server action), `src/components/features/LanguageSwitcher.tsx` (dropdown in sidebar + auth pages).
 
 ### Rules for All Future Development
+
 **Every new component or server action that surfaces user-facing text MUST follow these rules:**
 
 1. **Client components** — `import { useTranslations } from 'next-intl'` and call `useTranslations('Namespace')` inside the component body.
@@ -54,29 +77,32 @@ Remnus is fully internationalized using **next-intl v4** (App Router native). Al
 7. **Namespace selection** — pick the closest existing namespace. Create a new one only for a clearly standalone domain (add it to all 6 files and document it here).
 
 ## Color Theme
-| Role | Name | Hex | Tailwind token |
-|---|---|---|---|
-| Main canvas bg | Carbon Black | `#1d1f23` | `neutral-950` |
-| Sidebar / card bg | Shadow Grey | `#21252b` | `neutral-900` |
-| Content canvas bg | One Dark Pro editor | `#282c34` | `neutral-850` |
-| Borders / dividers | Gunmetal | `#383b41` | `neutral-800` |
-| Silver text | Silver | `#cccccc` | `neutral-100` |
-| Muted text / labels | Alabaster Grey | `#d7dae0` | `neutral-50` |
-| Primary / accent | Dusk Blue | `#445c95` | `blue-500` |
-| Destructive | Blushed Brick | `#cd4d55` | `red-400` |
-| Success | Moss Green | `#7fc36d` | `green-400` |
-| Warning | Golden Chestnut | `#cc7d45` | `amber-500` |
+
+| Role                | Name                | Hex       | Tailwind token |
+| ------------------- | ------------------- | --------- | -------------- |
+| Main canvas bg      | Carbon Black        | `#1d1f23` | `neutral-950`  |
+| Sidebar / card bg   | Shadow Grey         | `#21252b` | `neutral-900`  |
+| Content canvas bg   | One Dark Pro editor | `#282c34` | `neutral-850`  |
+| Borders / dividers  | Gunmetal            | `#383b41` | `neutral-800`  |
+| Silver text         | Silver              | `#cccccc` | `neutral-100`  |
+| Muted text / labels | Alabaster Grey      | `#d7dae0` | `neutral-50`   |
+| Primary / accent    | Dusk Blue           | `#445c95` | `blue-500`     |
+| Destructive         | Blushed Brick       | `#cd4d55` | `red-400`      |
+| Success             | Moss Green          | `#7fc36d` | `green-400`    |
+| Warning             | Golden Chestnut     | `#cc7d45` | `amber-500`    |
 
 All tokens are defined via `@theme` overrides in `src/app/globals.css`. The neutral scale (800–950) drives backgrounds and borders; accent colors (blue, red, green, amber) are remapped to stay within this palette.
 Palette link: https://coolors.co/1d1f23-21252b-282c34-383b41-cccccc-d7dae0-445c95-cd4d55-7fc36d-cc7d45
 
 ## UI & Design Aesthetics
+
 - **Material and Borderless Design Language:** Always keep settings panels, drawers, sidebars, and properties panels completely flat, shadowless, and unrounded (`rounded-none`).
 - **Seamless Canvas Integration:** Use a three-tier background hierarchy — `bg-neutral-950` for the outermost body frame only, `bg-neutral-900` for sidebars and floating panels (properties sidebar, dropdowns, peek drawers), `bg-neutral-850` for all content/canvas areas (page editors, table, kanban, calendar grids, modal content). Separate panels from content with a single border line (`border-l border-neutral-800` or `border-r border-neutral-800`).
 - **Flat-Line Separators:** Instead of nested card boxes or chunky cards, use simple bottom border separator lines (`border-b border-neutral-850`) and full-width list items with soft hover effects (`hover:bg-neutral-800/10` or `hover:bg-neutral-800/20`) to achieve a premium, high-end Notion-like layout.
 - **Auth Pages Exception:** The `/login` and `/register` pages stand outside the workspace canvas and use a softly rounded style: card container `rounded-xl`, inputs and buttons `rounded-lg`. This deliberate contrast separates the product shell from the auth flow. Do not apply this rounded style inside the workspace (sidebars, panels, editors, modals).
 
 ## Technology Stack
+
 - **Framework:** Next.js 15 (App Router)
 - **Styling:** TailwindCSS, Lucide React icons
 - **Database:** SQLite (local `file:local.db`), intended to be Turso/Serverless compatible in the future.
@@ -86,7 +112,9 @@ Palette link: https://coolors.co/1d1f23-21252b-282c34-383b41-cccccc-d7dae0-445c9
 ## Architecture & Conventions
 
 ### Database Pattern (JSON Columns)
+
 To support fully dynamic, user-defined properties without structural database migrations, we use the **JSON Column Pattern** rather than EAV:
+
 - **`workspaces` table:** Single source of truth for the workspace list. Contains `id` (PK), `name`, `sort_order` (sorting order), `created_at`, `updated_at`.
 - **`workspace_items` table:** Single source of truth for the sidebar items. Linked to `workspaces` via `workspace_id` (CASCADE delete). Supports fully recursive nesting where pages can contain sub-pages and sub-databases, and database row pages can contain nested sub-pages/sub-databases. Columns: `id`, `workspace_id`, `type` ('page'|'database'), `title`, `parent_id` (nullable, references another `workspace_items.id` or a database row `pages.id`), `sort_order` (sorting order within parent / workspace), `icon`, `icon_color`, `created_at`, `updated_at`.
 - **`standalone_pages` table:** Stores markdown `content` for workspace pages. Linked to `workspace_items` via `item_id` (CASCADE delete). One-to-one with a page-type workspace item.
@@ -99,6 +127,7 @@ To support fully dynamic, user-defined properties without structural database mi
 - **`workspace_members` table:** Join table linking users to workspaces with a role. Columns: `id`, `workspace_id` (FK → workspaces, CASCADE), `user_id` (FK → user, CASCADE), `role` ('owner' | 'member' | 'viewer'), `created_at`. UNIQUE constraint on `(workspace_id, user_id)`. When a workspace is created, the creator is automatically added as 'owner'. All users (including admins) only see workspaces they are members of in the sidebar. Admins can view all workspaces via the Admin Panel (`/admin`).
 
 ### Auth System
+
 - **Library:** Auth.js v5 (`next-auth@beta`) with `@auth/drizzle-adapter` and JWT session strategy.
 - **Providers:** Google OAuth and Credentials (email + password). Both share the same `/login` and `/register` pages. Passwords are hashed with `bcryptjs` (cost 12) before storage. Min 8-char password enforced.
 - **Config split:** `src/auth.config.ts` (edge-compatible, no DB import — used only in middleware) + `src/auth.ts` (full config with DrizzleAdapter, Credentials provider, and callbacks — used in server components and actions).
@@ -113,6 +142,7 @@ To support fully dynamic, user-defined properties without structural database mi
 - **Env vars required:** `AUTH_SECRET` (random 32-char string), `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`. Google Cloud Console redirect URI: `http://localhost:3000/api/auth/callback/google`.
 
 ### Performance & Database Optimizations
+
 - **Database Indexing:** Ensure that all relational foreign key fields (`workspaceId`, `itemId`, `databaseId`, `userId`, `parentId`) and compound lookups have active database indexes configured in `src/db/schema.ts` to prevent slow full-table scans in SQLite.
 - **SQLite PRAGMAs:** `src/db/index.ts` applies WAL mode, `synchronous=NORMAL`, `foreign_keys=ON`, `cache_size=-20000`, and `temp_store=MEMORY` at startup for local SQLite, dramatically reducing write latency.
 - **Session Lookup Caching:** `getCurrentUser()` lives in `src/lib/auth/session.ts` and is wrapped in `React.cache`. Import it from there in all server actions — do NOT call `auth()` directly. This ensures `auth()` runs at most once per request cycle.
@@ -123,19 +153,23 @@ To support fully dynamic, user-defined properties without structural database mi
 - **Loading Skeletons:** `src/app/[locale]/page/[itemId]/loading.tsx`, `src/app/[locale]/db/[id]/loading.tsx`, `src/app/[locale]/db/[id]/[pageId]/loading.tsx` provide instant skeleton feedback during route transitions.
 
 ### Migration Notes
+
 - Drizzle migrator applies migrations in order of the `when` timestamp in `_journal.json`.
 - **The `when` value for a new migration MUST be greater than all existing `when` values** — otherwise the migrator silently skips it.
 - Existing `when` values: `0000` → `1779091089863`, `0001` → `1779200000000`, `0002` → `1779300000000`, `0003` → `1779400000000`, `0004` → `1779500000000`, `0005` → `1779600000000`, `0006` → `1779700000000`, `0007` → `1779800000000`, `0008` → `1779900000000`, `0009` → `1780000000000`, `0010` → `1780100000000`. **New migrations must use a `when` > `1780100000000`.**
 - Apply with: `npx tsx src/db/migrate.ts`
 
 ### Project Structure
+
 - `src/auth.config.ts`: Edge-compatible Auth.js config (providers list + `authorized` callback). No DB imports. Used exclusively by middleware.
 - `src/auth.ts`: Full Auth.js config — imports `authConfig`, adds `DrizzleAdapter`, `Credentials` provider with `bcryptjs` password check, JWT callbacks (`jwt` + `session`), and `createUser` event for first-user admin bootstrap.
-- `src/middleware.ts`: Runs on every request edge. Allows `/login`, `/register`, `/api/auth/*`, and static assets; redirects everything else to `/login` if unauthenticated.
+- `src/middleware.ts`: Runs on every request edge. Allows `/login`, `/register`, `/api/auth/*`, static assets, and marketing routes (`/`, `/pricing`, `/contact`); redirects everything else to `/login` if unauthenticated.
 - `src/app/`: Next.js App Router orchestration and layouts. Server components fetch data here.
   - `src/app/layout.tsx`: Minimal root passthrough — returns `children` directly with no HTML/body tags. Those live in `[locale]/layout.tsx`.
-  - `src/app/[locale]/layout.tsx`: Full locale-aware layout — validates locale against `routing.locales` (→ `notFound()` if invalid), calls `getMessages()`, wraps children with `<NextIntlClientProvider>`, sets `<html lang={locale}>`. Calls `auth()` to get session; if no session renders bare layout (for `/login`/`/register`); otherwise fetches workspace data and renders sidebar with `currentUser` prop.
-  - `src/app/[locale]/page.tsx`: Home page — redirects to first workspace item of the active workspace if one exists, otherwise shows empty-state welcome screen.
+  - `src/app/[locale]/layout.tsx`: Full locale-aware layout — validates locale against `routing.locales` (→ `notFound()` if invalid), calls `getMessages()`, wraps children with `<NextIntlClientProvider>`, sets `<html lang={locale}>`. Calls `auth()` to get session; if no session renders bare layout (for `/login`/`/register`); otherwise fetches workspace data and renders sidebar with `currentUser` prop. On mobile (< `lg`), the sidebar `<aside>` is hidden (`hidden lg:flex`) and `<MobileNavWrapper>` is rendered at the bottom of the layout (`lg:hidden`) with `pb-16 lg:pb-0` padding on the main content area to prevent content from hiding behind the nav bar.
+  - `src/app/[locale]/page.tsx`: Smart home page — unauthenticated visitors see the marketing landing page (`MarketingShell` + `HeroSection` + `FeaturesSection` + `PricingSection`); authenticated users are redirected to their first workspace item (or shown an empty-state welcome screen).
+  - `src/app/[locale]/pricing/page.tsx`: Public pricing page — wraps `PricingSection` in `MarketingShell`. Unauthenticated: full marketing layout with header/footer. Authenticated: content only (no marketing header, sidebar handles navigation).
+  - `src/app/[locale]/contact/page.tsx`: Public contact page — wraps `ContactSection` in `MarketingShell`. Same auth-aware rendering as pricing.
   - `src/app/[locale]/login/page.tsx`: Login page (client component). Google OAuth button + email/password form via `loginWithCredentials` server action with `useActionState`. Includes `LanguageSwitcher` in the top-right corner. Links to `/register`.
   - `src/app/[locale]/register/page.tsx`: Registration page (client component). Google OAuth button + name/email/password form via `registerUser` server action with `useActionState`. Includes `LanguageSwitcher` in the top-right corner. Links to `/login`.
   - `src/app/api/auth/[...nextauth]/route.ts`: Auth.js HTTP handler — re-exports `{ GET, POST }` from `@/auth`. Lives outside `[locale]` — API routes are not locale-wrapped.
@@ -152,20 +186,22 @@ To support fully dynamic, user-defined properties without structural database mi
   - `demo.ts`: Demo mode — `loginAsDemo(_prevState, _formData)` (useActionState-compatible) resets the demo user's workspace (delete + reseed via `createDemoSeedData`) and signs in as `demo@remna.app`. Returns `{ error }` if no real users exist yet; otherwise throws a redirect to `/`.
   - `auth.ts`: Auth & user management — `logout` (calls `signOut`), `loginWithCredentials(_prevState, formData)` (wraps `signIn('credentials', ...)`), `registerUser(_prevState, formData)` (hashes password, inserts user with explicit `createdAt: new Date()`, handles first-real-user admin bootstrap excluding demo role, then signs in), `inviteToWorkspace(workspaceId, email, role)`, `removeFromWorkspace(workspaceId, userId)`, `getWorkspaceMembers(workspaceId)`, `updateWorkspaceMemberRole(workspaceId, userId, role)`, `transferWorkspaceOwnership(workspaceId, newOwnerUserId)`, `getAllUsers()` (admin only — returns `id, name, email, image, role, createdAt, authType` where `authType` is `'google' | 'email' | 'unknown'` derived from the `accounts` table and `passwordHash` presence), `setUserRole(userId, role)` (admin only), `adminDeleteUser(userId)` (admin only — hard-deletes a user; cascades to `workspace_members`, `accounts`, `sessions`; prevents self-deletion). Both `loginWithCredentials` and `registerUser` use the `(_prevState, formData)` signature required by `useActionState`.
   - `workspace.ts` (Server Action module with `'use server'` directive): Workspace & items CRUD — `getActiveWorkspaceId` (returns `string | null`; verifies cookie workspace is still accessible by membership), `getWorkspaces` (filtered by membership for ALL users including admins — admins use `getAdminWorkspacesOverview` for the full list), `createWorkspace` (also inserts creator as 'owner' in `workspace_members`; both inserts use explicit `createdAt: new Date()`), `deleteWorkspace`, `renameWorkspace`, `switchWorkspace`, `getWorkspaceItems`, `getAllWorkspaceItems` (all actions auth-gated via `assertWorkspaceAccess`), `createStandalonePage` (accepts optional `options.initialContent`), `createWorkspaceDatabase` (accepts optional `options.schema` and `options.views` for template pre-configuration), `getStandalonePageByItemId`, `updateStandalonePageContent`, `updateWorkspaceItemTitle`, `getDatabaseByItemId`, `updateWorkspaceItemIcon`, `updateWorkspacesOrder(workspaceIds)`, `updateWorkspaceItemsOrder(itemIds)`, `moveWorkspaceItemToWorkspace(itemId, targetWorkspaceId, itemIdsOrder)`, `getSubItems(parentId)` (returns all direct children of a workspace item as `WorkspaceItemRow[]` — used by `BlockEditor` to reconcile child blocks on load), `deleteWorkspaceItem(itemId)` (deletes a workspace item and all its descendants recursively via `deleteWorkspaceItemRecursive`), `checkItemHasContent(itemId)` (returns `true` if the item has sub-items or non-empty page content — used by `ChildBlockView` to decide whether to show a confirmation dialog before deleting), `getAdminWorkspacesOverview()` (admin only — returns all workspaces with `memberCount`, `itemCount`, `ownerName`, `ownerEmail`), `adminDeleteWorkspace(workspaceId)` (admin only — hard-deletes a workspace bypassing the "last workspace" guard; cascades to all items, pages, databases, and members).
-  - `database.ts`: `createDatabase` delegates to `createWorkspaceDatabase`; also `getDatabases`, `getDatabase`, `updateDatabaseSchema`, `updateDatabaseViews`. All mutating actions call `assertDatabaseAccess(databaseId)` which resolves workspace via join.
+  - `database.ts`: `createDatabase` delegates to `createWorkspaceDatabase`; also `getDatabases`, `getDatabase` (now also returns `parentId: workspaceItems.parentId` from the join for back-button navigation in nested databases), `updateDatabaseSchema`, `updateDatabaseViews`. All mutating actions call `assertDatabaseAccess(databaseId)` which resolves workspace via join.
   - `page.ts`: Database row actions — `createPage` (supports optional `icon` and `iconColor` default page values on creation), `getPages`, `getPage`, `updatePageProperties`, `updatePageContent`, `updatePageIcon`. All actions call `assertDatabaseAccess(databaseId)` before executing.
 - `src/components/features/`: React components.
   - `WorkspaceSidebar`: Unified sidebar displaying all workspaces as root branches in a collapsible tree-view layout. Child pages and databases are nested recursively under parent pages using an optimized tree rendering approach (`renderItem`). Standalone sub-items are recursively displayed as a tree with toggle Chevrons and Dusk Blue thematic vertical connector lines (`border-l border-neutral-850 hover:border-blue-500/20`). Includes a **Smart Auto-Expansion** feature that dynamically expands all ancestor pages if the currently active page is nested inside them, or collapsed by default. Clicking item links uses standard immediate `<Link>` client-side transitions. Admin users see an "Admin" link (Shield icon) above the user panel that navigates to `/admin`. Supports highly advanced, zero-flicker optimistic drag-and-drop reordering of workspaces and sibling workspace items:
-    - Automatically calculates precise relative vertical mouse coordinates to support dropping items *before* or *after* a target item.
+    - Automatically calculates precise relative vertical mouse coordinates to support dropping items _before_ or _after_ a target item.
     - Employs strict drag-over type guards to prevent invalid drag interactions (workspace item hovered between workspaces is ignored).
     - Utilizes decoupled double transitions (`isSaving` / `startSaveTransition` vs `isPending` / `startTransition`) to isolate and display a "Saving..." indicator only when writing order changes to the DB, keeping workspace navigation indicator-free.
     - Prevents redundant server actions by validating if the drop actually resulted in an order change before persisting.
     - Displays beautiful Dusk Blue thematic glowing line indicators (`left-6` indented for items to match sidebar tree borders).
     - Supports inline workspace creation and adding items via `TemplatePickerModal` directly from the hover `+` button next to parent items, instantly creating children in scope. Hovering over a workspace reveals a Settings gear icon which opens the `WorkspaceSettingsModal`. Accepts `currentUser` prop (`{ id, name, email, image, role }`) and renders a user panel at the bottom with avatar, name/email, Admin badge (if applicable), a `LanguageSwitcher` dropdown, and a logout button (calls `logout()` server action).
+    - **Mobile support:** Accepts optional `hideBrandHeader?: boolean` prop — suppresses the brand header when the sidebar is rendered inside the mobile drawer sheet. Action buttons (+ and ⋯) are always visible on mobile (`opacity-100 sm:opacity-0 sm:group-hover:opacity-100`) so they are tappable without hover. Item context menu uses a **dual presentation**: on desktop it renders as a `fixed` floating dropdown (`hidden sm:block`); on mobile it renders as a bottom sheet that slides up from `bottom-14` (`z-250`, `translate-y-0/translate-y-full` CSS transition) — both share a `mobileMenuRef`/`menuRef` pair checked in the `mousedown` outside-click handler. Item deletion uses a **confirmation modal** (`confirmDeleteItemId` state + `confirmDelete()` function) rather than immediate deletion — renders a centred overlay with the item title, Cancel, and Delete (red) buttons, all translated via the `Workspace` namespace (`deleteConfirm`, `deleteCancel` keys).
   - `WorkspaceSettingsModal`: Premium, two-tab settings modal. "General" tab handles renaming the workspace and deletion. "Members" tab provides member invitation (with Member/Viewer roles), rendering of all workspace members, and full role updating, removal, and ownership transfer actions for owners and administrators.
   - `TemplatePickerModal`: Two-step full-screen modal for creating new workspace items from templates. Step 1 shows a grid of template cards grouped by "Pages" and "Databases" tabs. Step 2 confirms the item name. Calls `createStandalonePage` or `createWorkspaceDatabase` with template-specific schema and view configuration. Templates defined in `src/lib/templates.ts`.
-  - `DatabaseView`: Orchestrates the active view tabs, controls active view state, manages the schema, handles view creation/renaming/deletion, provides filtering/sorting coordination, and manages page peek overlay modals (Center / Side Peek) and opening behaviors (supporting Table, Kanban, and Calendar layouts). Handles deep-linking views via URL search params (`?v=view_id`) using a `useEffect`-based sync (not a `useState` initializer — avoids SSR hydration mismatch) and browser dynamic document title updates.
-  - `ViewsBar`: Renders named view tab buttons for a database, allowing inline renaming, deleting, and adding table, kanban, or calendar views.
+  - `DatabaseView`: Orchestrates the active view tabs, controls active view state, manages the schema, handles view creation/renaming/deletion, provides filtering/sorting coordination, and manages page peek overlay modals (Center / Side Peek) and opening behaviors (supporting Table, Kanban, and Calendar layouts). Handles deep-linking views via URL search params (`?v=view_id`) using a `useEffect`-based sync (not a `useState` initializer — avoids SSR hydration mismatch) and browser dynamic document title updates. The `database` prop now includes `parentId` (sourced from `getDatabase`); when `parentId` is set, a back button (`/page/${database.parentId}`) is shown at the top-left so nested databases mirror the back-button UX of nested pages. **Mobile peek behavior:** center and side peek modals render as **bottom sheets** on mobile (`fixed inset-x-0 bottom-14`, `rounded-t-2xl`, slide-up animation) and as standard overlays/drawers on desktop (`sm:inset-0`, `sm:rounded-lg`). The peek backdrop uses `bottom-14 lg:bottom-0` so the mobile bottom navbar is never covered. The settings panel (`DatabasePropertiesSidebar` wrapper) uses `overflow-hidden` on mobile (so `rounded-t-2xl` corners are correctly clipped) with `sm:overflow-visible` to keep desktop dropdown menus functional.
+  - `MobileNavWrapper`: Mobile-only bottom navigation bar (`fixed bottom-0 inset-x-0 h-16 bg-neutral-900 border-t border-neutral-800 lg:hidden z-40`). Contains three icon-only buttons: **Layers** (opens workspace bottom sheet), **Plus** (context-aware new-item action), **User** (opens user/account bottom sheet). The Plus button behaviour varies by current route: on `/db/[id]` it calls `createPage` directly to add a database row; on `/page/[itemId]` it opens `TemplatePickerModal` scoped to the current page as `parentId`; otherwise it opens `TemplatePickerModal` at the workspace root. Each sheet is implemented via the internal `BottomSheet` component (`translate-y-0/translate-y-full` CSS transition, backdrop click to close). **Workspace sheet** accepts a `topOffset` prop set to `"72px"` so it starts a fixed distance from the top and has a stable, non-dynamic height; it renders `<WorkspaceSidebar hideBrandHeader />` inside. **User sheet** renders a 3-column language grid + logout button. Uses `usePathname`, `useParams`, and `useTranslations('MobileNav')`.
+  - `ViewsBar`: Renders named view tab buttons for a database, allowing inline renaming, deleting, and adding table, kanban, or calendar views. **Mobile compact mode:** on small screens the tab list collapses into a single-select dropdown showing the active view name. A dedicated **+** button sits next to the dropdown; tapping it opens a small inline dropdown with table/kanban/calendar add-view options (the add-view actions were removed from the view-selector dropdown to keep it clean).
   - `DatabasePropertiesSidebar`: Unified right-side sidebar managing database schema properties (adding/removing fields, editing options), columns visibility controls, active view filters (supporting premium multi-selection checklists for select and multi_select columns), active view sorts, page opening modes (peek options), group-by properties, calendar properties (date property and week start day option), and kanban card layout settings (card properties visibility/order with drag-to-reorder, show property labels toggle, property text wrap/truncate select) in a tabbed panel layout. Also supports view-level "Default Page Icon" and "Default Page Icon Color" selection. Each select/multi_select option now has a color dot that opens a 9-swatch inline color picker, and date/datetime properties have a Date format selector. Layout tab exposes: "Card color" property selector (select or multi_select) for kanban and calendar, and "Group background color" toggle for kanban.
   - `CalendarView`: Interactive calendar displaying database row cards placed based on a selected date property. Supports monthly and weekly grids, back/forward range navigators, settings layout integrations, custom week start day (Sunday/Monday), and smooth card drag-and-drop to dynamically reschedule page dates. Accepts `cardColorCol` prop: when set, renders a segmented left-border accent bar on each card using `getCardBorderDots`. Supports inline editing of card properties via `InlineCellEditor`.
   - `TableLayout`: Notion-like grid with vertical borders, tight padding, and fully draggable columns (swap-on-drop) that persist to the active view's configuration. Supports hidden columns, custom row click behaviors, and active filter indicators (Filter icons) next to column header titles. Select and multi_select cells render as colored chips using `getOptionColorByValue` from `properties.ts`. Supports inline editing of cells (except the title column) via `InlineCellEditor`, and quick filtering directly from column headers with multi-selection checklists.
@@ -173,8 +209,8 @@ To support fully dynamic, user-defined properties without structural database mi
   - `InlineCellEditor`: Shared component that provides in-place inline editing inputs and absolutely positioned dropdowns/popovers for all database property types (`text`, `number`, `date`, `datetime`, `select`, `multi_select`), capturing click events (`e.stopPropagation`) to prevent opening card/row peek modals.
   - `PageIcon`: Renders custom emojis or specific Lucide icons with 9 tailwind-supported theme colors (default, red, orange, yellow, green, teal, blue, purple, pink), falling back to type-specific icons (FileText / Database).
   - `IconPicker`: Popover panel allowing emoji (curated or custom) and Lucide icon selection with an inline color selector.
-  - `StandalonePageEditor`: Simple editor for workspace pages — large title input + block editor, both auto-saved (debounced). No properties panel. Supports large custom page icon headers at the top with an integrated `IconPicker`. Dynamically updates browser page title in real-time as the user types. The back button in the top-left navigates to the parent page (`/page/${item.parentId}`) when `item.parentId` is set, or to the workspace root (`/`) for top-level pages.
-  - `PageEditor`: Full editor for database row pages — properties panel (select dropdowns, text inputs, multi-select, date) + block editor with auto-save. Supports large custom page icon headers at the top with an integrated `IconPicker`. Can be rendered inside a peek panel. Dynamically synchronizes browser page title in full view mode. Supports Narrow, Wide, and Full width layout modes in full page view with local storage persistence; **defaults to Full width** (standalone pages default to Narrow). Text and number property changes are debounced (600 ms) before persisting; discrete controls (select, date, datetime, multi-select) save immediately on change. The `select` property uses a custom dropdown (not a native `<select>`) that renders each option as a colored chip; multi_select selected/available chips are also color-coded using `getOptionColorByValue`.
+  - `StandalonePageEditor`: Simple editor for workspace pages — large title input + block editor, both auto-saved (debounced). No properties panel. Supports large custom page icon headers at the top with an integrated `IconPicker`. Dynamically updates browser page title in real-time as the user types. The back button in the top-left navigates to the parent page (`/page/${item.parentId}`) **only when `item.parentId` is set** — root-level pages (no parent) do not show a back button at all.
+  - `PageEditor`: Full editor for database row pages — properties panel (select dropdowns, text inputs, multi-select, date) + block editor with auto-save. Supports large custom page icon headers at the top with an integrated `IconPicker`. Can be rendered inside a peek panel. Dynamically synchronizes browser page title in full view mode. Supports Narrow, Wide, and Full width layout modes in full page view with local storage persistence; **defaults to Full width** (standalone pages default to Narrow). Text and number property changes are debounced (600 ms) before persisting; discrete controls (select, date, datetime, multi-select) save immediately on change. The `select` property uses a custom dropdown (not a native `<select>`) that renders each option as a colored chip; multi_select selected/available chips are also color-coded using `getOptionColorByValue`. **Compact peek layout:** when `isPeek` is true, the properties panel uses tighter spacing (`mb-6 space-y-1`, `pb-1.5`) and smaller labels (`w-24 text-xs`) versus the full-page layout (`mb-12 space-y-4`, `pb-3`, `w-32 text-sm`) to save vertical space inside the mobile bottom-sheet peek modals.
   - `editor/BlockEditor`: Tiptap-based block editor. Accepts `initialContent` (markdown string), `onChange` callback, `onImmediateSave` (called synchronously before page navigation to avoid losing unsaved content), `workspaceId`, `parentId`, and optional `initialSubItems` (`WorkspaceItemRow[]`). Extensions: StarterKit, `@tiptap/markdown` v3 (markdown ↔ ProseMirror roundtrip), Placeholder, TaskList, TaskItem (nested), Table/TableRow/TableCell/TableHeader, `ChildBlock`, `SlashCommand`. Content is stored as plain markdown — no schema changes required. The `buildInitialContent` helper reconciles `initialSubItems` against the saved markdown on first load: any sub-items whose IDs are missing from the markdown are prepended as `<div data-cb-id>` HTML blocks so they are never silently lost. Use `key={page.id}` to remount on page switch.
   - `editor/ChildBlockExtension`: Custom Tiptap `Node` extension (`name: 'childBlock'`, `group: 'block'`, `atom: true`, `draggable: true`). Represents embedded sub-pages and sub-databases as inline editor blocks. Options: `workspaceId`, `parentId`, `onImmediateSave`. Serializes to/from markdown via the **@tiptap/markdown v3** API — `renderMarkdown(node)` is a direct extension field (`@ts-ignore` required since it is not in Tiptap core types) that outputs `<div data-cb-id="..." data-cb-type="..." data-cb-title="..." data-cb-icon="..." data-cb-iconcolor="..."></div>`. The `div` element is intentional: `marked` (used internally by `@tiptap/markdown`) only recognizes standard HTML block elements; custom elements like `<child-block>` are NOT tokenized as HTML blocks. `parseHTML` uses selector `div[data-cb-id]` with `priority: 1000` to intercept the `div` during ProseMirror DOM parse. The node view is rendered by `ChildBlockView`.
   - `editor/ChildBlockView`: React node view component for `childBlock` nodes. Renders a row with a drag handle (`data-drag-handle`), a `PageIcon`, a clickable title button that navigates to the child item (`/page/:id` or `/db/:id`), and a delete button. Before navigating, calls `onImmediateSave` (from `ChildBlock` extension options) with the current editor markdown so content is persisted before route change. On delete: calls `checkItemHasContent(itemId)` — if the item has content, shows a confirmation portal dialog before calling `deleteWorkspaceItem`; otherwise deletes immediately without a prompt.
@@ -186,16 +222,25 @@ To support fully dynamic, user-defined properties without structural database mi
 - `src/lib/auth/session.ts`: Shared `getCurrentUser()` — a `React.cache`-wrapped call to `auth()`. Import from here in all server actions instead of calling `auth()` directly. Ensures auth is resolved at most once per request.
 - `src/components/providers/QueryProvider.tsx`: TanStack Query `QueryClientProvider` wrapper (staleTime 60s, gcTime 5min, no window-focus refetch). Wraps the authenticated layout in `src/app/[locale]/layout.tsx`.
 - `src/components/features/SaveStatus.tsx`: Auto-fading save indicator (`idle` → `saving` → `saved` → `error`). Used in `StandalonePageEditor` and `PageEditor` to give users feedback on auto-save debounce completion.
+- `src/components/marketing/`: Marketing / landing page components — all publicly accessible, no auth required.
+  - `MarketingShell.tsx`: Server component wrapper. Checks auth: unauthenticated → renders `<MarketingHeader>` + children + `<MarketingFooter>`; authenticated → renders children only (sidebar already provides navigation).
+  - `MarketingHeader.tsx`: Client component. Sticky nav with logo, Home/Pricing/Contact links, and Sign in / Get started CTAs. Includes a hamburger menu for mobile.
+  - `MarketingFooter.tsx`: Server component. Logo, tagline, links (Home, Pricing, Contact, Open App), and copyright with `{year}` interpolation from the `Landing` namespace.
+  - `HeroSection.tsx`: Server component. Large headline, subtitle, primary CTA (→ `/register`) and secondary CTA (→ `/login`), with a subtle radial glow background effect.
+  - `FeaturesSection.tsx`: Server component. 3×2 grid of feature cards (Rich Pages, Flexible Databases, Kanban Boards, Calendar View, Multilingual, Nested Structure) using Lucide icons.
+  - `PricingSection.tsx`: Server component. Two-column pricing grid — Free tier (full features, self-hosted) and Pro tier (coming soon). Accepts optional `compact?: boolean` prop used when embedded on the landing page.
+  - `ContactSection.tsx`: Server component. Three contact channel cards: GitHub, Email, Community.
 - `src/lib/seed.ts`: `createSeedWorkspace(userId, userName?)` and `createDemoSeedData(userId, userName?)` both call the shared `createRichWorkspaceData` helper. Seeds: Getting Started page, a **📁 Projects** folder page (with nested sub-projects **🚀 Remnus v2 Launch** and **🎨 Design System**, each containing child pages and databases), Sprint Board, Bug Tracker, Team Calendar, and Reading List. All inserts use `createdAt: new Date()`; all database row `properties` include a `title` key.
 
 - `src/i18n/routing.ts`: Defines supported locales (`en`, `tr`, `hi`, `es`, `fr`, `de`), `defaultLocale: 'en'`, and `localePrefix: 'never'` for clean URLs. Also exports the `Locale` union type.
 - `src/i18n/request.ts`: `getRequestConfig` — validates the incoming locale; loads and returns `messages/{locale}.json`. Falls back to `defaultLocale` if locale is unrecognized.
 - `src/lib/actions/locale.ts`: `setLocale(locale)` server action — writes the `NEXT_LOCALE` cookie (1-year expiry, path `/`). Called by `LanguageSwitcher` on language change.
 - `src/components/features/LanguageSwitcher.tsx`: Client component. Dropdown listing all 6 languages with flag emoji + native name. On select: calls `setLocale(code)` then `router.refresh()` to reload with the new locale. Rendered in the `WorkspaceSidebar` user panel and top-right of `/login`/`/register` pages.
-- `messages/`: Translation JSON files (`en.json`, `tr.json`, `hi.json`, `es.json`, `fr.json`, `de.json`). ~200 keys per file in 13 namespaces. `en.json` is the authoritative source of truth — all other files must have the same key structure.
+- `messages/`: Translation JSON files (`en.json`, `tr.json`, `hi.json`, `es.json`, `fr.json`, `de.json`). `en.json` is the authoritative source of truth — all other files must have the same key structure. **17 namespaces** per file: `Layout`, `Home`, `Auth`, `Workspace`, `WorkspaceSettings`, `Templates`, `Database`, `Editor`, `Page`, `IconPicker`, `Admin`, `Errors`, `LanguageSwitcher`, `MobileNav`, `Landing`, `Pricing`, `Contact`. The `Landing` namespace drives the marketing header, footer, hero, and features sections. `Pricing` drives the pricing page/section. `Contact` drives the contact page.
 - `src/db/`: Contains Drizzle `schema.ts`, connection `index.ts`, migration scripts, and `migrations/` folder.
 
 ### Common Commands
+
 - **Start Dev Server:** `npm run dev`
 - **Generate Migrations:** `npx drizzle-kit generate`
 - **Apply Migrations:** `npx tsx src/db/migrate.ts` (Due to interactive limitations of `drizzle-kit push`, use this custom script to apply local `.sql` changes).

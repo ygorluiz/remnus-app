@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google';
 import '../globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { auth, signOut } from '@/auth';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getAllWorkspaceItems, getWorkspaces } from '@/lib/actions/workspace';
 import WorkspaceSidebar from '@/components/features/WorkspaceSidebar';
 import MobileNavWrapper from '@/components/features/MobileNavWrapper';
@@ -13,6 +13,11 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { getTranslations } from 'next-intl/server';
+
+function isMarketingPath(pathname: string) {
+  const clean = pathname.replace(/^\/[a-z]{2}(\/|$)/, '/');
+  return clean === '/' || clean.startsWith('/pricing') || clean.startsWith('/contact');
+}
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -48,8 +53,11 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   const session = await auth();
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') ?? '/';
+  const isMarketing = isMarketingPath(pathname);
 
-  if (!session?.user) {
+  if (!session?.user || isMarketing) {
     return (
       <html lang={locale}>
         <body className={`${inter.className} bg-neutral-950 text-neutral-50`}>

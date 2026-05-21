@@ -6,7 +6,12 @@
 - Server components/layouts: `await getTranslations('Namespace')`
 - Server actions: `getTranslations('Errors')` for error messages
 - Add keys to ALL 6 files (en/tr/hi/es/fr/de) — missing keys cause runtime warnings
-- 13 namespaces: Layout, Home, Auth, Workspace, WorkspaceSettings, Templates, Database, Editor, Page, IconPicker, Admin, Errors, LanguageSwitcher
+- 17 namespaces: Layout, Home, Auth, Workspace, WorkspaceSettings, Templates, Database, Editor, Page, IconPicker, Admin, Errors, LanguageSwitcher, MobileNav, Landing, Pricing, Contact
+- `Workspace` namespace includes `deleteConfirm` (interpolated with `{title}`) and `deleteCancel` keys for item-deletion confirmation modal
+- `MobileNav` namespace keys: `menu`, `home`, `new`, `close`, `workspace`, `user`, `signOut` — used by `MobileNavWrapper`
+- `Landing` namespace: drives `MarketingHeader`, `MarketingFooter`, `HeroSection`, `FeaturesSection` (navHome/navPricing/navContact/navSignIn/navGetStarted/hero*/feature*Title/Desc/footer* keys)
+- `Pricing` namespace: drives `PricingSection` (free/pro tier content)
+- `Contact` namespace: drives `ContactSection` (github/email/community channel cards)
 
 ## Auth
 - NEVER call `auth()` directly in server actions/components — use `getCurrentUser()` from `src/lib/auth/session.ts` (React.cache wrapped)
