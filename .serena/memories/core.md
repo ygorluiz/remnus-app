@@ -1,0 +1,53 @@
+# Remnus — Core Memory
+
+Notion-like workspace app. Pages (title + markdown) and databases (dynamic columns, table/kanban/calendar views) in a unified sidebar. Each database row is also a page.
+
+## Source Map
+
+```
+src/
+  app/                      # Next.js App Router
+    layout.tsx              # Root passthrough (no HTML/body)
+    [locale]/
+      layout.tsx            # Full locale-aware layout, auth check, sidebar
+      page.tsx              # Home — redirect to first workspace item
+      login/page.tsx        # Auth page (client component)
+      register/page.tsx     # Auth page (client component)
+      db/[id]/page.tsx      # Database view (table/kanban/calendar)
+      db/[id]/[pageId]/     # Database row page editor
+      page/[itemId]/        # Standalone workspace page editor
+      admin/page.tsx        # Admin-only dashboard
+    api/auth/[...nextauth]/ # Auth.js HTTP handler
+  auth.config.ts            # Edge-compatible Auth.js config (no DB)
+  auth.ts                   # Full Auth.js config (DrizzleAdapter + callbacks)
+  middleware.ts             # Route protection + locale rewrite
+  components/features/      # All feature React components (see mem:conventions)
+  components/providers/     # QueryProvider (TanStack Query)
+  db/
+    schema.ts               # Drizzle ORM schema (all tables)
+    index.ts                # DB connection + SQLite PRAGMAs
+    migrate.ts              # Migration runner
+    migrations/             # SQL migration files (0000–0010)
+  i18n/
+    routing.ts              # defineRouting (locales, localePrefix:'never')
+    request.ts              # getRequestConfig (message loader)
+  lib/
+    actions/                # Server Actions (auth, workspace, database, page, demo, locale)
+    auth/session.ts         # getCurrentUser() — React.cache wrapper around auth()
+    types/properties.ts     # SelectOption, color system, helpers
+    types/views.ts          # DatabaseView, ViewFilter, ViewSort types
+    templates.ts            # TEMPLATES array for TemplatePickerModal
+    seed.ts                 # createSeedWorkspace + createDemoSeedData
+messages/                   # i18n JSON (en, tr, hi, es, fr, de)
+```
+
+## DB Tables
+- `workspaces` — workspace list
+- `workspace_items` — sidebar items (pages + databases), recursive nesting via `parent_id`
+- `standalone_pages` — markdown content for page-type items
+- `databases` — schema (JSON) + views (JSON) config
+- `pages` — database rows; `properties` JSON column
+- `user`, `account`, `session`, `verificationToken` — Auth.js tables
+- `workspace_members` — user↔workspace join with role
+
+See `mem:tech_stack` for stack. See `mem:conventions` for code patterns.
