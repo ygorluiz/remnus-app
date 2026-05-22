@@ -98,6 +98,31 @@ body {
   color: var(--foreground);
 }
 
+/* Dark scrollbars — Chromium/Tauri WebView */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-neutral-900);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-700);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-600);
+}
+::-webkit-scrollbar-corner {
+  background: var(--color-neutral-900);
+}
+
+/* Firefox */
+* {
+  scrollbar-color: var(--color-neutral-700) var(--color-neutral-900);
+  scrollbar-width: thin;
+}
+
 select,
 option,
 input,

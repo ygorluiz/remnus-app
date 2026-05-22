@@ -30,7 +30,14 @@
     "alreadyHaveAccount": "Zaten bir hesabınız var mı?",
     "tryDemo": "Demo'yu Dene",
     "loadingDemo": "Demo yükleniyor…",
-    "demoHint": "Kayıt olmadan keşfet — değişiklikler her oturumda sıfırlanır"
+    "demoHint": "Kayıt olmadan keşfet — değişiklikler her oturumda sıfırlanır",
+    "backToHome": "Ana sayfaya dön",
+    "clientLoginTitle": "Remnus'a Giriş Yap",
+    "clientLoginSubtitle": "Tarayıcı hesabınızla giriş yapın — bilgileriniz tarayıcınızda kalır.",
+    "clientLoginSuccess": "Giriş yapıldı! Bu sekmeyi kapatıp uygulamaya dönebilirsiniz.",
+    "clientLoginError": "Kimlik doğrulama başarısız. Lütfen tekrar deneyin.",
+    "openInBrowser": "Google ile Giriş Yap",
+    "openingBrowser": "Tarayıcı açılıyor…"
   },
   "Admin": {
     "panelTitle": "Yönetim Paneli",

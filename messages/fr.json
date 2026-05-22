@@ -30,7 +30,14 @@
     "alreadyHaveAccount": "Vous avez déjà un compte ?",
     "tryDemo": "Essayer la Démo",
     "loadingDemo": "Chargement de la démo…",
-    "demoHint": "Explorez sans vous inscrire — les modifications sont réinitialisées à chaque session"
+    "demoHint": "Explorez sans vous inscrire — les modifications sont réinitialisées à chaque session",
+    "backToHome": "Retour à l'accueil",
+    "clientLoginTitle": "Se connecter à Remnus",
+    "clientLoginSubtitle": "Connectez-vous avec votre compte navigateur — vos identifiants restent dans le navigateur.",
+    "clientLoginSuccess": "Connecté ! Vous pouvez fermer cet onglet et retourner à l'application.",
+    "clientLoginError": "Échec de l'authentification. Veuillez réessayer.",
+    "openInBrowser": "Se connecter avec Google",
+    "openingBrowser": "Ouverture du navigateur…"
   },
   "Admin": {
     "panelTitle": "Panneau d'Administration",

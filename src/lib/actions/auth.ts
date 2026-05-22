@@ -69,9 +69,14 @@ export async function loginWithCredentials(_prevState: unknown, formData: FormDa
   const t = await getTranslations('Errors');
   const email = (formData.get('email') as string)?.trim().toLowerCase();
   const password = formData.get('password') as string;
+  const deviceId = formData.get('device_id') as string | null;
+
+  const redirectTo = deviceId
+    ? `/api/auth/client-bridge?device_id=${encodeURIComponent(deviceId)}`
+    : '/';
 
   try {
-    await signIn('credentials', { email, password, redirectTo: '/' });
+    await signIn('credentials', { email, password, redirectTo });
   } catch (error) {
     if (error instanceof AuthError) return { error: t('invalidCredentials') };
     throw error;

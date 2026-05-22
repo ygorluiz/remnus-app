@@ -17,13 +17,36 @@ export const authConfig: NextAuthConfig = {
       const cleanPath = path.replace(/^\/[a-z]{2}(\/|$)/, '/');
 
       const isAuthRoute = cleanPath.startsWith('/login') || cleanPath.startsWith('/register');
+      const isClientLogin = cleanPath.startsWith('/client-login');
       const isApiAuth = cleanPath.startsWith('/api/auth');
       const isPublicAsset = /\.(png|ico|svg|jpg|jpeg|webp|woff2?)$/.test(path);
-      const isMarketingRoute = cleanPath === '/';
+      const isRootRoute = cleanPath === '/';
+      const isPublicMarketingRoute = cleanPath.startsWith('/pricing') || cleanPath.startsWith('/contact');
       const isMcpRoute = cleanPath.startsWith('/api/mcp');
-      if (isApiAuth || isMcpRoute || isPublicAsset) return true;
+      const isTauriEntry = cleanPath.startsWith('/tauri-app');
+      const isClientActivate = cleanPath.startsWith('/api/auth/client-activate');
+      if (isApiAuth || isMcpRoute || isPublicAsset || isTauriEntry || isClientActivate) return true;
 
-      if (isMarketingRoute) return true;
+      // Public marketing pages (pricing, contact) are always accessible
+      if (isPublicMarketingRoute) return true;
+
+      // Root URL: logged-in users go to the app; guests see the landing page
+      if (isRootRoute) {
+        if (isLoggedIn) return Response.redirect(new URL('/app', nextUrl));
+        return true;
+      }
+
+      // /client-login: if user is already logged in, skip the login UI and go straight to bridge
+      if (isClientLogin) {
+        if (isLoggedIn) {
+          const deviceId = nextUrl.searchParams.get('device_id');
+          if (deviceId) {
+            return Response.redirect(new URL(`/api/auth/client-bridge?device_id=${encodeURIComponent(deviceId)}`, nextUrl));
+          }
+          return Response.redirect(new URL('/app', nextUrl));
+        }
+        return true;
+      }
 
       if (isAuthRoute) {
         // Logged-in users visiting /login or /register are sent to the app

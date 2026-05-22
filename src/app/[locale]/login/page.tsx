@@ -1,30 +1,133 @@
 'use client';
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { loginWithCredentials } from '@/lib/actions/auth';
 import { loginAsDemo } from '@/lib/actions/demo';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
-import { ArrowLeft } from 'lucide-react';
+
+type TauriState = 'idle' | 'waiting' | 'activating' | 'error';
 
 export default function LoginPage() {
   const t = useTranslations('Auth');
+  const [isTauri, setIsTauri] = useState(false);
+  const [tauriState, setTauriState] = useState<TauriState>('idle');
+  const deviceIdRef = useRef<string | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setIsTauri(
+      '__TAURI_INTERNALS__' in window ||
+      '__TAURI__' in window ||
+      (() => { try { return localStorage.getItem('platform') === 'tauri'; } catch { return false; } })()
+    );
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
   const [state, formAction, isPending] = useActionState(loginWithCredentials, null);
   const [demoState, demoFormAction, isDemoPending] = useActionState(loginAsDemo, null);
+
+  async function handleTauriSignIn() {
+    const deviceId = crypto.randomUUID();
+    deviceIdRef.current = deviceId;
+    setTauriState('waiting');
+
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    const base = window.location.hostname === 'localhost'
+      ? window.location.origin
+      : 'https://remnus.com';
+    const loginUrl = `${base}/client-login?device_id=${encodeURIComponent(deviceId)}`;
+
+    try {
+      const { openUrl } = await import('@tauri-apps/plugin-opener');
+      await openUrl(loginUrl);
+    } catch {
+      window.open(loginUrl, '_blank');
+    }
+
+    pollIntervalRef.current = setInterval(async () => {
+      if (deviceIdRef.current !== deviceId) return;
+      try {
+        const res = await fetch(`/api/auth/client-poll?device_id=${encodeURIComponent(deviceId)}`);
+        const data: { ready: boolean; token?: string } = await res.json();
+        if (data.ready && data.token) {
+          clearInterval(pollIntervalRef.current!);
+          clearTimeout(timeoutRef.current!);
+          setTauriState('activating');
+          window.location.href = `/api/auth/client-activate?token=${encodeURIComponent(data.token)}`;
+        }
+      } catch {
+        // Network error — keep polling
+      }
+    }, 2000);
+
+    timeoutRef.current = setTimeout(() => {
+      if (deviceIdRef.current === deviceId) {
+        clearInterval(pollIntervalRef.current!);
+        setTauriState('error');
+      }
+    }, 10 * 60 * 1000);
+  }
+
+  if (isTauri) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4 select-none">
+        <img
+          src="/logo-square-dark.png"
+          alt="Remnus"
+          className="w-16 h-16 object-contain rounded-2xl mb-5"
+        />
+        <h1 className="text-xl font-semibold text-white mb-10 tracking-tight">Remnus</h1>
+
+        {tauriState === 'idle' && (
+          <button
+            type="button"
+            onClick={handleTauriSignIn}
+            className="px-10 py-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-medium text-sm rounded-lg transition-colors"
+          >
+            {t('signIn')}
+          </button>
+        )}
+
+        {(tauriState === 'waiting' || tauriState === 'activating') && (
+          <div className="flex flex-col items-center gap-3">
+            <Spinner />
+            <p className="text-sm text-neutral-500">
+              {tauriState === 'waiting' ? t('openingBrowser') : t('signingIn')}
+            </p>
+          </div>
+        )}
+
+        {tauriState === 'error' && (
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-sm text-red-400">{t('clientLoginError')}</p>
+            <button
+              type="button"
+              onClick={() => { deviceIdRef.current = null; setTauriState('idle'); }}
+              className="px-10 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm rounded-lg transition-colors"
+            >
+              {t('signIn')}
+            </button>
+          </div>
+        )}
+
+        <div className="absolute bottom-6">
+          <LanguageSwitcher />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="mb-5">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
-          >
-            <ArrowLeft size={15} />
-            {t('backToHome')}
-          </Link>
-        </div>
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <img
@@ -132,6 +235,20 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg
+      className="animate-spin h-4 w-4 text-neutral-400"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }
 

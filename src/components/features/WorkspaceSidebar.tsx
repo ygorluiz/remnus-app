@@ -78,6 +78,13 @@ export default function WorkspaceSidebar({
   const [isPending, startTransition] = useTransition();
   const [isSaving, startSaveTransition] = useTransition();
   const [avatarError, setAvatarError] = useState(false);
+  const [isTauri, setIsTauri] = useState(false);
+
+  useEffect(() => {
+    const byGlobal = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
+    const byStorage = (() => { try { return localStorage.getItem('platform') === 'tauri'; } catch (_) { return false; } })();
+    setIsTauri(byGlobal || byStorage);
+  }, []);
 
   // Tree creation and editing states
   const [templatePickerWorkspaceId, setTemplatePickerWorkspaceId] = useState<string | null>(null);
@@ -629,15 +636,17 @@ export default function WorkspaceSidebar({
       {/* Brand Header — hidden in mobile sheet */}
       <div className={`p-4 border-b border-neutral-800 flex items-center justify-between shrink-0 ${hideBrandHeader ? 'hidden' : ''}`}>
         <div className="flex items-center group/brand">
-          <div className="w-0 overflow-hidden group-hover/brand:w-6 transition-[width] duration-200 shrink-0">
-            <Link
-              href="/"
-              className="flex items-center justify-center w-6 h-6 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800"
-              title={t('backToHome')}
-            >
-              <ArrowLeft size={13} />
-            </Link>
-          </div>
+          {!isTauri && (
+            <div className="w-0 overflow-hidden group-hover/brand:w-6 transition-[width] duration-200 shrink-0">
+              <Link
+                href="/"
+                className="flex items-center justify-center w-6 h-6 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800"
+                title={t('backToHome')}
+              >
+                <ArrowLeft size={13} />
+              </Link>
+            </div>
+          )}
           <Link href={logoHref ?? '#'} className="font-semibold flex items-center gap-2.5 text-white hover:text-neutral-300 transition-colors">
             <img src="/logo-square-dark.png" alt="Remnus Logo" className={`w-5 h-5 object-contain rounded-md shrink-0 shadow-sm ${isSaving ? 'animate-pulse' : ''}`} />
             <span className="font-bold tracking-tight text-white">Remnus</span>

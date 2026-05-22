@@ -39,11 +39,17 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Remnus',
   description: 'Customizable database and pages',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Remnus',
+  },
   icons: {
     icon: '/logo-square-dark.ico',
     shortcut: '/logo-square-dark.ico',
     apple: '/logo-square-dark.png',
-  }
+  },
 };
 
 export default async function LocaleLayout({

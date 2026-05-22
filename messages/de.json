@@ -30,7 +30,14 @@
     "alreadyHaveAccount": "Bereits ein Konto?",
     "tryDemo": "Demo ausprobieren",
     "loadingDemo": "Demo wird geladen…",
-    "demoHint": "Erkunden ohne Registrierung — Änderungen werden pro Sitzung zurückgesetzt"
+    "demoHint": "Erkunden ohne Registrierung — Änderungen werden pro Sitzung zurückgesetzt",
+    "backToHome": "Zurück zur Startseite",
+    "clientLoginTitle": "Bei Remnus anmelden",
+    "clientLoginSubtitle": "Melden Sie sich mit Ihrem Browser-Konto an — Ihre Daten bleiben im Browser.",
+    "clientLoginSuccess": "Angemeldet! Sie können diesen Tab schließen und zur App zurückkehren.",
+    "clientLoginError": "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "openInBrowser": "Mit Google anmelden",
+    "openingBrowser": "Browser wird geöffnet…"
   },
   "Admin": {
     "panelTitle": "Admin-Panel",

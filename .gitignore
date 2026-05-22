@@ -47,3 +47,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /.claude
+
+# PWA generated files
+/public/sw.js
+/public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
+/public/fallback-*.js
+/public/fallback-*.js.map
+
+# Tauri build output
+/src-tauri/target/
+
+# Capacitor build artifacts (native project dirs should be committed)
+/android/.gradle/
+/android/app/build/
+/android/build/
+/ios/Pods/
+/ios/build/
+/ios/DerivedData/

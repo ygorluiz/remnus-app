@@ -103,6 +103,9 @@ Tokens defined via `@theme` overrides in `src/app/globals.css`.
 - **Database:** SQLite (`file:local.db`), Turso/Serverless compatible target.
 - **ORM & Driver:** Drizzle ORM + `@libsql/client`.
 - **Auth:** Auth.js v5 (`next-auth@beta`) + `@auth/drizzle-adapter` + `bcryptjs`.
+- **Desktop:** Tauri v2 (Rust shell, loads `remnus.com` in system WebView).
+- **Mobile:** Capacitor v8 (iOS + Android, loads `remnus.com` via `server.url`).
+- **PWA:** `@ducanh2912/next-pwa` (Workbox service worker, `public/manifest.json`).
 
 ## Architecture & Conventions
 
@@ -150,17 +153,19 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 ### Project Structure
 
 **Auth & middleware**
-- `src/auth.config.ts` — Edge-compatible config (middleware only, no DB import).
-- `src/auth.ts` — Full config: DrizzleAdapter, Credentials provider, JWT callbacks, first-user bootstrap event.
-- `src/middleware.ts` — Protects all routes; whitelists `/login`, `/register`, `/api/auth/*`, `/api/mcp`, static assets, `/`, `/pricing`, `/contact`.
+- `src/auth.config.ts` — Edge-compatible config (middleware only, no DB import). `/client-login` is handled specially: logged-in users with a `device_id` param are redirected straight to `/api/auth/client-bridge?device_id=…`; without a `device_id` they go to `/app`.
+- `src/auth.ts` — Full config: DrizzleAdapter, Credentials provider, `client-token` provider (desktop OAuth), JWT callbacks, first-user bootstrap event.
+- `src/proxy.ts` — Protects all routes (Next.js 16 proxy, replaces `middleware.ts`); whitelists `/login`, `/register`, `/client-login`, `/tauri-app`, `/api/auth/*`, `/api/auth/client-activate`, `/api/mcp`, static assets, `/`, `/pricing`, `/contact`.
 - `src/lib/auth/session.ts` — `getCurrentUser()` — `React.cache`-wrapped `auth()`. Use this everywhere in server actions.
 
 **Routes (`src/app/[locale]/`)**
 - `layout.tsx` — Locale validation, `NextIntlClientProvider`, session check, sidebar + mobile nav render.
 - `page.tsx` — Public landing (always `LandingBridgeSwitcher`, no auth check).
 - `app/page.tsx` — Authenticated redirect gateway → first workspace item or `/login`.
-- `login/page.tsx` — Credentials + Google OAuth login.
+- `login/page.tsx` — Credentials + Google OAuth login. In Tauri mode, renders a minimal UI (logo + "Sign in" button); on click generates a UUID `device_id`, opens `client-login?device_id=<uuid>` in the system browser, then polls `/api/auth/client-poll` every 2 s until a token arrives.
 - `register/page.tsx` — Registration form.
+- `client-login/page.tsx` — Public. Full login page (Google + credentials) opened in the system browser by Tauri. Reads `device_id` from URL search params and threads it through both auth paths so `/api/auth/client-bridge` can store the resulting token keyed by that id.
+- `tauri-app/page.tsx` — Public entry for Tauri (`tauri.conf.json` devUrl/url). Sets `localStorage.platform=tauri`, auto-detects OS locale, redirects to `/app`.
 - `db/[id]/page.tsx` — Database view (Table / Kanban / Calendar).
 - `db/[id]/[pageId]/page.tsx` — Database row page editor.
 - `page/[itemId]/page.tsx` — Standalone page editor.
@@ -168,6 +173,9 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 - `contact/page.tsx` — Public contact (MarketingShell-wrapped).
 - `admin/page.tsx` — Admin dashboard (users + workspaces tables, stat cards).
 - `api/auth/[...nextauth]/route.ts` — Auth.js handler.
+- `api/auth/client-bridge/route.ts` — GET. Called after browser-side login (as callbackUrl). Requires `device_id` query param. Creates a 5-min JWT signed with AUTH_SECRET, stores it in the in-memory `client-auth-store` keyed by `device_id`, and returns a "Close this tab" HTML page.
+- `api/auth/client-poll/route.ts` — GET. Polled by the Tauri WebView every 2 s. Accepts `device_id`; returns `{ ready: false }` while waiting, `{ ready: true, token }` once the browser completes login (one-time consume).
+- `api/auth/client-activate/route.ts` — GET. Tauri WebView navigates here with the token from the poll response. Signs in via `client-token` provider, redirects to `/app`.
 - `api/mcp/route.ts` — MCP Streamable HTTP: bearer auth, rate limit (60 req/min), 6 tools, audit log.
 
 **Server Actions (`src/lib/actions/`)**
@@ -224,6 +232,7 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 - `mini/` — Static mini previews: `KanbanMini`, `TableMini`, `CalendarMini`, `MarkdownPageMini`, `ViewTab`.
 
 **Other**
+- `src/lib/client-auth-store.ts` — In-memory store for pending desktop OAuth tokens. `setPendingClientToken(deviceId, token)` writes; `consumeClientToken(deviceId)` reads + deletes (one-time use, 5-min TTL). Single-process only — swap for a DB table in multi-instance deployments.
 - `src/lib/templates.ts` — 7 item templates for `TemplatePickerModal`.
 - `src/lib/seed.ts` — `createSeedWorkspace()` and `createDemoSeedData()` via shared `createRichWorkspaceData`.
 - `src/lib/services/workspace.ts` — Cookie-free service layer for MCP tool handlers.
@@ -236,3 +245,44 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 - **Start Dev Server:** `npm run dev`
 - **Generate Migrations:** `npx drizzle-kit generate`
 - **Apply Migrations:** `npx tsx src/db/migrate.ts`
+- **Desktop dev (Tauri):** `npm run tauri:dev` — requires Rust + Visual C++ Build Tools
+- **Desktop build:** `npm run tauri:build`
+- **Generate Tauri icons:** `npm run tauri:icon` — run once after Rust is installed
+- **Android open:** `npm run cap:open:android` — opens Android Studio
+- **Android run:** `npm run cap:android`
+- **iOS open (macOS only):** `npm run cap:open:ios`
+- **Sync Capacitor:** `npm run cap:sync` — call after changing `capacitor.config.ts`
+
+### Cross-Platform Architecture
+
+**Strategy:** Cloud-first. All three platforms (web, desktop, mobile) load `remnus.com`. No separate API or local server required.
+
+```
+ remnus.com (Vercel)
+       │
+ ┌─────┼───────┐
+ │     │       │
+Web  Tauri  Capacitor
+     Shell   Shell
+    (Rust)  (iOS/Android)
+```
+
+**PWA** — `public/manifest.json` + Workbox service worker. Enables "Install App" in browsers and is the foundation for offline support. Disabled in `development` mode (`NODE_ENV`).
+
+**Tauri** (`src-tauri/`) — Rust shell wrapping a system WebView.
+- Dev: `build.devUrl = "http://localhost:3000"` signals CLI to wait; `setup()` hook navigates to `localhost:3000/tauri-app` via `window.eval` (`#[cfg(debug_assertions)]`).
+- Prod: loads `https://remnus.com/tauri-app` (set via `app.windows[0].url`).
+- Entry point `/tauri-app` sets `localStorage.platform=tauri` and detects OS locale before redirecting to `/app`.
+- Features: system tray (single icon, built programmatically — **no** `trayIcon` config in `tauri.conf.json`), global shortcuts, notifications, deep-link (`remnus://` scheme).
+- **Close to tray:** `CloseRequested` event is intercepted in `lib.rs`; window hides instead of quitting. Tray left-click or "Show Window" menu item restores it; "Quit Remnus" exits.
+- **Desktop OAuth flow (polling / device-authorization):** Tauri login view generates a UUID `device_id` → opens `remnus.com/client-login?device_id=<uuid>` in the system browser via `@tauri-apps/plugin-opener` → user logs in (Google or credentials) → browser POSTs to `/api/auth/client-bridge?device_id=<uuid>` which stores a 5-min JWT → browser shows "Close this tab" page → Tauri WebView polls `/api/auth/client-poll?device_id=<uuid>` every 2 s → on `{ ready: true, token }`, WebView navigates to `/api/auth/client-activate?token=…` → session cookie set → redirect to `/app`.
+- Release CI: `.github/workflows/tauri-release.yml` — triggers on `v*` tags, builds Windows (`.msi`), macOS (`.dmg`, both Intel + Apple Silicon), Linux (`.deb`, `.AppImage`)
+- **Requires:** Rust stable + Visual C++ Build Tools (Windows) / Xcode CLT (macOS)
+- Icons: generated from `public/logo-square-dark.png` via `npm run tauri:icon` (after Rust install)
+
+**Capacitor** (`capacitor.config.ts`, `android/`) — native WebView wrapper for iOS and Android.
+- Loads `https://remnus.com` via `server.url` — no static export needed
+- Plugins active: `SplashScreen`, `StatusBar`, `PushNotifications`, `Haptics`, `App`, `Keyboard`
+- Dark theme colors (`#1d1f23`) set in `android/app/src/main/res/values/colors.xml`
+- `android/` is committed to git (native project); `ios/` added on macOS via `npx cap add ios`
+- **Requires:** Android Studio (Android) / Xcode on macOS (iOS)

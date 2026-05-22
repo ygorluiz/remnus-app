@@ -30,7 +30,14 @@
     "alreadyHaveAccount": "¿Ya tienes una cuenta?",
     "tryDemo": "Probar Demo",
     "loadingDemo": "Cargando demo…",
-    "demoHint": "Explora sin registrarte — los cambios se restablecen cada sesión"
+    "demoHint": "Explora sin registrarte — los cambios se restablecen cada sesión",
+    "backToHome": "Volver al inicio",
+    "clientLoginTitle": "Iniciar sesión en Remnus",
+    "clientLoginSubtitle": "Inicia sesión con tu cuenta del navegador — tus credenciales permanecen en el navegador.",
+    "clientLoginSuccess": "¡Sesión iniciada! Puedes cerrar esta pestaña y volver a la aplicación.",
+    "clientLoginError": "Error de autenticación. Inténtalo de nuevo.",
+    "openInBrowser": "Iniciar sesión con Google",
+    "openingBrowser": "Abriendo el navegador…"
   },
   "Admin": {
     "panelTitle": "Panel de Administración",

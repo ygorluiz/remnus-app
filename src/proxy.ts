@@ -7,11 +7,11 @@ import { NextRequest, NextResponse } from 'next/server';
 const intlMiddleware = createMiddleware(routing);
 const { auth: authMiddleware } = NextAuth(authConfig);
 
-// Auth.js middleware wraps the intl middleware:
+// Auth.js proxy wraps the intl middleware:
 // 1. Auth checks run on the original (un-rewritten) request path
 // 2. API routes bypass intl middleware — next-intl must not rewrite /api/* paths
 // 3. If authorized page request, intl middleware handles locale detection and internal rewrite
-export default authMiddleware(function middleware(req: NextRequest) {
+export default authMiddleware(function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith('/api/')) {
     return NextResponse.next();
   }

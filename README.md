@@ -58,6 +58,12 @@ A self-hostable, Notion-like workspace application. Create pages, build database
 - Fully responsive — mobile bottom navigation bar with slide-up sheets
 - Skeleton loading states during route transitions
 
+### Cross-Platform
+- **PWA** — installable from any browser via the "Install App" prompt (Workbox service worker)
+- **Desktop** — native Windows / macOS / Linux app via Tauri (system WebView, system tray, ~10 MB binary)
+- **Android** — native app via Capacitor (Google Play ready)
+- **iOS** — native app via Capacitor (App Store ready, requires macOS to build)
+
 ---
 
 ## Tech Stack
@@ -74,6 +80,9 @@ A self-hostable, Notion-like workspace application. Create pages, build database
 | i18n | next-intl v4 |
 | AI/Agents | `@modelcontextprotocol/sdk` (Streamable HTTP) |
 | State/Cache | TanStack Query |
+| PWA | `@ducanh2912/next-pwa` (Workbox) |
+| Desktop | Tauri v2 (Rust + system WebView) |
+| Mobile | Capacitor v8 (iOS + Android) |
 
 ---
 
@@ -182,6 +191,73 @@ Add to your MCP config file (e.g. `.cursor/mcp.json`):
 | `query_database` | read | Get schema and rows of a database |
 | `create_page` | write | Create a standalone page or database row |
 | `update_page` | write | Update title, content, or properties |
+
+---
+
+## Desktop App (Tauri)
+
+The desktop app loads `remnus.com` in a native system WebView with a system tray icon and ~10 MB binary size.
+
+### Prerequisites
+
+- [Rust](https://rustup.rs/) stable
+- **Windows:** Visual C++ Build Tools (`winget install Microsoft.VisualStudio.2022.BuildTools`)
+- **macOS:** Xcode Command Line Tools (`xcode-select --install`)
+
+### Development
+
+```bash
+# Start Next.js dev server + Tauri window simultaneously
+npm run tauri:dev
+```
+
+### Release build
+
+Tag a commit with `v*` (e.g. `v1.0.0`) and push — GitHub Actions builds installers for all platforms automatically:
+
+| Platform | Output |
+|---|---|
+| Windows | `.msi` + `.exe` (NSIS) |
+| macOS Intel | `.dmg` |
+| macOS Apple Silicon | `.dmg` |
+| Linux | `.deb` + `.AppImage` |
+
+Or build locally:
+```bash
+npm run tauri:icon   # generate icons (first time only)
+npm run tauri:build
+```
+
+---
+
+## Mobile App (Capacitor)
+
+The mobile app loads `remnus.com` in a native WebView and is distributed via Google Play / App Store.
+
+### Android
+
+Requires [Android Studio](https://developer.android.com/studio).
+
+```bash
+npm run cap:open:android   # open in Android Studio, then Run
+# or
+npm run cap:android        # run directly on connected device / emulator
+```
+
+### iOS (macOS only)
+
+Requires Xcode on macOS.
+
+```bash
+npx cap add ios            # first time only
+npm run cap:open:ios       # open in Xcode, then Run
+```
+
+### After config changes
+
+```bash
+npm run cap:sync           # re-sync capacitor.config.ts to native projects
+```
 
 ---
 

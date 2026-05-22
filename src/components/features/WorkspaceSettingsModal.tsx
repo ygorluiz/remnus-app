@@ -85,6 +85,7 @@ export default function WorkspaceSettingsModal({
   const [isMinting, startMintTransition] = useTransition();
   const [newTokenValue, setNewTokenValue] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [tokenError, setTokenError] = useState('');
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [cmdCopied, setCmdCopied] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
@@ -233,6 +234,7 @@ export default function WorkspaceSettingsModal({
     const name = tokenName.trim();
     if (!name) return;
     setNewTokenValue(null);
+    setTokenError('');
     startMintTransition(async () => {
       try {
         const res = await mintAgentToken(workspaceId, name, tokenScope);
@@ -242,6 +244,8 @@ export default function WorkspaceSettingsModal({
         setShowCreateForm(false);
         loadTokens();
       } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to create token';
+        setTokenError(message);
         console.error(err);
       }
     });
@@ -688,10 +692,15 @@ export default function WorkspaceSettingsModal({
                               <option value="write">{t('tokenScopeWrite')}</option>
                             </select>
                           </div>
+                          {tokenError && (
+                            <p className="text-xs text-red-400 flex items-center gap-1">
+                              <AlertCircle size={12} /> {tokenError}
+                            </p>
+                          )}
                           <div className="flex gap-2 justify-end">
                             <button
                               type="button"
-                              onClick={() => { setShowCreateForm(false); setTokenName(''); setTokenScope('read'); }}
+                              onClick={() => { setShowCreateForm(false); setTokenName(''); setTokenScope('read'); setTokenError(''); }}
                               disabled={isMinting}
                               className="text-xs text-neutral-400 hover:text-neutral-200 px-3 py-1.5 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
                             >

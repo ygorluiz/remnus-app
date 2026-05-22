@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import type { DefaultSession } from 'next-auth';
 import bcrypt from 'bcryptjs';
+import { jwtVerify } from 'jose';
 import { db } from '@/db';
 import { users, accounts, sessions, verificationTokens, workspaces, workspaceMembers } from '@/db/schema';
 import { eq, ne } from 'drizzle-orm';
@@ -43,6 +44,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
   providers: [
     ...authConfig.providers,
+    // Desktop OAuth flow: system browser authenticates, server issues a short-lived JWT,
+    // Tauri deep-link callback exchanges it here for a full session.
+    Credentials({
+      id: 'client-token',
+      credentials: { token: { type: 'text' } },
+      async authorize({ token }) {
+        if (!token || typeof token !== 'string') return null;
+        try {
+          const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
+          const { payload } = await jwtVerify(token, secret, { audience: 'client-auth' });
+          if (!payload.sub) return null;
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, payload.sub))
+            .limit(1);
+          if (!user) return null;
+          return { id: user.id, name: user.name, email: user.email, image: user.image, role: user.role };
+        } catch {
+          return null;
+        }
+      },
+    }),
     Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
