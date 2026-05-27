@@ -169,7 +169,14 @@
     "agentWindsurf": "Windsurf",
     "agentContinue": "Continue",
     "agentCodex": "Codex",
-    "agentAntigravity": "Antigravity"
+    "agentAntigravity": "Antigravity",
+    "tokenExpiryLabel": "Son Kullanma",
+    "tokenExpiryForever": "Süresiz",
+    "tokenExpiry30d": "30 gün",
+    "tokenExpiry60d": "60 gün",
+    "tokenExpiry90d": "90 gün",
+    "tokenExpiresInDays": "{days}g kaldı",
+    "tokenExpired": "Süresi Doldu"
   },
   "Templates": {
     "modalTitle": "Yeni Öğe",

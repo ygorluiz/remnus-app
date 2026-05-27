@@ -35,6 +35,7 @@ export async function mintAgentToken(
   name: string,
   scope: 'read' | 'write',
   agentName?: string,
+  expiresInDays?: number | null,
 ): Promise<{ token: string }> {
   const userId = await assertOwnerAccess(workspaceId);
 
@@ -42,6 +43,11 @@ export async function mintAgentToken(
   const secret = randomBytes(32).toString('hex');  // 64 hex chars
   const fullToken = `${TOKEN_PREFIX}_${prefix8}_${secret}`;
   const hash = await bcrypt.hash(secret, 12);
+
+  const expiresAt =
+    expiresInDays != null
+      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+      : null;
 
   await db.insert(agentTokens).values({
     workspaceId,
@@ -52,6 +58,7 @@ export async function mintAgentToken(
     scope,
     createdBy: userId,
     createdAt: new Date(),
+    expiresAt,
   });
 
   return { token: fullToken };
@@ -68,6 +75,7 @@ export async function getAgentTokens(workspaceId: string) {
       tokenPrefix: agentTokens.tokenPrefix,
       scope: agentTokens.scope,
       createdAt: agentTokens.createdAt,
+      expiresAt: agentTokens.expiresAt,
       lastUsedAt: agentTokens.lastUsedAt,
       revokedAt: agentTokens.revokedAt,
     })

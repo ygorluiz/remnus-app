@@ -52,6 +52,8 @@ async function verifyBearerToken(authHeader: string | null): Promise<TokenContex
   const valid = await bcrypt.compare(secret, row.tokenHash);
   if (!valid) return null;
 
+  if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
+
   // Update lastUsedAt (best effort)
   db.update(agentTokens)
     .set({ lastUsedAt: new Date() })

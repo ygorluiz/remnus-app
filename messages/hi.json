@@ -169,7 +169,14 @@
     "agentWindsurf": "Windsurf",
     "agentContinue": "Continue",
     "agentCodex": "Codex",
-    "agentAntigravity": "Antigravity"
+    "agentAntigravity": "Antigravity",
+    "tokenExpiryLabel": "समाप्ति",
+    "tokenExpiryForever": "कोई समाप्ति नहीं",
+    "tokenExpiry30d": "30 दिन",
+    "tokenExpiry60d": "60 दिन",
+    "tokenExpiry90d": "90 दिन",
+    "tokenExpiresInDays": "{days}d शेष",
+    "tokenExpired": "समाप्त"
   },
   "Templates": {
     "modalTitle": "नया आइटम",

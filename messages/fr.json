@@ -169,7 +169,14 @@
     "agentWindsurf": "Windsurf",
     "agentContinue": "Continue",
     "agentCodex": "Codex",
-    "agentAntigravity": "Antigravity"
+    "agentAntigravity": "Antigravity",
+    "tokenExpiryLabel": "Expiration",
+    "tokenExpiryForever": "Sans expiration",
+    "tokenExpiry30d": "30 jours",
+    "tokenExpiry60d": "60 jours",
+    "tokenExpiry90d": "90 jours",
+    "tokenExpiresInDays": "{days}j restants",
+    "tokenExpired": "Expiré"
   },
   "Templates": {
     "modalTitle": "Nouvel Élément",

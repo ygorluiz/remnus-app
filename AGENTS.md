@@ -125,7 +125,7 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 | `session` | Auth.js sessions |
 | `verificationToken` | Email verification |
 | `workspace_members` | User↔Workspace join — `role` ('owner'\|'member'\|'viewer') |
-| `agent_tokens` | MCP bearer tokens — `token_prefix`, `token_hash`, `scope` ('read'\|'write'), `revoked_at` |
+| `agent_tokens` | MCP bearer tokens — `token_prefix`, `token_hash`, `scope` ('read'\|'write'), `expires_at` (nullable, null = no expiry), `revoked_at` |
 | `agent_activity` | Audit log for every MCP tool call |
 
 ### Auth System
@@ -147,7 +147,7 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 
 ### Migration Notes
 
-- New migration `when` values must be **greater than** all existing values. Last: `0011` → `1780200000000`. **Next migration: `when` > `1780200000000`.**
+- New migration `when` values must be **greater than** all existing values. Last: `0013` → `1780400000000`. **Next migration: `when` > `1780400000000`.**
 - Apply with: `npx tsx src/db/migrate.ts`
 
 ### Project Structure

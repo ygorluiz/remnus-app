@@ -36,6 +36,7 @@ type AgentToken = {
   tokenPrefix: string;
   scope: 'read' | 'write';
   createdAt: Date | null;
+  expiresAt: Date | null;
   lastUsedAt: Date | null;
   revokedAt: Date | null;
 };
@@ -96,6 +97,7 @@ export default function WorkspaceSettingsModal({
   const [tokenName, setTokenName] = useState('');
   const [tokenScope, setTokenScope] = useState<'read' | 'write'>('read');
   const [tokenAgent, setTokenAgent] = useState<AgentId | null>(null);
+  const [tokenExpiresIn, setTokenExpiresIn] = useState<30 | 60 | 90 | null>(null);
   const [isMinting, startMintTransition] = useTransition();
   const [newTokenValue, setNewTokenValue] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -251,11 +253,12 @@ export default function WorkspaceSettingsModal({
     setTokenError('');
     startMintTransition(async () => {
       try {
-        const res = await mintAgentToken(workspaceId, name, tokenScope, tokenAgent ?? undefined);
+        const res = await mintAgentToken(workspaceId, name, tokenScope, tokenAgent ?? undefined, tokenExpiresIn);
         setNewTokenValue(res.token);
         setTokenName('');
         setTokenScope('read');
         setTokenAgent(null);
+        setTokenExpiresIn(null);
         setShowCreateForm(false);
         loadTokens();
       } catch (err) {
@@ -303,6 +306,22 @@ export default function WorkspaceSettingsModal({
   const formatDate = (d: Date | null) => {
     if (!d) return t('never');
     return new Date(d).toLocaleDateString();
+  };
+
+  const getExpiryState = (expiresAt: Date | null): 'expired' | 'soon' | 'ok' | 'never' => {
+    if (!expiresAt) return 'never';
+    const msLeft = new Date(expiresAt).getTime() - Date.now();
+    if (msLeft <= 0) return 'expired';
+    if (msLeft < 14 * 24 * 60 * 60 * 1000) return 'soon';
+    return 'ok';
+  };
+
+  const formatExpiryBadge = (expiresAt: Date | null): string => {
+    if (!expiresAt) return t('tokenExpiryForever');
+    const msLeft = new Date(expiresAt).getTime() - Date.now();
+    if (msLeft <= 0) return t('tokenExpired');
+    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+    return t('tokenExpiresInDays', { days: daysLeft });
   };
 
   const claudeCliCmd = `claude mcp add --transport http --scope user remnus ${mcpUrl} --header "Authorization: Bearer <your-token>"`;
@@ -651,6 +670,20 @@ export default function WorkspaceSettingsModal({
                                           </span>
                                         );
                                       })()}
+                                      {!isRevoked && (() => {
+                                        const state = getExpiryState(token.expiresAt);
+                                        const label = formatExpiryBadge(token.expiresAt);
+                                        const cls =
+                                          state === 'expired' ? 'text-red-400 bg-red-500/10 border-red-500/20' :
+                                          state === 'soon'    ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+                                          state === 'ok'      ? 'text-green-400 bg-green-500/10 border-green-500/20' :
+                                                                'text-neutral-500 bg-neutral-800 border-neutral-700';
+                                        return (
+                                          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0 ${cls}`}>
+                                            {label}
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                     <p className="text-[10px] text-neutral-500 mt-0.5 font-mono">
                                       {token.tokenPrefix}… · {t('lastUsed')}: {formatDate(token.lastUsedAt)}
@@ -744,6 +777,34 @@ export default function WorkspaceSettingsModal({
                               ))}
                             </div>
                           </div>
+                          {/* Expiry selector */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
+                              {t('tokenExpiryLabel')}
+                            </label>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {([
+                                { days: 30,  label: t('tokenExpiry30d') },
+                                { days: 60,  label: t('tokenExpiry60d') },
+                                { days: 90,  label: t('tokenExpiry90d') },
+                                { days: null, label: t('tokenExpiryForever') },
+                              ] as const).map(({ days, label }) => (
+                                <button
+                                  key={String(days)}
+                                  type="button"
+                                  onClick={() => setTokenExpiresIn(days as 30 | 60 | 90 | null)}
+                                  disabled={isMinting}
+                                  className={`px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors ${
+                                    tokenExpiresIn === days
+                                      ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                                      : 'bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-600'
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                           {tokenError && (
                             <p className="text-xs text-red-400 flex items-center gap-1">
                               <AlertCircle size={12} /> {tokenError}
@@ -752,7 +813,7 @@ export default function WorkspaceSettingsModal({
                           <div className="flex gap-2 justify-end">
                             <button
                               type="button"
-                              onClick={() => { setShowCreateForm(false); setTokenName(''); setTokenScope('read'); setTokenAgent(null); setTokenError(''); }}
+                              onClick={() => { setShowCreateForm(false); setTokenName(''); setTokenScope('read'); setTokenAgent(null); setTokenExpiresIn(null); setTokenError(''); }}
                               disabled={isMinting}
                               className="text-xs text-neutral-400 hover:text-neutral-200 px-3 py-1.5 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
                             >

@@ -561,8 +561,8 @@ export default function TableLayout({
                       <td
                         key={col.id}
                         onClick={handleCellClick}
-                        className={`py-2 px-3 whitespace-nowrap overflow-visible relative text-ellipsis group-hover:bg-neutral-800/10 transition-colors
-                          ${isEditing ? 'z-30' : ''}
+                        className={`py-2 px-3 whitespace-nowrap overflow-hidden relative text-ellipsis group-hover:bg-neutral-800/10 transition-colors
+                          ${isEditing ? 'z-30 overflow-visible' : ''}
                           ${!isLast ? 'border-r border-neutral-800/40' : ''}
                         `}
                       >
@@ -574,7 +574,7 @@ export default function TableLayout({
                             onClose={() => setEditingCell(null)}
                           />
                         ) : col.id === 'title' ? (
-                          <div className="flex items-center gap-2 overflow-visible">
+                          <div className="flex items-center gap-2 overflow-hidden">
                             <div className="relative shrink-0 select-none">
                               <button
                                 ref={(el) => { itemRefs.current[page.id] = el; }}

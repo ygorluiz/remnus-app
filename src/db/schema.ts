@@ -133,6 +133,7 @@ export const agentTokens = sqliteTable('agent_tokens', {
   scope:       text('scope', { enum: ['read', 'write'] }).notNull(),
   createdBy:   text('created_by').references(() => users.id),
   createdAt:   integer('created_at', { mode: 'timestamp' }).notNull(),
+  expiresAt:   integer('expires_at', { mode: 'timestamp' }),
   lastUsedAt:  integer('last_used_at', { mode: 'timestamp' }),
   revokedAt:   integer('revoked_at', { mode: 'timestamp' }),
 }, (table) => [

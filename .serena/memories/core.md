@@ -39,7 +39,7 @@ src/
     schema.ts               # Drizzle ORM schema (all tables)
     index.ts                # DB connection + SQLite PRAGMAs
     migrate.ts              # Migration runner
-    migrations/             # SQL migration files (0000–0010)
+    migrations/             # SQL migration files (0000–0013)
   i18n/
     routing.ts              # defineRouting (locales, localePrefix:'never')
     request.ts              # getRequestConfig (message loader)
@@ -61,12 +61,12 @@ messages/                   # i18n JSON (en, tr, hi, es, fr, de)
 - `pages` — database rows; `properties` JSON column
 - `user`, `account`, `session`, `verificationToken` — Auth.js tables
 - `workspace_members` — user↔workspace join with role
-- `agent_tokens` — MCP bearer tokens scoped to workspace; columns: id, workspace_id (CASCADE), name, token_prefix (8-char, indexed), token_hash (bcrypt cost 12), scope ('read'|'write'), created_by, created_at, last_used_at, revoked_at
+- `agent_tokens` — MCP bearer tokens scoped to workspace; columns: id, workspace_id (CASCADE), name, agent_name, token_prefix (8-char, indexed), token_hash (bcrypt cost 12), scope ('read'|'write'), created_by, created_at, expires_at (nullable, null = no expiry), last_used_at, revoked_at
 - `agent_activity` — audit log per MCP tool call; columns: id, token_id (CASCADE), workspace_id, tool, target_type, target_id, status ('success'|'error'), created_at
 
 ## New files (MCP feature)
 - `src/app/api/mcp/route.ts` — MCP route handler (Node runtime, stateless Streamable HTTP). Bearer token auth, rate limit 60/min, 6 tools: search, list_workspace, get_page, query_database (read), create_page, update_page (write-scope only). Audit logs every call.
 - `src/lib/services/workspace.ts` — Cookie-free service layer for MCP. All fns take explicit workspaceId, no session cookies.
-- `src/lib/actions/agentToken.ts` — mintAgentToken / getAgentTokens / revokeAgentToken (owner/admin only).
+- `src/lib/actions/agentToken.ts` — mintAgentToken (accepts expiresInDays: number|null) / getAgentTokens / revokeAgentToken (owner/admin only).
 
 See `mem:tech_stack` for stack. See `mem:conventions` for code patterns.
