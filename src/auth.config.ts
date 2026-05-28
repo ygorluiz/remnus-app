@@ -4,7 +4,10 @@ import GitHub from 'next-auth/providers/github';
 
 // Edge-compatible auth config (no DB imports — safe for middleware)
 export const authConfig: NextAuthConfig = {
-  providers: [Google, GitHub],
+  providers: [
+    Google({ allowDangerousEmailAccountLinking: true }),
+    GitHub({ allowDangerousEmailAccountLinking: true }),
+  ],
   pages: {
     signIn: '/login',
   },
