@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 
 const CODES = [
-  'https://remnus.com/register',
+  'https://remnus.com/login',
   'Workspace Settings → API / MCP Tokens → New token',
   '{"type":"http","url":"https://remnus.com/api/mcp"}',
 ];

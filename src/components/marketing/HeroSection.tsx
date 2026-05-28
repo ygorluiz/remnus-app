@@ -33,7 +33,7 @@ export default async function HeroSection() {
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
-            href="/register"
+            href="/login"
             className="flex items-center gap-2 rounded-lg bg-blue-500 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500/90 transition-colors"
           >
             {t('heroCtaPrimary')}

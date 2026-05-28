@@ -39,7 +39,7 @@ export default async function LandingClosing() {
 
       <div className="mt-10 flex flex-col sm:flex-row items-center gap-3 justify-center">
         <Link
-          href="/register"
+          href="/login"
           className="inline-flex items-center gap-2 bg-blue-500 hover:bg-accent-strong text-white px-[22px] py-[15px] rounded-md text-[15px] font-medium transition-colors duration-150 w-full sm:w-auto justify-center"
         >
           {t('bridgeClosingCtaPrimary')}

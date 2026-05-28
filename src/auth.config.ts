@@ -1,9 +1,10 @@
 import type { NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
+import GitHub from 'next-auth/providers/github';
 
 // Edge-compatible auth config (no DB imports — safe for middleware)
 export const authConfig: NextAuthConfig = {
-  providers: [Google],
+  providers: [Google, GitHub],
   pages: {
     signIn: '/login',
   },
@@ -16,7 +17,7 @@ export const authConfig: NextAuthConfig = {
       // regardless of whether next-intl has already rewritten the path.
       const cleanPath = path.replace(/^\/[a-z]{2}(\/|$)/, '/');
 
-      const isAuthRoute = cleanPath.startsWith('/login') || cleanPath.startsWith('/register');
+      const isAuthRoute = cleanPath.startsWith('/login');
       const isClientLogin = cleanPath.startsWith('/client-login');
       const isApiAuth = cleanPath.startsWith('/api/auth');
       const isPublicAsset = /\.(png|ico|svg|jpg|jpeg|webp|woff2?)$/.test(path);
@@ -49,7 +50,7 @@ export const authConfig: NextAuthConfig = {
       }
 
       if (isAuthRoute) {
-        // Logged-in users visiting /login or /register are sent to the app
+        // Logged-in users visiting /login are sent to the app
         if (isLoggedIn) return Response.redirect(new URL('/app', nextUrl));
         return true;
       }

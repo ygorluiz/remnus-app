@@ -59,7 +59,7 @@ export default async function PricingSection({ compact = false }: Props) {
               ))}
             </ul>
             <Link
-              href="/register"
+              href="/login"
               className="block text-center rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500/90 transition-colors"
             >
               {t('freeCta')}

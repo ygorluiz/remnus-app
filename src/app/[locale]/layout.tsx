@@ -130,7 +130,7 @@ export default async function LocaleLayout({
       <form
         action={async () => {
           'use server';
-          await signOut({ redirectTo: '/register' });
+          await signOut({ redirectTo: '/login' });
         }}
       >
         <button

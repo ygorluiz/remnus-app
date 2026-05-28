@@ -80,7 +80,7 @@ export default async function LandingHero() {
 
             <div className="mt-7 lg:mt-[32px] flex flex-wrap items-center gap-4 lg:gap-[18px]">
               <Link
-                href="/register"
+                href="/login"
                 className="inline-flex items-center gap-2 bg-blue-500 hover:bg-accent-strong text-white px-5 py-3.5 rounded-md text-[15px] font-medium transition-colors duration-150"
               >
                 {t('bridgeHeroCtaPrimary')}

@@ -15,74 +15,6 @@ export async function logout() {
   await signOut({ redirectTo: '/login' });
 }
 
-export async function registerUser(_prevState: unknown, formData: FormData) {
-  const t = await getTranslations('Errors');
-  const name = (formData.get('name') as string)?.trim();
-  const email = (formData.get('email') as string)?.trim().toLowerCase();
-  const password = formData.get('password') as string;
-
-  if (!email || !password) return { error: t('emailRequired') };
-  if (password.length < 8) return { error: t('passwordTooShort') };
-
-  const [existing] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (existing) return { error: t('emailTaken') };
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  const id = crypto.randomUUID();
-
-  await db.insert(users).values({ id, name: name || null, email, passwordHash, createdAt: new Date() });
-
-  // Seed default workspace with tasks database and welcome page
-  await createSeedWorkspace(id, name || email.split('@')[0]);
-
-  // Promote to admin and claim orphaned workspaces if this is the first real (non-demo) user
-  const allRealUsers = await db.select({ id: users.id }).from(users).where(ne(users.role, 'demo'));
-  if (allRealUsers.length === 1) {
-    await db.update(users).set({ role: 'admin' }).where(eq(users.id, id));
-    const allWorkspaces = await db.select({ id: workspaces.id }).from(workspaces);
-    for (const ws of allWorkspaces) {
-      const existing = await db
-        .select({ id: workspaceMembers.id })
-        .from(workspaceMembers)
-        .where(eq(workspaceMembers.workspaceId, ws.id));
-      if (existing.length === 0) {
-        await db.insert(workspaceMembers).values({ workspaceId: ws.id, userId: id, role: 'owner', createdAt: new Date() });
-      }
-    }
-  }
-
-  // Sign in immediately after registration
-  try {
-    await signIn('credentials', { email, password, redirectTo: '/' });
-  } catch (error) {
-    if (error instanceof AuthError) return { error: t('signInAfterRegister') };
-    throw error;
-  }
-}
-
-export async function loginWithCredentials(_prevState: unknown, formData: FormData) {
-  const t = await getTranslations('Errors');
-  const email = (formData.get('email') as string)?.trim().toLowerCase();
-  const password = formData.get('password') as string;
-  const deviceId = formData.get('device_id') as string | null;
-
-  const redirectTo = deviceId
-    ? `/api/auth/client-bridge?device_id=${encodeURIComponent(deviceId)}`
-    : '/';
-
-  try {
-    await signIn('credentials', { email, password, redirectTo });
-  } catch (error) {
-    if (error instanceof AuthError) return { error: t('invalidCredentials') };
-    throw error;
-  }
-}
-
 export async function inviteToWorkspace(
   workspaceId: string,
   email: string,
@@ -232,9 +164,11 @@ export async function getAllUsers() {
     createdAt: u.createdAt,
     authType: providerMap.get(u.id)?.includes('google')
       ? ('google' as const)
-      : u.hasPassword
-        ? ('email' as const)
-        : ('unknown' as const),
+      : providerMap.get(u.id)?.includes('github')
+        ? ('github' as const)
+        : u.hasPassword
+          ? ('email' as const)
+          : ('unknown' as const),
   }));
 }
 

@@ -63,7 +63,7 @@ export default async function LandingNav() {
                   {t('navSignIn')}
                 </Link>
                 <Link
-                  href="/register"
+                  href="/login"
                   className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 text-[13px] font-medium bg-blue-500 hover:bg-accent-strong text-white rounded-md transition-colors duration-150"
                 >
                   {t('navGetStarted')}

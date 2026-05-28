@@ -130,13 +130,14 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 
 ### Auth System
 
+- **Auth System:** Supports Google and GitHub OAuth providers. Email/password login and register pages have been removed.
 - **Config split:** `src/auth.config.ts` (edge-safe, no DB, middleware only) + `src/auth.ts` (full, server components/actions).
 - **Session access:** Always use `getCurrentUser()` from `src/lib/auth/session.ts` in server actions — **never** `auth()` directly. It is `React.cache`-wrapped to run at most once per request.
-- **createdAt gotcha:** DrizzleAdapter stores `CURRENT_TIMESTAMP` as text (breaks Drizzle timestamp parsing). All `workspaces`, `workspace_members`, and credential `users` inserts pass explicit `createdAt: new Date()`. The `createUser` event also force-updates OAuth users immediately after row creation.
+- **createdAt gotcha:** DrizzleAdapter stores `CURRENT_TIMESTAMP` as text (breaks Drizzle timestamp parsing). All `workspaces` and `workspace_members` inserts pass explicit `createdAt: new Date()`. The `createUser` event also force-updates OAuth users immediately after row creation.
 - **First-user bootstrap:** The very first non-demo user (any provider) is auto-promoted to `admin` and added as owner to all memberless workspaces.
 - **Demo mode:** `demo@remnus.com` (role `demo`) — `loginAsDemo()` resets + reseeds then signs in. Requires at least one real user to exist first.
 - **Access control:** All actions call `assertWorkspaceAccess(workspaceId)` or `assertDatabaseAccess(databaseId)` before executing. Unauthorized → throws; unauthenticated → `redirect('/login')`.
-- **Env vars:** `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`.
+- **Env vars:** `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`.
 
 ### Performance Rules
 
@@ -154,17 +155,16 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 
 **Auth & middleware**
 - `src/auth.config.ts` — Edge-compatible config (middleware only, no DB import). `/client-login` is handled specially: logged-in users with a `device_id` param are redirected straight to `/api/auth/client-bridge?device_id=…`; without a `device_id` they go to `/app`.
-- `src/auth.ts` — Full config: DrizzleAdapter, Credentials provider, `client-token` provider (desktop OAuth), JWT callbacks, first-user bootstrap event.
-- `src/proxy.ts` — Protects all routes (Next.js 16 proxy, replaces `middleware.ts`); whitelists `/login`, `/register`, `/client-login`, `/tauri-app`, `/api/auth/*`, `/api/auth/client-activate`, `/api/mcp`, static assets, `/`, `/pricing`, `/contact`.
+- `src/auth.ts` — Full config: DrizzleAdapter, `client-token` credentials provider (desktop OAuth), JWT callbacks, first-user bootstrap event.
+- `src/proxy.ts` — Protects all routes (Next.js 16 proxy, replaces `middleware.ts`); whitelists `/login`, `/client-login`, `/tauri-app`, `/api/auth/*`, `/api/auth/client-activate`, `/api/mcp`, static assets, `/`, `/pricing`, `/contact`.
 - `src/lib/auth/session.ts` — `getCurrentUser()` — `React.cache`-wrapped `auth()`. Use this everywhere in server actions.
 
 **Routes (`src/app/[locale]/`)**
 - `layout.tsx` — Locale validation, `NextIntlClientProvider`, session check, sidebar + mobile nav render.
 - `page.tsx` — Public landing (always `LandingBridgeSwitcher`, no auth check).
 - `app/page.tsx` — Authenticated redirect gateway → first workspace item or `/login`.
-- `login/page.tsx` — Credentials + Google OAuth login. In Tauri mode, renders a minimal UI (logo + "Sign in" button); on click generates a UUID `device_id`, opens `client-login?device_id=<uuid>` in the system browser, then polls `/api/auth/client-poll` every 2 s until a token arrives.
-- `register/page.tsx` — Registration form.
-- `client-login/page.tsx` — Public. Full login page (Google + credentials) opened in the system browser by Tauri. Reads `device_id` from URL search params and threads it through both auth paths so `/api/auth/client-bridge` can store the resulting token keyed by that id.
+- `login/page.tsx` — Google + GitHub OAuth login. In Tauri mode, renders a minimal UI (logo + "Sign in" button); on click generates a UUID `device_id`, opens `client-login?device_id=<uuid>` in the system browser, then polls `/api/auth/client-poll` every 2 s until a token arrives.
+- `client-login/page.tsx` — Public. Full login page (Google + GitHub) opened in the system browser by Tauri. Reads `device_id` from URL search params and threads it through both auth paths so `/api/auth/client-bridge` can store the resulting token keyed by that id.
 - `tauri-app/page.tsx` — Public entry for Tauri (`tauri.conf.json` devUrl/url). Sets `localStorage.platform=tauri`, auto-detects OS locale, redirects to `/app`.
 - `db/[id]/page.tsx` — Database view (Table / Kanban / Calendar).
 - `db/[id]/[pageId]/page.tsx` — Database row page editor.
@@ -280,7 +280,7 @@ Web  Tauri  Capacitor
 - Entry point `/tauri-app` sets `localStorage.platform=tauri` and detects OS locale before redirecting to `/app`.
 - Features: system tray (single icon, built programmatically — **no** `trayIcon` config in `tauri.conf.json`), global shortcuts, notifications, deep-link (`remnus://` scheme).
 - **Close to tray:** `CloseRequested` event is intercepted in `lib.rs`; window hides instead of quitting. Tray left-click or "Show Window" menu item restores it; "Quit Remnus" exits.
-- **Desktop OAuth flow (polling / device-authorization):** Tauri login view generates a UUID `device_id` → opens `remnus.com/client-login?device_id=<uuid>` in the system browser via `@tauri-apps/plugin-opener` → user logs in (Google or credentials) → browser POSTs to `/api/auth/client-bridge?device_id=<uuid>` which stores a 5-min JWT → browser shows "Close this tab" page → Tauri WebView polls `/api/auth/client-poll?device_id=<uuid>` every 2 s → on `{ ready: true, token }`, WebView navigates to `/api/auth/client-activate?token=…` → session cookie set → redirect to `/app`.
+- **Desktop OAuth flow (polling / device-authorization):** Tauri login view generates a UUID `device_id` → opens `remnus.com/client-login?device_id=<uuid>` in the system browser via `@tauri-apps/plugin-opener` → user logs in (Google or GitHub) → browser POSTs to `/api/auth/client-bridge?device_id=<uuid>` which stores a 5-min JWT → browser shows "Close this tab" page → Tauri WebView polls `/api/auth/client-poll?device_id=<uuid>` every 2 s → on `{ ready: true, token }`, WebView navigates to `/api/auth/client-activate?token=…` → session cookie set → redirect to `/app`.
 - Release CI: `.github/workflows/tauri-release.yml` — triggers on `v*` tags, builds Windows (`.msi`), macOS (`.dmg`, both Intel + Apple Silicon), Linux (`.deb`, `.AppImage`)
 - **Requires:** Rust stable + Visual C++ Build Tools (Windows) / Xcode CLT (macOS)
 - Icons: generated from `public/logo-square-dark.png` via `npm run tauri:icon` (after Rust install)
