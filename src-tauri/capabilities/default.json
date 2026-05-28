@@ -6,7 +6,17 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "opener:allow-open-url",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://remnus.com**"
+        },
+        {
+          "url": "http://localhost**"
+        }
+      ]
+    },
     "deep-link:default",
     "notification:default",
     "global-shortcut:allow-register",
