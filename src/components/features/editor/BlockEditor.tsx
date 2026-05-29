@@ -13,6 +13,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import BubbleMenuBar from './BubbleMenuBar';
 import { SlashCommand } from './SlashCommandMenu';
 import { ChildBlock } from './ChildBlockExtension';
+import { CollapsibleHeading, HeadingCollapsePlugin } from './HeadingCollapseExtension';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
@@ -81,8 +82,10 @@ export default function BlockEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
+        heading: false,
       }),
+      CollapsibleHeading,
+      HeadingCollapsePlugin,
       Markdown,
       Placeholder.configure({
         placeholder: ({ node }) => {
