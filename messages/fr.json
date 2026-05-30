@@ -107,7 +107,12 @@
     "adminLink": "Admin",
     "signOut": "Se déconnecter",
     "backToHome": "Retour à l'accueil",
-    "you": "Vous"
+    "you": "Vous",
+    "desktopSettings": "Paramètres bureau",
+    "zoom": "Zoom",
+    "zoomIn": "Agrandir",
+    "zoomOut": "Réduire",
+    "resetZoom": "Réinitialiser"
   },
   "WorkspaceSettings": {
     "title": "Paramètres de l'Espace",

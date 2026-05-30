@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { setLocale } from '@/lib/actions/locale';
+import { initDesktopZoom } from '@/components/features/DesktopSettingsModal';
 
 const SUPPORTED_LOCALES = ['en', 'tr', 'hi', 'es', 'fr', 'de'];
 
@@ -20,9 +21,8 @@ export default function TauriEntryPage() {
 
   useEffect(() => {
     async function init() {
-      try {
-        localStorage.setItem('platform', 'tauri');
-      } catch (_) {}
+      // Apply saved zoom as early as possible
+      await initDesktopZoom();
 
       // Auto-detect OS language on first launch (no cookie yet)
       if (!hasLocaleCookie()) {

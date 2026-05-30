@@ -34,11 +34,8 @@ export const authConfig: NextAuthConfig = {
       // Public marketing pages (pricing, contact) are always accessible
       if (isPublicMarketingRoute) return true;
 
-      // Root URL: logged-in users go to the app; guests see the landing page
-      if (isRootRoute) {
-        if (isLoggedIn) return Response.redirect(new URL('/app', nextUrl));
-        return true;
-      }
+      // Root URL: always public — logged-in users can visit the landing page
+      if (isRootRoute) return true;
 
       // /client-login: if user is already logged in, skip the login UI and go straight to bridge
       if (isClientLogin) {

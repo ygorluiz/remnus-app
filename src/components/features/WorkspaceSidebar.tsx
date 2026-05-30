@@ -19,6 +19,7 @@ import {
   Settings,
   Layers,
   ArrowLeft,
+  Monitor,
 } from 'lucide-react';
 import PageIcon from './PageIcon';
 import {
@@ -38,6 +39,7 @@ import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 import IconPicker from './IconPicker';
 import TemplatePickerModal from './TemplatePickerModal';
 import WorkspaceSettingsModal from './WorkspaceSettingsModal';
+import DesktopSettingsModal, { initDesktopZoom } from './DesktopSettingsModal';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 import { useWorkspaceEvents } from '@/hooks/useWorkspaceEvents';
 
@@ -85,9 +87,9 @@ export default function WorkspaceSidebar({
   const [isTauri, setIsTauri] = useState(false);
 
   useEffect(() => {
-    const byGlobal = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
-    const byStorage = (() => { try { return localStorage.getItem('platform') === 'tauri'; } catch (_) { return false; } })();
-    setIsTauri(byGlobal || byStorage);
+    const isTauriNow = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
+    setIsTauri(isTauriNow);
+    if (isTauriNow) initDesktopZoom().catch(() => {});
   }, []);
 
   // Tree creation and editing states
@@ -152,6 +154,7 @@ export default function WorkspaceSidebar({
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [settingsModalWorkspace, setSettingsModalWorkspace] = useState<{ id: string; name: string; icon?: string | null; iconColor?: string | null } | null>(null);
+  const [desktopSettingsOpen, setDesktopSettingsOpen] = useState(false);
 
   // Expand / collapse states for workspaces (All expanded by default)
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Record<string, boolean>>(() => {
@@ -705,7 +708,7 @@ export default function WorkspaceSidebar({
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">
       {/* Brand Header — hidden in mobile sheet */}
-      <div className={`p-4 border-b border-neutral-800 flex items-center justify-between shrink-0 ${hideBrandHeader ? 'hidden' : ''}`}>
+      <div className={`px-4 h-10 border-b border-neutral-800 flex items-center justify-between shrink-0 ${hideBrandHeader ? 'hidden' : ''}`} {...(isTauri ? { 'data-tauri-drag-region': '' } : {})}>
         <div className="flex items-center group/brand">
           {!isTauri && (
             <div className="w-0 overflow-hidden group-hover/brand:w-6 transition-[width] duration-200 shrink-0">
@@ -718,6 +721,7 @@ export default function WorkspaceSidebar({
               </Link>
             </div>
           )}
+
           <Link href={logoHref ?? '#'} className="font-semibold flex items-center gap-2.5 text-white hover:text-neutral-300 transition-colors">
             <img src="/logo-square-dark.png" alt="Remnus Logo" className={`w-5 h-5 object-contain rounded-md shrink-0 shadow-sm ${isSaving ? 'animate-pulse' : ''}`} />
             <span className="font-bold tracking-tight text-white">Remnus</span>
@@ -1230,6 +1234,10 @@ export default function WorkspaceSidebar({
         />
       )}
 
+      {desktopSettingsOpen && (
+        <DesktopSettingsModal onClose={() => setDesktopSettingsOpen(false)} />
+      )}
+
       {/* Delete confirmation modal */}
       {confirmDeleteItemId && (() => {
         const item = localItems.find(i => i.id === confirmDeleteItemId);
@@ -1266,21 +1274,8 @@ export default function WorkspaceSidebar({
         );
       })()}
 
-      {/* Admin panel link */}
-      {currentUser.role === 'admin' && (
-        <div className="shrink-0 border-t border-neutral-800">
-          <Link
-            href="/admin"
-            className={`flex items-center gap-2.5 px-3 py-2 text-xs hover:text-neutral-200 hover:bg-neutral-800/30 transition-colors ${pathname.startsWith('/admin') ? 'text-neutral-200 bg-neutral-800/40' : 'text-neutral-400'}`}
-          >
-            <Shield size={13} className="shrink-0" />
-            <span>{t('adminLink')}</span>
-          </Link>
-        </div>
-      )}
-
       {/* User panel */}
-      <div className="shrink-0 border-t border-neutral-800 px-3 py-2.5 flex items-center gap-2.5 group/user">
+      <div className="shrink-0 border-t border-neutral-800 px-3 py-2.5 flex items-center gap-2.5">
         {/* Avatar */}
         <div className="shrink-0">
           {currentUser.image && currentUser.image !== '' && currentUser.image !== 'null' && !avatarError ? (
@@ -1307,10 +1302,13 @@ export default function WorkspaceSidebar({
               {currentUser.name ?? currentUser.email ?? 'User'}
             </span>
             {currentUser.role === 'admin' && (
-              <span className="shrink-0 flex items-center gap-0.5 text-[9px] font-semibold text-blue-400 bg-blue-500/10 px-1 py-0.5 rounded">
+              <Link
+                href="/admin"
+                className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold px-1 py-0.5 rounded transition-colors ${pathname.startsWith('/admin') ? 'text-blue-300 bg-blue-500/20' : 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300'}`}
+              >
                 <Shield size={8} />
                 {t('adminLink')}
-              </span>
+              </Link>
             )}
           </div>
           {currentUser.name && currentUser.email && (
@@ -1318,10 +1316,21 @@ export default function WorkspaceSidebar({
           )}
         </div>
 
+        {/* Desktop Settings (Tauri only) */}
+        {isTauri && (
+          <button
+            onClick={() => setDesktopSettingsOpen(true)}
+            className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
+            title={t('desktopSettings')}
+          >
+            <Monitor size={13} />
+          </button>
+        )}
+
         {/* Logout */}
         <button
           onClick={() => logout()}
-          className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors opacity-0 group-hover/user:opacity-100"
+          className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
           title={t('signOut')}
         >
           <LogOut size={13} />

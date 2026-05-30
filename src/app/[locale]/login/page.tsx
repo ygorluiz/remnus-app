@@ -4,6 +4,8 @@ import { signIn } from 'next-auth/react';
 import { loginAsDemo } from '@/lib/actions/demo';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 type TauriState = 'idle' | 'waiting' | 'activating' | 'error';
 
@@ -17,11 +19,7 @@ export default function LoginPage() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setIsTauri(
-      '__TAURI_INTERNALS__' in window ||
-      '__TAURI__' in window ||
-      (() => { try { return localStorage.getItem('platform') === 'tauri'; } catch { return false; } })()
-    );
+    setIsTauri('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -155,16 +153,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 left-4">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
+        >
+          <ArrowLeft size={14} />
+          <span>{t('backToHome')}</span>
+        </Link>
+      </div>
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
-          <img
-            src="/logo-square-dark.png"
-            alt="Remnus"
-            className="w-14 h-14 object-contain rounded-xl mb-4 shadow-lg"
-          />
-          <h1 className="text-2xl font-bold text-white tracking-tight">Remnus</h1>
+          <Link href="/" className="flex flex-col items-center hover:opacity-80 transition-opacity">
+            <img
+              src="/logo-square-dark.png"
+              alt="Remnus"
+              className="w-14 h-14 object-contain rounded-xl mb-4 shadow-lg"
+            />
+            <h1 className="text-2xl font-bold text-white tracking-tight">Remnus</h1>
+          </Link>
           <p className="text-neutral-400 text-sm mt-1">{t('signInSubtitle')}</p>
         </div>
 
@@ -173,7 +182,7 @@ export default function LoginPage() {
           {/* Google */}
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: '/' })}
+            onClick={() => signIn('google', { callbackUrl: '/app' })}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-100 text-neutral-900 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GoogleIcon />
@@ -183,7 +192,7 @@ export default function LoginPage() {
           {/* GitHub */}
           <button
             type="button"
-            onClick={() => signIn('github', { callbackUrl: '/' })}
+            onClick={() => signIn('github', { callbackUrl: '/app' })}
             className="w-full flex items-center justify-center gap-3 bg-[#24292e] hover:bg-[#2f363d] text-white border border-neutral-800 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GithubIcon />

@@ -1,6 +1,7 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import TauriTitlebar from './features/TauriTitlebar';
 
 export default function AppShell({
   sidebar,
@@ -27,6 +28,7 @@ export default function AppShell({
       </aside>
       {mobileNav}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-850 pb-14 lg:pb-0">
+        <TauriTitlebar />
         {demoBanner}
         {children}
       </main>

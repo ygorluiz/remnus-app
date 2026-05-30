@@ -107,7 +107,12 @@
     "adminLink": "व्यवस्थापक",
     "signOut": "साइन आउट",
     "backToHome": "होम पर वापस जाएं",
-    "you": "आप"
+    "you": "आप",
+    "desktopSettings": "डेस्कटॉप सेटिंग्स",
+    "zoom": "ज़ूम",
+    "zoomIn": "ज़ूम इन",
+    "zoomOut": "ज़ूम आउट",
+    "resetZoom": "रीसेट"
   },
   "WorkspaceSettings": {
     "title": "कार्यक्षेत्र सेटिंग",

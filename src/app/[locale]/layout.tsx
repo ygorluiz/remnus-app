@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     default: 'Remnus',
     template: '%s | Remnus',
   },
-  description: 'Remnus is the MCP-native workspace for vibe coders — kanban boards, databases, and pages that Claude, Cursor, and any AI agent can read and write via MCP.',
+  description: 'Remnus is the MCP-Native workspace for vibe coders — kanban boards, databases, and pages that Claude, Cursor, and any AI agent can read and write via MCP.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -34,16 +34,16 @@ export const metadata: Metadata = {
     apple: '/logo-square-dark.png',
   },
   openGraph: {
-    title: 'Remnus | MCP-native workspace for vibe coders',
+    title: 'Remnus | MCP-Native workspace for vibe coders',
     description: 'Kanban boards, databases, and pages that Claude, Cursor, and any AI agent can read and write via MCP.',
     url: 'https://remnus.com',
     siteName: 'Remnus',
-    images: [{ url: 'https://remnus.com/OG_1200x630.png', width: 1200, height: 630, alt: 'Remnus | MCP-native workspace for vibe coders' }],
+    images: [{ url: 'https://remnus.com/OG_1200x630.png', width: 1200, height: 630, alt: 'Remnus | MCP-Native workspace for vibe coders' }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Remnus | MCP-native workspace for vibe coders',
+    title: 'Remnus | MCP-Native workspace for vibe coders',
     description: 'Kanban boards, databases, and pages that Claude, Cursor, and any AI agent can read and write via MCP.',
     images: ['https://remnus.com/OG_1200x630.png'],
   },

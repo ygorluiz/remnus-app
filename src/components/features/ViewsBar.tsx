@@ -258,10 +258,14 @@ export default function ViewsBar({
               <span
                 onClick={(e) => {
                   e.stopPropagation();
-                  setActiveIconPickerViewId(view.id);
+                  if (isActive) {
+                    setActiveIconPickerViewId(view.id);
+                  } else {
+                    onActivate(view.id);
+                  }
                 }}
                 className="flex items-center justify-center p-0.5 hover:bg-neutral-850/60 rounded cursor-pointer transition-colors"
-                title={t('changeIcon')}
+                title={isActive ? t('changeIcon') : undefined}
               >
                 {view.icon ? (
                   <PageIcon icon={view.icon} iconColor={view.iconColor} size={14} fallbackType="page" />

@@ -107,7 +107,12 @@
     "adminLink": "Yönetim",
     "signOut": "Çıkış yap",
     "backToHome": "Ana sayfaya dön",
-    "you": "Siz"
+    "you": "Siz",
+    "desktopSettings": "Masaüstü Ayarları",
+    "zoom": "Yakınlaştırma",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "resetZoom": "Sıfırla"
   },
   "WorkspaceSettings": {
     "title": "Çalışma Alanı Ayarları",

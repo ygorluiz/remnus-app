@@ -107,7 +107,12 @@
     "adminLink": "Admin",
     "signOut": "Abmelden",
     "backToHome": "Zurück zur Startseite",
-    "you": "Sie"
+    "you": "Sie",
+    "desktopSettings": "Desktop-Einstellungen",
+    "zoom": "Zoom",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "resetZoom": "Zurücksetzen"
   },
   "WorkspaceSettings": {
     "title": "Arbeitsbereichseinstellungen",
