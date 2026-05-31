@@ -1,7 +1,7 @@
 'use server';
 import { db } from '@/db';
-import { agentTokens, workspaceMembers } from '@/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { agentTokens, workspaceMembers, workspaces, agentActivity } from '@/db/schema';
+import { eq, and, isNull, desc, inArray } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getTranslations } from 'next-intl/server';
 import bcrypt from 'bcryptjs';
@@ -82,6 +82,127 @@ export async function getAgentTokens(workspaceId: string) {
     .from(agentTokens)
     .where(eq(agentTokens.workspaceId, workspaceId))
     .orderBy(agentTokens.createdAt);
+}
+
+export async function getUserAgentTokenCount(): Promise<number> {
+  const user = await getCurrentUser();
+  const rows = await db
+    .select({ id: agentTokens.id })
+    .from(agentTokens)
+    .innerJoin(workspaceMembers, and(
+      eq(workspaceMembers.workspaceId, agentTokens.workspaceId),
+      eq(workspaceMembers.userId, user.id),
+    ))
+    .where(isNull(agentTokens.revokedAt));
+  return rows.length;
+}
+
+export async function getUserWorkspacesWithTokens() {
+  const user = await getCurrentUser();
+
+  const wsList = await db
+    .select({
+      id:         workspaces.id,
+      name:       workspaces.name,
+      icon:       workspaces.icon,
+      iconColor:  workspaces.iconColor,
+      memberRole: workspaceMembers.role,
+    })
+    .from(workspaces)
+    .innerJoin(workspaceMembers, and(
+      eq(workspaceMembers.workspaceId, workspaces.id),
+      eq(workspaceMembers.userId, user.id),
+    ))
+    .orderBy(workspaces.name);
+
+  if (wsList.length === 0) return [];
+
+  const wsIds = wsList.map(w => w.id);
+
+  const tokenList = await db
+    .select({
+      id:          agentTokens.id,
+      name:        agentTokens.name,
+      agentName:   agentTokens.agentName,
+      tokenPrefix: agentTokens.tokenPrefix,
+      scope:       agentTokens.scope,
+      createdAt:   agentTokens.createdAt,
+      expiresAt:   agentTokens.expiresAt,
+      lastUsedAt:  agentTokens.lastUsedAt,
+      workspaceId: agentTokens.workspaceId,
+    })
+    .from(agentTokens)
+    .where(and(inArray(agentTokens.workspaceId, wsIds), isNull(agentTokens.revokedAt)))
+    .orderBy(desc(agentTokens.createdAt));
+
+  return wsList.map(ws => ({
+    id:        ws.id,
+    name:      ws.name,
+    icon:      ws.icon,
+    iconColor: ws.iconColor,
+    canManage: ws.memberRole === 'owner' || user.role === 'admin',
+    tokens: tokenList
+      .filter(t => t.workspaceId === ws.id)
+      .map(t => ({ ...t, canRevoke: ws.memberRole === 'owner' || user.role === 'admin' })),
+  }));
+}
+
+export async function getUserAgentTokens() {
+  const user = await getCurrentUser();
+
+  const rows = await db
+    .select({
+      id:               agentTokens.id,
+      name:             agentTokens.name,
+      agentName:        agentTokens.agentName,
+      tokenPrefix:      agentTokens.tokenPrefix,
+      scope:            agentTokens.scope,
+      createdAt:        agentTokens.createdAt,
+      expiresAt:        agentTokens.expiresAt,
+      lastUsedAt:       agentTokens.lastUsedAt,
+      workspaceId:      workspaces.id,
+      workspaceName:    workspaces.name,
+      workspaceIcon:    workspaces.icon,
+      workspaceIconColor: workspaces.iconColor,
+      memberRole:       workspaceMembers.role,
+    })
+    .from(agentTokens)
+    .innerJoin(workspaces, eq(agentTokens.workspaceId, workspaces.id))
+    .innerJoin(workspaceMembers, and(
+      eq(workspaceMembers.workspaceId, workspaces.id),
+      eq(workspaceMembers.userId, user.id),
+    ))
+    .where(isNull(agentTokens.revokedAt))
+    .orderBy(desc(agentTokens.createdAt));
+
+  return rows.map(row => ({
+    ...row,
+    canRevoke: row.memberRole === 'owner' || user.role === 'admin',
+  }));
+}
+
+export async function getUserAgentActivity(count = 60) {
+  const user = await getCurrentUser();
+
+  return db
+    .select({
+      id:            agentActivity.id,
+      tool:          agentActivity.tool,
+      status:        agentActivity.status,
+      createdAt:     agentActivity.createdAt,
+      workspaceName: workspaces.name,
+      tokenName:     agentTokens.name,
+      agentName:     agentTokens.agentName,
+    })
+    .from(agentActivity)
+    .innerJoin(agentTokens, eq(agentActivity.tokenId, agentTokens.id))
+    .innerJoin(workspaces, eq(agentActivity.workspaceId, workspaces.id))
+    .innerJoin(workspaceMembers, and(
+      eq(workspaceMembers.workspaceId, workspaces.id),
+      eq(workspaceMembers.userId, user.id),
+    ))
+    .orderBy(desc(agentActivity.createdAt))
+    .limit(count);
 }
 
 export async function revokeAgentToken(tokenId: string): Promise<void> {

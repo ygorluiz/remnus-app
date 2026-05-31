@@ -1,10 +1,12 @@
 'use client';
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { AlertCircle, Check, Copy, KeyRound, Plus, ChevronDown } from 'lucide-react';
+import { AlertCircle, Check, Copy, Plus, ChevronDown, Zap } from 'lucide-react';
 import AIMark from '@/components/marketing/AIMark';
-import { mintAgentToken, getAgentTokens, revokeAgentToken } from '@/lib/actions/agentToken';
+import { getAgentTokens, revokeAgentToken } from '@/lib/actions/agentToken';
 import { AGENT_OPTIONS, type AgentId, type AgentToken } from './types';
+import McpOnboarding from './McpOnboarding';
+import McpCreateToken from './McpCreateToken';
 
 function buildCursorInstallUrl(token: string, mcpUrl: string): string {
   const config = JSON.stringify({ url: mcpUrl, headers: { Authorization: `Bearer ${token}` } });
@@ -36,6 +38,14 @@ const FILE_PATHS: Record<Exclude<GuideId, 'claude'>, Record<'mac' | 'linux' | 'w
   antigravity: { mac: '~/.gemini/config/mcp_config.json',      linux: '~/.gemini/config/mcp_config.json',      windows: '%USERPROFILE%\\.gemini\\config\\mcp_config.json' },
 };
 
+const AGENT_TO_TOOL: Partial<Record<AgentId, 'claude' | 'cursor' | 'windsurf' | 'continue' | 'antigravity'>> = {
+  'claude-code': 'claude',
+  'cursor':      'cursor',
+  'windsurf':    'windsurf',
+  'continue':    'continue',
+  'antigravity': 'antigravity',
+};
+
 interface TokensTabProps {
   workspaceId: string;
   hasPrivilegedAccess: boolean;
@@ -54,15 +64,12 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
 
   const [tokens, setTokens] = useState<AgentToken[]>([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [tokenName, setTokenName] = useState('');
-  const [tokenScope, setTokenScope] = useState<'read' | 'write'>('read');
-  const [tokenAgent, setTokenAgent] = useState<AgentId | null>(null);
-  const [tokenExpiresIn, setTokenExpiresIn] = useState<30 | 60 | 90 | null>(null);
-  const [isMinting, startMintTransition] = useTransition();
+  const [showCreateFlow, setShowCreateFlow] = useState(false);
   const [newTokenValue, setNewTokenValue] = useState<string | null>(null);
+  const [newTokenName, setNewTokenName] = useState<string | null>(null);
+  const [newTokenAgent, setNewTokenAgent] = useState<AgentId | null>(null);
+  const [onboardingDone, setOnboardingDone] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [tokenError, setTokenError] = useState('');
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [showInactiveTokens, setShowInactiveTokens] = useState(false);
   const [cmdCopied, setCmdCopied] = useState<string | null>(null);
@@ -86,6 +93,7 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
   useEffect(() => { loadTokens(); }, [workspaceId]);
 
   const newTokenPrefix = newTokenValue ? newTokenValue.split('_')[1] : null;
+  const showOnboarding = !!newTokenValue && !onboardingDone;
 
   const formatDate = (d: Date | null) => {
     if (!d) return t('never');
@@ -105,29 +113,6 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
     const msLeft = new Date(expiresAt).getTime() - Date.now();
     if (msLeft <= 0) return t('tokenExpired');
     return t('tokenExpiresInDays', { days: Math.ceil(msLeft / (1000 * 60 * 60 * 24)) });
-  };
-
-  const handleMintToken = (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = tokenName.trim();
-    if (!name) return;
-    setNewTokenValue(null);
-    setTokenError('');
-    startMintTransition(async () => {
-      try {
-        const res = await mintAgentToken(workspaceId, name, tokenScope, tokenAgent ?? undefined, tokenExpiresIn);
-        setNewTokenValue(res.token);
-        setTokenName('');
-        setTokenScope('read');
-        setTokenAgent(null);
-        setTokenExpiresIn(null);
-        setShowCreateForm(false);
-        loadTokens();
-      } catch (err) {
-        setTokenError(err instanceof Error ? err.message : 'Failed to create token');
-        console.error(err);
-      }
-    });
   };
 
   const handleCopyToken = (value: string) => {
@@ -154,15 +139,6 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
       setCmdCopied(key);
       setTimeout(() => setCmdCopied(null), 2000);
     });
-  };
-
-  const resetCreateForm = () => {
-    setShowCreateForm(false);
-    setTokenName('');
-    setTokenScope('read');
-    setTokenAgent(null);
-    setTokenExpiresIn(null);
-    setTokenError('');
   };
 
   const renderCodeBlock = () => {
@@ -219,33 +195,94 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
     );
   };
 
+  // ── Early returns for full-screen flows ──────────────────────────────────────
+
+  if (showOnboarding && newTokenValue) {
+    return (
+      <McpOnboarding
+        token={newTokenValue}
+        tokenName={newTokenName ?? undefined}
+        initialTool={newTokenAgent ? AGENT_TO_TOOL[newTokenAgent] : undefined}
+        mcpUrl={mcpUrl}
+        onDismiss={() => setOnboardingDone(true)}
+      />
+    );
+  }
+
+  if (showCreateFlow && hasPrivilegedAccess) {
+    return (
+      <McpCreateToken
+        workspaceId={workspaceId}
+        onCreated={(token, name, agent) => {
+          setShowCreateFlow(false);
+          setNewTokenValue(token);
+          setNewTokenName(name);
+          setNewTokenAgent(agent);
+          setOnboardingDone(false);
+          loadTokens();
+        }}
+        onDismiss={() => setShowCreateFlow(false)}
+      />
+    );
+  }
+
+  // ── Normal view ──────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
-      <p className="text-[11px] text-neutral-500 leading-relaxed">{t('tokensSectionHint')}</p>
 
       {hasPrivilegedAccess ? (
         <div className="space-y-4">
-          {isLoadingTokens ? (
-            <div className="py-6 flex justify-center">
-              <div className="w-5 h-5 rounded-full border-2 border-neutral-800 border-t-neutral-500 animate-spin" />
-            </div>
-          ) : tokens.length === 0 && !showCreateForm ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3">
-              <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center">
-                <KeyRound size={18} className="text-neutral-500" />
+          {/* ── Hero — always visible ── */}
+          <div className="border border-amber-500/20 rounded-xl p-5 space-y-4 bg-amber-500/5">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <Zap size={16} className="text-amber-400" />
               </div>
-              <p className="text-xs text-neutral-500">{t('noTokens')}</p>
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-neutral-100">{t('mcpHeroTitle')}</h3>
+                <p className="text-xs text-neutral-400 leading-relaxed">{t('mcpHeroSubtitle')}</p>
+              </div>
+            </div>
+
+            <ol className="space-y-2.5 pl-1">
+              {([
+                { n: 1, title: t('mcpStep1Title'), desc: t('mcpStep1Desc') },
+                { n: 2, title: t('mcpStep2Title'), desc: t('mcpStep2Desc') },
+                { n: 3, title: t('mcpStep3Title'), desc: t('mcpStep3Desc') },
+              ]).map(({ n, title, desc }) => (
+                <li key={n} className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-[9px] font-bold text-neutral-300 shrink-0 mt-0.5">
+                    {n}
+                  </span>
+                  <div className="text-xs leading-relaxed">
+                    <span className="font-semibold text-neutral-200">{title}</span>
+                    <span className="text-neutral-500 ml-1.5">{desc}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            {/* CTA only when no tokens */}
+            {!isLoadingTokens && tokens.length === 0 && (
               <button
-                onClick={() => setShowCreateForm(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-4 py-2 rounded-md transition-colors mt-1"
+                onClick={() => setShowCreateFlow(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-md transition-colors"
               >
                 <Plus size={13} />
-                {t('createToken')}
+                {t('createFirstToken')}
               </button>
+            )}
+          </div>
+
+          {/* ── Token list ── */}
+          {isLoadingTokens ? (
+            <div className="py-4 flex justify-center">
+              <div className="w-5 h-5 rounded-full border-2 border-neutral-800 border-t-neutral-500 animate-spin" />
             </div>
-          ) : (
+          ) : tokens.length > 0 ? (
             <div className="space-y-2">
-              {tokens.length > 0 && (() => {
+              {(() => {
                 const inactiveCount = tokens.filter(tk => !!tk.revokedAt || getExpiryState(tk.expiresAt) === 'expired').length;
                 const visibleTokens = showInactiveTokens
                   ? tokens
@@ -318,6 +355,7 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
                                   </button>
                                 )}
                               </div>
+                              {/* Inline copy card shown after onboarding dismissed */}
                               {isNew && newTokenValue && (
                                 <div className="mx-3 mb-3 border border-amber-500/30 bg-amber-500/5 rounded-md p-3 space-y-2">
                                   <p className="text-[10px] text-amber-400 font-semibold flex items-center gap-1">
@@ -365,132 +403,24 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
                         })}
                       </div>
                     )}
+                    <button
+                      onClick={() => setShowCreateFlow(true)}
+                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-blue-400 border border-dashed border-neutral-700 hover:border-blue-500/40 px-4 py-2.5 rounded-lg transition-colors"
+                    >
+                      <Plus size={13} />
+                      {t('createToken')}
+                    </button>
                   </>
                 );
               })()}
-
-              {showCreateForm ? (
-                <form
-                  onSubmit={handleMintToken}
-                  className="border border-blue-500/20 bg-blue-500/5 rounded-lg p-4 space-y-3"
-                >
-                  <label className="block text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
-                    {t('createToken')}
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={tokenName}
-                      onChange={(e) => setTokenName(e.target.value)}
-                      placeholder={t('tokenNamePlaceholder')}
-                      disabled={isMinting}
-                      autoFocus
-                      className="flex-1 bg-neutral-900 border border-neutral-700 rounded-md text-neutral-100 placeholder-neutral-600 px-3 py-1.5 text-sm outline-none focus:border-blue-500/60 transition-colors disabled:opacity-50"
-                    />
-                    <select
-                      value={tokenScope}
-                      onChange={(e) => setTokenScope(e.target.value as 'read' | 'write')}
-                      disabled={isMinting}
-                      className="bg-neutral-900 border border-neutral-700 rounded-md text-neutral-100 px-2 py-1.5 text-xs outline-none cursor-pointer focus:border-blue-500/60"
-                    >
-                      <option value="read">{t('tokenScopeRead')}</option>
-                      <option value="write">{t('tokenScopeWrite')}</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
-                      {t('tokenAgent')}
-                    </label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {AGENT_OPTIONS.map(({ id, label, aiMarkName }) => (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => setTokenAgent(tokenAgent === id ? null : id)}
-                          disabled={isMinting}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors ${
-                            tokenAgent === id
-                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                              : 'bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-600'
-                          }`}
-                        >
-                          <AIMark name={aiMarkName} size={12} />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
-                      {t('tokenExpiryLabel')}
-                    </label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {([
-                        { days: 30,   label: t('tokenExpiry30d') },
-                        { days: 60,   label: t('tokenExpiry60d') },
-                        { days: 90,   label: t('tokenExpiry90d') },
-                        { days: null, label: t('tokenExpiryForever') },
-                      ] as const).map(({ days, label }) => (
-                        <button
-                          key={String(days)}
-                          type="button"
-                          onClick={() => setTokenExpiresIn(days as 30 | 60 | 90 | null)}
-                          disabled={isMinting}
-                          className={`px-2.5 py-1 rounded border text-[11px] font-semibold transition-colors ${
-                            tokenExpiresIn === days
-                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                              : 'bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-600'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {tokenError && (
-                    <p className="text-xs text-red-400 flex items-center gap-1">
-                      <AlertCircle size={12} /> {tokenError}
-                    </p>
-                  )}
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      type="button"
-                      onClick={resetCreateForm}
-                      disabled={isMinting}
-                      className="text-xs text-neutral-400 hover:text-neutral-200 px-3 py-1.5 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
-                    >
-                      {t('cancelCreate')}
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isMinting || !tokenName.trim()}
-                      className="flex items-center gap-1.5 text-xs bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-md font-medium transition-colors"
-                    >
-                      <KeyRound size={13} />
-                      {isMinting ? t('creating') : t('addToken')}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <button
-                  onClick={() => setShowCreateForm(true)}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-blue-400 border border-dashed border-neutral-700 hover:border-blue-500/40 px-4 py-2.5 rounded-lg transition-colors"
-                >
-                  <Plus size={13} />
-                  {t('createToken')}
-                </button>
-              )}
             </div>
-          )}
+          ) : null}
         </div>
       ) : (
         <p className="text-xs text-neutral-500 italic">{t('ownerOnlyTokens')}</p>
       )}
 
-      {/* Integration Guide */}
+      {/* ── Static integration guide ── */}
       <div className="border-t border-neutral-800 pt-4">
         <button
           onClick={() => setShowGuide(v => !v)}
@@ -509,7 +439,6 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
           <div className="mt-4 space-y-4">
             <p className="text-[11px] text-neutral-400 leading-relaxed">{t('integrateHint')}</p>
 
-            {/* OS selector */}
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-neutral-400 mr-1">OS:</span>
               {(['mac', 'linux', 'windows'] as const).map((key) => (
@@ -527,7 +456,6 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
               ))}
             </div>
 
-            {/* Agent tabs */}
             <div className="flex gap-1 bg-neutral-900 border border-neutral-800 rounded-lg p-1">
               {GUIDES.map(({ id, label }) => (
                 <button
@@ -561,7 +489,6 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
 
             {renderCodeBlock()}
 
-            {/* Test prompt */}
             <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg p-3 space-y-2">
               <span className="text-[10px] font-semibold text-neutral-300 uppercase tracking-wider">
                 {t('integrateTestPrompt')}

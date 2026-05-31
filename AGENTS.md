@@ -209,7 +209,8 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 - `properties.ts` — `SelectOption`, `SELECT_COLORS` (9-color palette), helpers: `getOptionColorByValue`, `getCardBorderDots`, `formatDateValue`.
 
 **Core feature components (`src/components/features/`)**
-- `WorkspaceSidebar` — Collapsible workspace tree, drag-and-drop reorder, optimistic mutations, mobile bottom-sheet context menu.
+- `WorkspaceSidebar` — Collapsible workspace tree, drag-and-drop reorder, optimistic mutations, mobile bottom-sheet context menu. Bottom bar includes an "AI Agents" button that opens `AgentsModal`.
+- `AgentsModal` — Global MCP token overview modal. Lists all active tokens across all user workspaces (grouped by workspace) with scope/expiry/last-used and per-token revoke. Collapsible recent-activity log (last 60 calls). Fetches via `getUserAgentTokens()` + `getUserAgentActivity()`.
 - `WorkspaceSettingsModal` — 3-tab modal shell (~130 lines). Tabs live in `workspace-settings/`: `GeneralTab` (rename, icon, danger zone), `MembersTab` (invite, member list), `TokensTab` (token CRUD + integration guide + one-click Cursor/VS Code install deeplinks after token creation). Shared types in `workspace-settings/types.ts`.
 - `TemplatePickerModal` — 2-step item creation from templates (defined in `src/lib/templates.ts`).
 - `DatabaseView` — View orchestrator: tabs, filters, sorts, peek modals, URL deep-link (`?v=view_id`).

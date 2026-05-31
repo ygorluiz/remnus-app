@@ -20,6 +20,7 @@ import {
   Layers,
   ArrowLeft,
   Monitor,
+  Bot,
 } from 'lucide-react';
 import PageIcon from './PageIcon';
 import {
@@ -41,6 +42,8 @@ import TemplatePickerModal from './TemplatePickerModal';
 import WorkspaceSettingsModal from './WorkspaceSettingsModal';
 import DesktopSettingsModal, { initDesktopZoom } from './DesktopSettingsModal';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
+import AgentsModal from './AgentsModal';
+import { getUserAgentTokenCount } from '@/lib/actions/agentToken';
 import { useWorkspaceEvents } from '@/hooks/useWorkspaceEvents';
 
 function isDescendant(items: WorkspaceItemRow[], targetId: string, ancestorId: string): boolean {
@@ -155,6 +158,9 @@ export default function WorkspaceSidebar({
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [settingsModalWorkspace, setSettingsModalWorkspace] = useState<{ id: string; name: string; icon?: string | null; iconColor?: string | null } | null>(null);
   const [desktopSettingsOpen, setDesktopSettingsOpen] = useState(false);
+  const [agentsModalOpen, setAgentsModalOpen] = useState(false);
+  const [agentTokenCount, setAgentTokenCount] = useState(0);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'members' | 'tokens'>('general');
 
   // Expand / collapse states for workspaces (All expanded by default)
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Record<string, boolean>>(() => {
@@ -233,6 +239,11 @@ export default function WorkspaceSidebar({
 
   // Subscribe to real-time events from other users / MCP agents
   useWorkspaceEvents(currentUser.id, isAnyModalOrPickerOpen);
+
+  // Load agent token count for the sidebar badge
+  useEffect(() => {
+    getUserAgentTokenCount().then(setAgentTokenCount).catch(() => {});
+  }, []);
 
   // Remnus logo → first root-level item of the active workspace
   const logoHref = useMemo(() => {
@@ -1217,7 +1228,8 @@ export default function WorkspaceSidebar({
           workspaceIcon={settingsModalWorkspace.icon}
           workspaceIconColor={settingsModalWorkspace.iconColor}
           currentUser={currentUser}
-          onClose={() => setSettingsModalWorkspace(null)}
+          initialTab={settingsInitialTab}
+          onClose={() => { setSettingsModalWorkspace(null); setSettingsInitialTab('general'); }}
           onRenamed={(newName) => {
             setSettingsModalWorkspace(prev => prev ? { ...prev, name: newName } : null);
             setLocalWorkspaces(prev => prev.map(w => w.id === settingsModalWorkspace.id ? { ...w, name: newName } : w));
@@ -1236,6 +1248,23 @@ export default function WorkspaceSidebar({
 
       {desktopSettingsOpen && (
         <DesktopSettingsModal onClose={() => setDesktopSettingsOpen(false)} />
+      )}
+
+      {agentsModalOpen && (
+        <AgentsModal
+          onClose={() => {
+            setAgentsModalOpen(false);
+            getUserAgentTokenCount().then(setAgentTokenCount).catch(() => {});
+          }}
+          onAddToken={(workspaceId) => {
+            setAgentsModalOpen(false);
+            const ws = localWorkspaces.find(w => w.id === workspaceId);
+            if (ws) {
+              setSettingsInitialTab('tokens');
+              setSettingsModalWorkspace({ id: ws.id, name: ws.name, icon: ws.icon, iconColor: ws.iconColor });
+            }
+          }}
+        />
       )}
 
       {/* Delete confirmation modal */}
@@ -1273,6 +1302,22 @@ export default function WorkspaceSidebar({
           </>
         );
       })()}
+
+      {/* AI Agents button */}
+      <div className="shrink-0 px-2 py-1">
+        <button
+          onClick={() => setAgentsModalOpen(true)}
+          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all duration-200"
+        >
+          <Bot size={14} className="shrink-0 text-amber-400" />
+          <span className="truncate">{t('myAgents')}</span>
+          {agentTokenCount > 0 && (
+            <span className="ml-auto shrink-0 text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full leading-none">
+              {agentTokenCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* User panel */}
       <div className="shrink-0 border-t border-neutral-800 px-3 py-2.5 flex items-center gap-2.5">

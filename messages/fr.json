@@ -112,7 +112,8 @@
     "zoom": "Zoom",
     "zoomIn": "Agrandir",
     "zoomOut": "Réduire",
-    "resetZoom": "Réinitialiser"
+    "resetZoom": "Réinitialiser",
+    "myAgents": "Agents IA"
   },
   "WorkspaceSettings": {
     "title": "Paramètres de l'Espace",
@@ -197,7 +198,45 @@
     "changeIcon": "Changer l'icône",
     "installIn": "Ajouter à votre éditeur",
     "installCursor": "Ajouter à Cursor",
-    "installVSCode": "Ajouter à VS Code"
+    "installVSCode": "Ajouter à VS Code",
+    "mcpHeroTitle": "Connectez votre agent IA",
+    "mcpHeroSubtitle": "Votre espace de travail est MCP-natif. Accordez à n'importe quel agent IA un accès direct à vos pages et bases de données.",
+    "mcpStep1Title": "Créez un token",
+    "mcpStep1Desc": "Identifiants sécurisés pour votre agent IA.",
+    "mcpStep2Title": "Ajoutez à votre outil",
+    "mcpStep2Desc": "Collez la configuration prête à l'emploi dans Claude, Cursor ou tout outil MCP.",
+    "mcpStep3Title": "Commencez à discuter",
+    "mcpStep3Desc": "Demandez à l'agent de lister les pages, interroger les bases de données et créer du contenu.",
+    "createFirstToken": "Créez votre premier token",
+    "tokenPrefilled": "Token pré-rempli — copiez la configuration et collez-la dans votre outil",
+    "mcpOnboardStep": "Étape {current} sur {total}",
+    "mcpOnboardChooseTitle": "Choisissez votre outil IA",
+    "mcpOnboardChooseHint": "Quel outil voulez-vous connecter à cet espace de travail ?",
+    "mcpOnboardAddTitle": "Ajouter à {tool}",
+    "mcpOnboardAddCTA": "C'est fait, j'ai ajouté",
+    "mcpOnboardTestTitle": "Testez votre connexion",
+    "mcpOnboardTestHint": "Collez ce prompt dans {tool} pour vérifier la connexion :",
+    "mcpOnboardTestCTA": "Ça marche !",
+    "mcpOnboardTestSkip": "Je testerai plus tard",
+    "mcpOnboardDoneTitle": "Tout est prêt !",
+    "mcpOnboardDoneBody": "{tool} a maintenant accès à votre espace de travail via MCP.",
+    "mcpOnboardDoneClose": "Compris",
+    "mcpOnboardBack": "Retour",
+    "mcpOnboardDismiss": "Ignorer la configuration",
+    "mcpCreateTitle": "Créer un token d'accès",
+    "mcpCreateHint": "Donnez un nom à ce token pour le retrouver facilement.",
+    "mcpCreateNameLabel": "Nom du token",
+    "mcpCreateNameRegen": "Suggérer un autre nom",
+    "mcpCreateScopeLabel": "Niveau d'accès",
+    "mcpCreateAgentLabel": "Agent IA (optionnel)",
+    "mcpCreateCTA": "Créer le token et connecter",
+    "agentsTitle": "Mes Agents IA",
+    "agentsHint": "Tokens actifs connectés à vos espaces de travail.",
+    "agentsNoTokens": "Aucun token actif. Créez-en un depuis les Paramètres.",
+    "agentsActivity": "Activité Récente",
+    "agentsNoActivity": "Aucune activité récente pour l'instant.",
+    "agentsWorkspaceEmpty": "Aucun token pour l'instant",
+    "agentsAddToken": "Ajouter un token"
   },
   "Templates": {
     "modalTitle": "Nouvel Élément",
@@ -712,5 +751,14 @@
     "sec3Body": "Vos données sont protégées par des protocoles de chiffrement conformes aux normes de l'industrie et par une gestion de session sécurisée. Les mots de passe et données d'authentification sont protégés par des algorithmes de hachage cryptographique robustes.",
     "sec4Title": "4. Contact",
     "sec4Body": "Pour toute question officielle concernant cette politique ou nos pratiques de protection des données, veuillez nous contacter à info@akatron.net."
+  },
+  "Updater": {
+    "availableTitle": "Mise à jour disponible",
+    "availableDesc": "La version {version} est prête à télécharger.",
+    "downloadingDesc": "Téléchargement en cours... {progress}%",
+    "readyTitle": "Mise à jour installée",
+    "readyDesc": "Redémarrez l'application pour appliquer la mise à jour.",
+    "installButton": "Télécharger et installer",
+    "restartNote": "Fermez et rouvrez Remnus pour appliquer."
   }
 }

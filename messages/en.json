@@ -112,7 +112,8 @@
     "zoom": "Zoom",
     "zoomIn": "Zoom In",
     "zoomOut": "Zoom Out",
-    "resetZoom": "Reset"
+    "resetZoom": "Reset",
+    "myAgents": "AI Agents"
   },
   "WorkspaceSettings": {
     "title": "Workspace Settings",
@@ -197,7 +198,45 @@
     "changeIcon": "Change icon",
     "installIn": "Add to your editor",
     "installCursor": "Add to Cursor",
-    "installVSCode": "Add to VS Code"
+    "installVSCode": "Add to VS Code",
+    "mcpHeroTitle": "Connect your AI agent",
+    "mcpHeroSubtitle": "Your workspace is MCP-native. Grant any AI agent direct access to your pages and databases.",
+    "mcpStep1Title": "Create a token",
+    "mcpStep1Desc": "Secure credentials for your AI agent.",
+    "mcpStep2Title": "Add to your tool",
+    "mcpStep2Desc": "Paste the ready-made config into Claude, Cursor, or any MCP tool.",
+    "mcpStep3Title": "Start chatting",
+    "mcpStep3Desc": "Ask your agent to list pages, query databases, and create content.",
+    "createFirstToken": "Create your first token",
+    "tokenPrefilled": "Token pre-filled — copy the config and paste it into your tool",
+    "mcpOnboardStep": "Step {current} of {total}",
+    "mcpOnboardChooseTitle": "Choose your AI tool",
+    "mcpOnboardChooseHint": "Which tool do you want to connect to this workspace?",
+    "mcpOnboardAddTitle": "Add to {tool}",
+    "mcpOnboardAddCTA": "Done, I've added it",
+    "mcpOnboardTestTitle": "Test your connection",
+    "mcpOnboardTestHint": "Paste this prompt into {tool} to verify the connection:",
+    "mcpOnboardTestCTA": "It worked!",
+    "mcpOnboardTestSkip": "I'll test later",
+    "mcpOnboardDoneTitle": "You're all set!",
+    "mcpOnboardDoneBody": "{tool} now has access to your workspace via MCP.",
+    "mcpOnboardDoneClose": "Got it",
+    "mcpOnboardBack": "Back",
+    "mcpOnboardDismiss": "Skip setup",
+    "mcpCreateTitle": "Create an access token",
+    "mcpCreateHint": "Give this token a name so you can identify it later.",
+    "mcpCreateNameLabel": "Token name",
+    "mcpCreateNameRegen": "Suggest another name",
+    "mcpCreateScopeLabel": "Access level",
+    "mcpCreateAgentLabel": "AI agent (optional)",
+    "mcpCreateCTA": "Create token & connect",
+    "agentsTitle": "My AI Agents",
+    "agentsHint": "Active tokens connected to your workspaces.",
+    "agentsNoTokens": "No active tokens. Create one from Workspace Settings.",
+    "agentsActivity": "Recent Activity",
+    "agentsNoActivity": "No recent activity yet.",
+    "agentsWorkspaceEmpty": "No tokens yet",
+    "agentsAddToken": "Add token"
   },
   "Templates": {
     "modalTitle": "New Item",
@@ -712,5 +751,14 @@
     "sec3Body": "Your data is protected using industry-standard encryption protocols and secure session management. Password credentials and sensitive authentication tokens are guarded using strong cryptographic hashing algorithms.",
     "sec4Title": "4. Contact Us",
     "sec4Body": "For any official inquiries or questions regarding this privacy policy and our data protection practices, please contact us at info@akatron.net."
+  },
+  "Updater": {
+    "availableTitle": "Update Available",
+    "availableDesc": "Version {version} is ready to download.",
+    "downloadingDesc": "Downloading... {progress}%",
+    "readyTitle": "Update Installed",
+    "readyDesc": "Restart the app to apply the update.",
+    "installButton": "Download & Install",
+    "restartNote": "Close and reopen Remnus to apply."
   }
 }

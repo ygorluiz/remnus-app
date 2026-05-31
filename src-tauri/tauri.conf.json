@@ -18,6 +18,12 @@
       "desktop": {
         "schemes": ["remnus"]
       }
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/Ranork/remnus-app/releases/latest/download/latest.json"
+      ],
+      "pubkey": ""
     }
   },
   "bundle": {

@@ -14,6 +14,7 @@ interface WorkspaceSettingsModalProps {
   workspaceIcon?: string | null;
   workspaceIconColor?: string | null;
   currentUser: CurrentUser;
+  initialTab?: 'general' | 'members' | 'tokens';
   onClose: () => void;
   onRenamed: (newName: string) => void;
   onIconChanged?: (icon: string | null, iconColor: string | null) => void;
@@ -26,13 +27,14 @@ export default function WorkspaceSettingsModal({
   workspaceIcon,
   workspaceIconColor,
   currentUser,
+  initialTab,
   onClose,
   onRenamed,
   onIconChanged,
   onDeleted,
 }: WorkspaceSettingsModalProps) {
   const t = useTranslations('WorkspaceSettings');
-  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'tokens'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'tokens'>(initialTab ?? 'general');
 
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
@@ -72,7 +74,11 @@ export default function WorkspaceSettingsModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/30 shrink-0">
-          <span className="text-sm font-semibold text-neutral-100">{t('title')}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-semibold text-neutral-100 shrink-0">{t('title')}</span>
+            <span className="text-neutral-700 shrink-0">·</span>
+            <span className="text-sm text-neutral-400 truncate">{workspaceName}</span>
+          </div>
           <button
             onClick={onClose}
             className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800"
@@ -99,6 +105,9 @@ export default function WorkspaceSettingsModal({
             >
               {tab === 'tokens' && <Zap size={11} className="shrink-0" />}
               {tab === 'general' ? t('tabGeneral') : tab === 'members' ? t('tabMembers') : t('tabTokens')}
+              {tab === 'tokens' && activeTab !== 'tokens' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400/70 shrink-0" />
+              )}
             </button>
           ))}
         </div>

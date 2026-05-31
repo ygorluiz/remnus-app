@@ -112,7 +112,8 @@
     "zoom": "Zoom",
     "zoomIn": "Vergrößern",
     "zoomOut": "Verkleinern",
-    "resetZoom": "Zurücksetzen"
+    "resetZoom": "Zurücksetzen",
+    "myAgents": "KI-Agenten"
   },
   "WorkspaceSettings": {
     "title": "Arbeitsbereichseinstellungen",
@@ -197,7 +198,45 @@
     "changeIcon": "Symbol ändern",
     "installIn": "Zum Editor hinzufügen",
     "installCursor": "Zu Cursor hinzufügen",
-    "installVSCode": "Zu VS Code hinzufügen"
+    "installVSCode": "Zu VS Code hinzufügen",
+    "mcpHeroTitle": "Verbinden Sie Ihren KI-Agenten",
+    "mcpHeroSubtitle": "Ihr Arbeitsbereich ist MCP-nativ. Gewähren Sie jedem KI-Agenten direkten Zugriff auf Ihre Seiten und Datenbanken.",
+    "mcpStep1Title": "Token erstellen",
+    "mcpStep1Desc": "Sichere Anmeldedaten für Ihren KI-Agenten.",
+    "mcpStep2Title": "Zu Ihrem Tool hinzufügen",
+    "mcpStep2Desc": "Fügen Sie die fertige Konfiguration in Claude, Cursor oder ein MCP-Tool ein.",
+    "mcpStep3Title": "Beginnen Sie zu chatten",
+    "mcpStep3Desc": "Bitten Sie den Agenten, Seiten aufzulisten, Datenbanken abzufragen und Inhalte zu erstellen.",
+    "createFirstToken": "Erstellen Sie Ihr erstes Token",
+    "tokenPrefilled": "Token vorausgefüllt — kopieren Sie die Konfiguration und fügen Sie sie in Ihr Tool ein",
+    "mcpOnboardStep": "Schritt {current} von {total}",
+    "mcpOnboardChooseTitle": "Wählen Sie Ihr KI-Tool",
+    "mcpOnboardChooseHint": "Welches Tool möchten Sie mit diesem Arbeitsbereich verbinden?",
+    "mcpOnboardAddTitle": "Zu {tool} hinzufügen",
+    "mcpOnboardAddCTA": "Fertig, hinzugefügt",
+    "mcpOnboardTestTitle": "Verbindung testen",
+    "mcpOnboardTestHint": "Fügen Sie diesen Prompt in {tool} ein, um die Verbindung zu prüfen:",
+    "mcpOnboardTestCTA": "Es hat funktioniert!",
+    "mcpOnboardTestSkip": "Ich teste später",
+    "mcpOnboardDoneTitle": "Alles bereit!",
+    "mcpOnboardDoneBody": "{tool} hat jetzt über MCP Zugriff auf Ihren Arbeitsbereich.",
+    "mcpOnboardDoneClose": "Verstanden",
+    "mcpOnboardBack": "Zurück",
+    "mcpOnboardDismiss": "Einrichtung überspringen",
+    "mcpCreateTitle": "Zugriffstoken erstellen",
+    "mcpCreateHint": "Geben Sie diesem Token einen Namen, um ihn später zu erkennen.",
+    "mcpCreateNameLabel": "Token-Name",
+    "mcpCreateNameRegen": "Anderen Namen vorschlagen",
+    "mcpCreateScopeLabel": "Zugriffsebene",
+    "mcpCreateAgentLabel": "KI-Agent (optional)",
+    "mcpCreateCTA": "Token erstellen und verbinden",
+    "agentsTitle": "Meine KI-Agenten",
+    "agentsHint": "Aktive Tokens, die mit Ihren Arbeitsbereichen verbunden sind.",
+    "agentsNoTokens": "Keine aktiven Tokens. Erstellen Sie einen in den Einstellungen.",
+    "agentsActivity": "Letzte Aktivität",
+    "agentsNoActivity": "Noch keine Aktivität aufgezeichnet.",
+    "agentsWorkspaceEmpty": "Noch keine Tokens",
+    "agentsAddToken": "Token hinzufügen"
   },
   "Templates": {
     "modalTitle": "Neues Element",
@@ -712,5 +751,14 @@
     "sec3Body": "Ihre Daten werden durch branchenübliche Verschlüsselungsprotokolle und sicheres Sitzungsmanagement geschützt. Passwörter und sensible Authentifizierungsdaten werden mit starken kryptografischen Algorithmen gesichert.",
     "sec4Title": "4. Kontakt",
     "sec4Body": "Bei offiziellen Fragen zu dieser Erklärung oder unseren Datenschutzpraktiken wenden Sie sich bitte an info@akatron.net."
+  },
+  "Updater": {
+    "availableTitle": "Update verfügbar",
+    "availableDesc": "Version {version} ist zum Download bereit.",
+    "downloadingDesc": "Wird heruntergeladen... {progress}%",
+    "readyTitle": "Update installiert",
+    "readyDesc": "Starten Sie die App neu, um das Update anzuwenden.",
+    "installButton": "Herunterladen & Installieren",
+    "restartNote": "Schließen und öffnen Sie Remnus erneut."
   }
 }

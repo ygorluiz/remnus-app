@@ -112,7 +112,8 @@
     "zoom": "ज़ूम",
     "zoomIn": "ज़ूम इन",
     "zoomOut": "ज़ूम आउट",
-    "resetZoom": "रीसेट"
+    "resetZoom": "रीसेट",
+    "myAgents": "AI एजेंट"
   },
   "WorkspaceSettings": {
     "title": "कार्यक्षेत्र सेटिंग",
@@ -197,7 +198,45 @@
     "changeIcon": "आइकन बदलें",
     "installIn": "अपने एडिटर में जोड़ें",
     "installCursor": "Cursor में जोड़ें",
-    "installVSCode": "VS Code में जोड़ें"
+    "installVSCode": "VS Code में जोड़ें",
+    "mcpHeroTitle": "अपने AI एजेंट को कनेक्ट करें",
+    "mcpHeroSubtitle": "आपका वर्कस्पेस MCP-नेटिव है। किसी भी AI एजेंट को पेज और डेटाबेस तक सीधी पहुंच दें।",
+    "mcpStep1Title": "एक टोकन बनाएं",
+    "mcpStep1Desc": "आपके AI एजेंट के लिए सुरक्षित क्रेडेंशियल।",
+    "mcpStep2Title": "अपने टूल में जोड़ें",
+    "mcpStep2Desc": "तैयार कॉन्फिग को Claude, Cursor या किसी भी MCP टूल में पेस्ट करें।",
+    "mcpStep3Title": "चैटिंग शुरू करें",
+    "mcpStep3Desc": "एजेंट से पेज सूचीबद्ध करने, डेटाबेस क्वेरी करने और सामग्री बनाने के लिए कहें।",
+    "createFirstToken": "अपना पहला टोकन बनाएं",
+    "tokenPrefilled": "टोकन पहले से भरा गया — कॉन्फिग कॉपी करें और अपने टूल में पेस्ट करें",
+    "mcpOnboardStep": "चरण {current}/{total}",
+    "mcpOnboardChooseTitle": "अपना AI टूल चुनें",
+    "mcpOnboardChooseHint": "इस वर्कस्पेस से कौन सा टूल कनेक्ट करना चाहते हैं?",
+    "mcpOnboardAddTitle": "{tool} में जोड़ें",
+    "mcpOnboardAddCTA": "हो गया, जोड़ लिया",
+    "mcpOnboardTestTitle": "कनेक्शन टेस्ट करें",
+    "mcpOnboardTestHint": "कनेक्शन सत्यापित करने के लिए यह prompt {tool} में पेस्ट करें:",
+    "mcpOnboardTestCTA": "काम किया!",
+    "mcpOnboardTestSkip": "बाद में टेस्ट करूंगा",
+    "mcpOnboardDoneTitle": "सब तैयार है!",
+    "mcpOnboardDoneBody": "{tool} अब MCP के जरिए आपके वर्कस्पेस तक पहुंच सकता है।",
+    "mcpOnboardDoneClose": "समझ गया",
+    "mcpOnboardBack": "वापस",
+    "mcpOnboardDismiss": "सेटअप छोड़ें",
+    "mcpCreateTitle": "एक्सेस टोकन बनाएं",
+    "mcpCreateHint": "इस टोकन को बाद में पहचानने के लिए एक नाम दें।",
+    "mcpCreateNameLabel": "टोकन नाम",
+    "mcpCreateNameRegen": "दूसरा नाम सुझाएं",
+    "mcpCreateScopeLabel": "एक्सेस स्तर",
+    "mcpCreateAgentLabel": "AI एजेंट (वैकल्पिक)",
+    "mcpCreateCTA": "टोकन बनाएं और कनेक्ट करें",
+    "agentsTitle": "मेरे AI एजेंट",
+    "agentsHint": "आपके वर्कस्पेस से जुड़े सक्रिय टोकन।",
+    "agentsNoTokens": "कोई सक्रिय टोकन नहीं। Workspace Settings से बनाएं।",
+    "agentsActivity": "हाल की गतिविधि",
+    "agentsNoActivity": "अभी तक कोई गतिविधि नहीं।",
+    "agentsWorkspaceEmpty": "अभी कोई टोकन नहीं",
+    "agentsAddToken": "टोकन जोड़ें"
   },
   "Templates": {
     "modalTitle": "नया आइटम",
@@ -712,5 +751,14 @@
     "sec3Body": "आपका डेटा उद्योग-मानक एन्क्रिप्शन प्रोटोकॉल और सुरक्षित सत्र प्रबंधन का उपयोग करके सुरक्षित है। उपयोगकर्ता पासवर्ड और संवेदनशील प्रमाणीकरण डेटा को मजबूत क्रिप्टोग्राफिक एल्गोरिदम का उपयोग करके सुरक्षित किया जाता है।",
     "sec4Title": "4. संपर्क करें",
     "sec4Body": "इस गोपनीयता नीति और डेटा सुरक्षा प्रथाओं के संबंध में किसी भी आधिकारिक पूछताछ या प्रश्नों के लिए, कृपया info@akatron.net पर हमसे संपर्क करें।"
+  },
+  "Updater": {
+    "availableTitle": "अपडेट उपलब्ध है",
+    "availableDesc": "संस्करण {version} डाउनलोड के लिए तैयार है।",
+    "downloadingDesc": "डाउनलोड हो रहा है... {progress}%",
+    "readyTitle": "अपडेट इंस्टॉल हो गया",
+    "readyDesc": "अपडेट लागू करने के लिए ऐप को पुनः प्रारंभ करें।",
+    "installButton": "डाउनलोड और इंस्टॉल करें",
+    "restartNote": "Remnus को बंद करके दोबारा खोलें।"
   }
 }

@@ -112,7 +112,8 @@
     "zoom": "Yakınlaştırma",
     "zoomIn": "Yakınlaştır",
     "zoomOut": "Uzaklaştır",
-    "resetZoom": "Sıfırla"
+    "resetZoom": "Sıfırla",
+    "myAgents": "AI Ajanlarım"
   },
   "WorkspaceSettings": {
     "title": "Çalışma Alanı Ayarları",
@@ -197,7 +198,45 @@
     "changeIcon": "İkonu değiştir",
     "installIn": "Editörünüze ekleyin",
     "installCursor": "Cursor'a Ekle",
-    "installVSCode": "VS Code'a Ekle"
+    "installVSCode": "VS Code'a Ekle",
+    "mcpHeroTitle": "AI ajanınızı bağlayın",
+    "mcpHeroSubtitle": "Çalışma alanınız MCP-yerel. Herhangi bir AI ajanına sayfa ve veritabanlarınıza doğrudan erişim verin.",
+    "mcpStep1Title": "Token oluşturun",
+    "mcpStep1Desc": "AI ajanınız için güvenli kimlik bilgileri.",
+    "mcpStep2Title": "Aracınıza ekleyin",
+    "mcpStep2Desc": "Hazır yapılandırmayı Claude, Cursor veya herhangi bir MCP aracına yapıştırın.",
+    "mcpStep3Title": "Sohbet etmeye başlayın",
+    "mcpStep3Desc": "Ajanınıza sayfaları listelemesini, veritabanlarını sorgulamasını ve içerik oluşturmasını isteyin.",
+    "createFirstToken": "İlk tokeninizi oluşturun",
+    "tokenPrefilled": "Token önceden dolduruldu — yapılandırmayı kopyalayıp aracınıza yapıştırın",
+    "mcpOnboardStep": "{current}/{total}. adım",
+    "mcpOnboardChooseTitle": "AI aracınızı seçin",
+    "mcpOnboardChooseHint": "Bu çalışma alanına hangi aracı bağlamak istiyorsunuz?",
+    "mcpOnboardAddTitle": "{tool} uygulamasına ekle",
+    "mcpOnboardAddCTA": "Ekledim, devam",
+    "mcpOnboardTestTitle": "Bağlantıyı test edin",
+    "mcpOnboardTestHint": "Bağlantıyı doğrulamak için bu promptu {tool} uygulamasına yapıştırın:",
+    "mcpOnboardTestCTA": "Çalıştı!",
+    "mcpOnboardTestSkip": "Sonra test ederim",
+    "mcpOnboardDoneTitle": "Harika, hazırsınız!",
+    "mcpOnboardDoneBody": "{tool} artık MCP üzerinden çalışma alanınıza erişebilir.",
+    "mcpOnboardDoneClose": "Anladım",
+    "mcpOnboardBack": "Geri",
+    "mcpOnboardDismiss": "Kurulumu atla",
+    "mcpCreateTitle": "Erişim tokeni oluştur",
+    "mcpCreateHint": "Bu tokene sonradan tanıyabileceğiniz bir isim verin.",
+    "mcpCreateNameLabel": "Token adı",
+    "mcpCreateNameRegen": "Başka bir isim öner",
+    "mcpCreateScopeLabel": "Erişim seviyesi",
+    "mcpCreateAgentLabel": "AI ajanı (opsiyonel)",
+    "mcpCreateCTA": "Token oluştur ve bağlan",
+    "agentsTitle": "AI Ajanlarım",
+    "agentsHint": "Çalışma alanlarınıza bağlı aktif tokenler.",
+    "agentsNoTokens": "Aktif token yok. Çalışma Alanı Ayarlarından oluşturun.",
+    "agentsActivity": "Son Aktivite",
+    "agentsNoActivity": "Henüz aktivite kaydı yok.",
+    "agentsWorkspaceEmpty": "Henüz token yok",
+    "agentsAddToken": "Token ekle"
   },
   "Templates": {
     "modalTitle": "Yeni Öğe",
@@ -712,5 +751,14 @@
     "sec3Body": "Verilerinizin güvenliği için endüstri standardı şifreleme protokolleri ve güvenli oturum yönetim sistemleri kullanılmaktadır. Kullanıcı şifreleri ve hassas kimlik doğrulama verileri güçlü şifreleme algoritmalarıyla korunmaktadır.",
     "sec4Title": "4. İletişim",
     "sec4Body": "Gizlilik politikamız ve veri güvenliği uygulamalarımız hakkında her türlü soru ve talebiniz için bizimle info@akatron.net adresi üzerinden resmi olarak iletişime geçebilirsiniz."
+  },
+  "Updater": {
+    "availableTitle": "Güncelleme Mevcut",
+    "availableDesc": "{version} sürümü indirilmeye hazır.",
+    "downloadingDesc": "İndiriliyor... %{progress}",
+    "readyTitle": "Güncelleme Yüklendi",
+    "readyDesc": "Güncellemeyi uygulamak için uygulamayı yeniden başlatın.",
+    "installButton": "İndir ve Kur",
+    "restartNote": "Uygulamayı kapatıp tekrar açarak güncelleyin."
   }
 }

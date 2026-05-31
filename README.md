@@ -37,7 +37,7 @@ A self-hostable, Notion-like workspace application. Create pages, build database
 ### AI Agent Integration (MCP)
 - **Streamable HTTP MCP server** at `/api/mcp` — connect Claude Code, Cursor, Windsurf, Continue, or any MCP-compatible agent
 - **Bearer token auth** scoped per workspace with read-only or read/write permissions
-- **12 MCP tools & 4 resources:** full read/write workspace capabilities with dual-mode (Streamable HTTP + SSE) support.
+- **14 MCP tools, 4 resources & 5 prompt templates:** full read/write workspace capabilities with dual-mode (Streamable HTTP + SSE) support
 - **Audit log** — every agent tool call is logged with status and target
 - Token management in Workspace Settings → API / MCP Tokens
 
@@ -48,8 +48,7 @@ A self-hostable, Notion-like workspace application. Create pages, build database
 - Clean URLs — no `/en/` prefix, locale is resolved transparently
 
 ### Auth
-- **Google OAuth** and **email/password** on the same login page
-- Passwords hashed with bcrypt (cost 12), minimum 8 characters
+- **Google OAuth** and **GitHub OAuth** on the same login page
 - **Demo mode** — "Try Demo" button resets and loads a seeded workspace instantly
 - First registered user is automatically promoted to admin
 
@@ -92,6 +91,7 @@ A self-hostable, Notion-like workspace application. Create pages, build database
 
 - Node.js 20+
 - A Google Cloud project with OAuth 2.0 credentials (for Google sign-in)
+- A GitHub OAuth App (for GitHub sign-in)
 
 ### 1. Clone and install
 
@@ -110,6 +110,8 @@ Create a `.env.local` file:
 AUTH_SECRET=your-random-32-char-secret
 AUTH_GOOGLE_ID=your-google-client-id
 AUTH_GOOGLE_SECRET=your-google-client-secret
+AUTH_GITHUB_ID=your-github-client-id
+AUTH_GITHUB_SECRET=your-github-client-secret
 
 # Database (local SQLite for development)
 DATABASE_URL=file:local.db
@@ -136,14 +138,24 @@ Open [http://localhost:3000](http://localhost:3000). The first account you regis
 
 ---
 
-## Google OAuth Setup
+## OAuth Setup
+
+### Google
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
 2. Create an OAuth 2.0 Client ID (Web application)
-3. Add the following Authorized Redirect URIs:
+3. Add Authorized Redirect URIs:
    - Production: `https://remnus.com/api/auth/callback/google`
    - Local dev: `http://localhost:3000/api/auth/callback/google`
 4. Copy the Client ID and Secret into `.env.local`
+
+### GitHub
+
+1. Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App
+2. Set the Authorization callback URL:
+   - Production: `https://remnus.com/api/auth/callback/github`
+   - Local dev: `http://localhost:3000/api/auth/callback/github`
+3. Copy the Client ID and Secret into `.env.local`
 
 ---
 
@@ -186,11 +198,13 @@ Add to your MCP config file (e.g. `.cursor/mcp.json`):
 #### Tools
 | Tool | Scope | Description |
 |---|---|---|
-| `list_workspace` | read | List pages and databases (optionally by parent) |
+| `list_workspace` | read | List pages and databases (cursor-based pagination, optionally by parent) |
 | `search` | read | Search by title across the workspace |
 | `get_page` | read | Get full content of a page or database item (auto-detects type) |
 | `get_database_schema` | read | Get schema details of a specific database |
-| `query_database` | read | Get schema and filtered rows of a database |
+| `query_database` | read | Get schema and filtered rows of a database (cursor-based pagination) |
+| `list_members` | read | List workspace members with role, email, and join date |
+| `query_audit_log` | read | Query agent activity log with tool/status/date filters |
 | `create_page` | write | Create a standalone page or database row |
 | `update_page` | write | Update title, content, or properties (merges properties) |
 | `bulk_update` | write | Perform batch updates on multiple pages or database rows |
@@ -206,6 +220,15 @@ Add to your MCP config file (e.g. `.cursor/mcp.json`):
 | `remnus://page/{id}` | Markdown content and properties for pages (lists recent 20 pages) |
 | `remnus://database/{id}/schema` | Dynamic column schema definitions for a specific database |
 | `remnus://audit-log/recent` | Recent 50 agent activity logs and tool calls |
+
+#### Prompt Templates
+| Prompt | Arguments | Description |
+|---|---|---|
+| `summarize-page` | `page_id`, `style?` | Summarize a page's content in a given style |
+| `weekly-status-report` | `database_id`, `period?` | Generate a status report from a database |
+| `kanban-triage` | `database_id` | Triage and prioritize kanban cards |
+| `extract-tasks` | `page_id` | Extract actionable tasks from a page |
+| `search-and-create` | `title`, `query` | Search for content and scaffold a new page |
 
 ---
 
@@ -307,13 +330,20 @@ src/
 ├── app/
 │   ├── [locale]/          # All pages (locale-aware)
 │   │   ├── page.tsx       # Home / marketing landing
-│   │   ├── login/         # Auth pages
+│   │   ├── login/         # OAuth login (Google + GitHub)
+│   │   ├── client-login/  # Browser-side login for Tauri desktop OAuth flow
+│   │   ├── tauri-app/     # Tauri entry point (sets platform, redirects to /app)
 │   │   ├── db/[id]/       # Database view
 │   │   ├── page/[itemId]/ # Standalone page editor
-│   │   └── admin/         # Admin panel
+│   │   ├── admin/         # Admin panel
+│   │   ├── pricing/       # Public pricing page
+│   │   ├── contact/       # Public contact page
+│   │   ├── download/      # Desktop app download page
+│   │   └── privacy/       # Privacy policy page
 │   └── api/
-│       ├── auth/          # Auth.js handler
-│       └── mcp/           # MCP Streamable HTTP endpoint
+│       ├── auth/          # Auth.js handler + desktop OAuth bridge/poll/activate
+│       ├── upload/        # Cloudinary image upload
+│       └── mcp/           # MCP Streamable HTTP endpoint (tools, resources, prompts)
 ├── components/
 │   └── features/          # WorkspaceSidebar, DatabaseView, PageEditor, …
 ├── db/

@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
-    Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
 
@@ -10,6 +10,7 @@ const ZOOM_INIT: &str = "(function(){try{var z=parseFloat(localStorage.getItem('
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -74,6 +75,26 @@ pub fn run() {
                     }
                 }
             });
+
+            // Check for updates in the background after a short delay.
+            // Emits "update-available" with { version, body } when an update is found.
+            #[cfg(not(debug_assertions))]
+            {
+                let update_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    if let Ok(updater) = update_handle.updater() {
+                        if let Ok(Some(update)) = updater.check().await {
+                            let version = update.version.clone();
+                            let body = update.body.clone().unwrap_or_default();
+                            let _ = update_handle.emit(
+                                "update-available",
+                                serde_json::json!({ "version": version, "body": body }),
+                            );
+                        }
+                    }
+                });
+            }
 
             let quit = MenuItem::with_id(app, "quit", "Quit Remnus", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
