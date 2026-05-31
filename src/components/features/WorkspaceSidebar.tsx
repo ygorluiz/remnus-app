@@ -89,7 +89,7 @@ export default function WorkspaceSidebar({
   useEffect(() => {
     const isTauriNow = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
     setIsTauri(isTauriNow);
-    if (isTauriNow) initDesktopZoom().catch(() => {});
+    if (isTauriNow) initDesktopZoom();
   }, []);
 
   // Tree creation and editing states

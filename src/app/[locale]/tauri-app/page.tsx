@@ -22,7 +22,7 @@ export default function TauriEntryPage() {
   useEffect(() => {
     async function init() {
       // Apply saved zoom as early as possible
-      await initDesktopZoom();
+      initDesktopZoom();
 
       // Auto-detect OS language on first launch (no cookie yet)
       if (!hasLocaleCookie()) {

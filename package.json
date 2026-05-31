@@ -16,7 +16,8 @@
     "cap:ios": "cap run ios",
     "cap:android": "cap run android",
     "cap:open:ios": "cap open ios",
-    "cap:open:android": "cap open android"
+    "cap:open:android": "cap open android",
+    "version:bump": "npm version patch && sed -i 's/^version = .*/version = \"'$(node -p \"require('./package.json').version\")'\"/' src-tauri/Cargo.toml"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

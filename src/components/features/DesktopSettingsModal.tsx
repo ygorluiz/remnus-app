@@ -9,23 +9,18 @@ const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.1;
 const ZOOM_DEFAULT = 1.0;
 
-async function nativeSetZoom(factor: number) {
-  const { invoke } = await import('@tauri-apps/api/core');
-  await invoke('set_zoom', { scale: factor });
-}
-
-export async function applyDesktopZoom(factor: number) {
-  await nativeSetZoom(factor);
+export function applyDesktopZoom(factor: number) {
+  document.documentElement.style.zoom = factor === 1 ? '' : String(factor);
   try { localStorage.setItem(ZOOM_KEY, String(factor)); } catch {}
 }
 
-export async function initDesktopZoom() {
+export function initDesktopZoom() {
   try {
     const saved = localStorage.getItem(ZOOM_KEY);
     if (!saved) return;
     const factor = parseFloat(saved);
     if (isNaN(factor) || factor < ZOOM_MIN || factor > ZOOM_MAX) return;
-    await nativeSetZoom(factor);
+    document.documentElement.style.zoom = String(factor);
   } catch {}
 }
 

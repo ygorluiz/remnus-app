@@ -1,32 +1,36 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
+    webview::PageLoadEvent,
     Manager, WindowEvent,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
 
-#[tauri::command]
-fn set_zoom(window: tauri::WebviewWindow, scale: f64) -> Result<(), String> {
-    window.set_zoom(scale).map_err(|e| e.to_string())
-}
+const ZOOM_INIT: &str = "(function(){try{var z=parseFloat(localStorage.getItem('remnus_desktop_zoom'));if(z&&z>=0.5&&z<=2.0){document.documentElement.style.zoom=String(z);}}catch(e){}})();";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![set_zoom])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
             // Debug builds load the local dev server instead of the production URL.
-            // build.devUrl in tauri.conf.json only signals "wait for this server" — it does
-            // not override app.windows[].url, so we navigate programmatically here.
             #[cfg(debug_assertions)]
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.eval(
                     "window.location.replace('http://localhost:3000/tauri-app')"
                 );
+            }
+
+            // Re-apply saved zoom after every page load (binary-embedded, server-independent).
+            if let Some(window) = app.get_webview_window("main") {
+                window.on_page_load(move |webview, payload| {
+                    if payload.event() == PageLoadEvent::Finished {
+                        let _ = webview.eval(ZOOM_INIT);
+                    }
+                });
             }
 
             // Handle OAuth deep-link callbacks: remnus://auth?token=<jwt>
