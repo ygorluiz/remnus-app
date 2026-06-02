@@ -1,0 +1,61 @@
+name: MCP Tool Request
+description: Request a new MCP tool, resource, or prompt
+labels: ["mcp", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remnus exposes workspace data via the Model Context Protocol. Suggest a new tool, resource, or prompt template that would make AI agents more capable.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Tool (read)
+        - Tool (write)
+        - Resource
+        - Prompt template
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: Suggested name
+      placeholder: "e.g. archive_page, remnus://database/{id}/stats"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What should it do?
+      description: Describe the inputs, outputs, and behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use case
+      description: What agent workflow or task does this enable?
+      placeholder: "When Claude Code runs the weekly standup prompt, it needs..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Required scope
+      options:
+        - read
+        - write
+        - Either / unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
