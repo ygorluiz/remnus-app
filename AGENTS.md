@@ -232,12 +232,15 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 - `AdminWorkspacesTable` — Paginated workspace table with item expand and delete (10/page).
 
 **Editor (`src/components/features/editor/`)**
-- `BlockEditor` — Tiptap editor: StarterKit, `@tiptap/markdown` v3, TaskList, Table, ChildBlock, SlashCommand. Use `key={page.id}` to remount on page switch.
-- `ChildBlockExtension` — Tiptap node for embedded sub-pages/databases. Serializes as `<div data-cb-id>` — standard HTML block element required because `marked` does not tokenize custom elements.
-- `ChildBlockView` — Node view: drag handle, icon, title link (calls `onImmediateSave` before nav), delete with content-check confirmation.
+- `BlockEditor` — Tiptap editor: StarterKit (with `link` configured: `openOnClick:false`, autolink, linkOnPaste), `@tiptap/markdown` v3, TaskList, Table, ChildBlock, SlashCommand, PageMention. `editorProps.handleClick` intercepts `<a>` clicks: internal `/…` hrefs navigate via the SPA router (after `onImmediateSave`), external hrefs open in a new tab. Use `key={page.id}` to remount on page switch.
+- `ChildBlockExtension` — Tiptap node for embedded sub-pages/databases. Serializes as `<div data-cb-id>` — standard HTML block element required because `marked` does not tokenize custom elements. `linkOnly` attr (`data-cb-link="1"`) marks a **reference to an existing page** (block "Link to page") vs an owned embed; link-only blocks delete the block only, never the target page.
+- `ChildBlockView` — Node view: drag handle, icon, title link (calls `onImmediateSave` before nav), delete with content-check confirmation (link-only blocks skip the confirm and only remove the block).
+- `PageMentionExtension` / `PageMentionList` — Inline page links: typing `@` opens a searchable picker of existing pages/databases; selecting one inserts a normal inline link mark (href = internal route, round-trips as `[Title](/page/id)`).
+- `PagePickerPanel` / `pagePicker.ts` — Block "Link to page" picker (own search box, tippy-anchored at cursor); `openPagePicker(editor)` inserts a link-only `childBlock`.
+- `pageLinkData.ts` — Client-side cached index (30 s TTL) of all linkable workspace items via `getAllWorkspaceItems`; `searchPageItems(query)` + `pageLinkHref(item)`. Shared by the `@` mention and the block picker.
 - `BubbleMenuBar` — Selection toolbar (Bold/Italic/Strike/Code/H1–H3 + "Turn into"). Uses anchor probe to self-position inside transformed ancestors (peek modals).
 - `SlashCommandMenu` — `/` trigger; reads `workspaceId`/`parentId` from extension manager dynamically, not from closure.
-- `SlashCommandList` — Keyboard-navigable command list; divider before child-block commands.
+- `SlashCommandList` — Keyboard-navigable command list; divider before child-block commands. Child group: "Link to page" (`child-link`, opens `openPagePicker`), "Page", "Database".
 
 **Marketing (`src/components/marketing/`)**
 - `LandingBridgeSwitcher` — Full landing page composition (pure server component, no auth check). Used by `page.tsx`.

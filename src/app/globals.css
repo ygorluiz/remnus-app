@@ -223,6 +223,17 @@ pre,
 .prose-editor strong { color: var(--color-neutral-100); font-weight: 600; }
 .prose-editor em { color: var(--color-neutral-200); font-style: italic; }
 .prose-editor s { color: var(--color-neutral-500); }
+.prose-editor a {
+  color: var(--color-blue-500);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--color-blue-500) 45%, transparent);
+  cursor: pointer;
+  transition: text-decoration-color 0.15s;
+}
+.prose-editor a:hover {
+  text-decoration-color: var(--color-blue-500);
+}
 
 .prose-editor code:not(pre code) {
   background: var(--color-neutral-800);

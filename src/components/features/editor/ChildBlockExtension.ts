@@ -24,6 +24,9 @@ export const ChildBlock = Node.create({
       itemType: { default: 'page' },
       icon: { default: null },
       iconColor: { default: null },
+      // true = a reference/link to an existing page (deleting the block must NOT
+      // delete the target). false/absent = an embedded sub-item owned by this page.
+      linkOnly: { default: false },
     };
   },
 
@@ -42,6 +45,7 @@ export const ChildBlock = Node.create({
             title: e.getAttribute('data-cb-title') || 'Untitled',
             icon: e.getAttribute('data-cb-icon') || null,
             iconColor: e.getAttribute('data-cb-iconcolor') || null,
+            linkOnly: e.getAttribute('data-cb-link') === '1',
           };
         },
       },
@@ -58,6 +62,7 @@ export const ChildBlock = Node.create({
         'data-cb-title': node.attrs.title,
         'data-cb-icon': node.attrs.icon || '',
         'data-cb-iconcolor': node.attrs.iconColor || '',
+        'data-cb-link': node.attrs.linkOnly ? '1' : '',
       },
     ];
   },
@@ -72,8 +77,8 @@ export const ChildBlock = Node.create({
   // generateJSON + our parseHTML rule above.
   // @ts-ignore — renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
   renderMarkdown(node: any) {
-    const { itemId, databaseId, itemType, title, icon, iconColor } = node.attrs;
+    const { itemId, databaseId, itemType, title, icon, iconColor, linkOnly } = node.attrs;
     const safeTitle = (title || '').replace(/"/g, '&quot;');
-    return `<div data-cb-id="${itemId}" data-cb-dbid="${databaseId || ''}" data-cb-type="${itemType}" data-cb-title="${safeTitle}" data-cb-icon="${icon || ''}" data-cb-iconcolor="${iconColor || ''}"></div>`;
+    return `<div data-cb-id="${itemId}" data-cb-dbid="${databaseId || ''}" data-cb-type="${itemType}" data-cb-title="${safeTitle}" data-cb-icon="${icon || ''}" data-cb-iconcolor="${iconColor || ''}" data-cb-link="${linkOnly ? '1' : ''}"></div>`;
   },
 });

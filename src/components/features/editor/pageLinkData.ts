@@ -1,0 +1,68 @@
+'use client';
+import { getAllWorkspaceItems, type WorkspaceItemRow } from '@/lib/actions/workspace';
+
+// Lightweight, cached client-side index of all linkable workspace items
+// (standalone pages + databases the current user can access). Shared by the
+// inline "@" page-mention suggestion and the block "Link to page" picker so
+// neither needs the user to type a raw URL.
+
+export type PageLinkItem = {
+  id: string;
+  title: string;
+  type: 'page' | 'database';
+  icon: string | null;
+  iconColor: string | null;
+  databaseId: string | null;
+  href: string;
+};
+
+let cache: PageLinkItem[] | null = null;
+let inflight: Promise<PageLinkItem[]> | null = null;
+let fetchedAt = 0;
+const TTL = 30_000; // 30s — keeps the picker snappy without going stale for long
+
+export function pageLinkHref(item: { type: string; id: string; databaseId: string | null }): string {
+  return item.type === 'database' ? `/db/${item.databaseId || item.id}` : `/page/${item.id}`;
+}
+
+function toLinkItem(row: WorkspaceItemRow): PageLinkItem {
+  return {
+    id: row.id,
+    title: row.title || 'Untitled',
+    type: row.type,
+    icon: row.icon,
+    iconColor: row.iconColor,
+    databaseId: row.databaseId,
+    href: pageLinkHref(row),
+  };
+}
+
+async function load(): Promise<PageLinkItem[]> {
+  if (cache && Date.now() - fetchedAt < TTL) return cache;
+  if (inflight) return inflight;
+  inflight = getAllWorkspaceItems()
+    .then(rows => {
+      cache = rows.map(toLinkItem);
+      fetchedAt = Date.now();
+      return cache;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
+}
+
+// Drop the cache so the next picker open reflects freshly created/renamed items.
+export function invalidatePageLinkCache() {
+  cache = null;
+  fetchedAt = 0;
+}
+
+export async function searchPageItems(query: string, limit = 8): Promise<PageLinkItem[]> {
+  const items = await load();
+  const q = query.trim().toLowerCase();
+  const matched = q
+    ? items.filter(i => i.title.toLowerCase().includes(q))
+    : items;
+  return matched.slice(0, limit);
+}

@@ -235,7 +235,6 @@
     "mcpEditHint": "Ad, kapsam veya süre sonunu güncelleyebilirsin. Token anahtarı değişmez.",
     "mcpEditCTA": "Kaydet",
     "mcpEditExpiryKeep": "Mevcut süreyi koru",
-    "saving": "Kaydediliyor...",
     "editToken": "Düzenle",
     "agentsTitle": "AI Ajanlarım",
     "agentsHint": "Çalışma alanlarınıza bağlı aktif tokenler.",
@@ -394,7 +393,12 @@
     "deleteChildTitle": "Bu öğe silinsin mi?",
     "deleteChildDesc": "Bu öğenin kalıcı olarak silinecek içeriği var.",
     "deleteChildConfirm": "Sil",
-    "deleteChildCancel": "İptal"
+    "deleteChildCancel": "İptal",
+    "slashLinkPage": "Sayfaya bağlantı",
+    "slashLinkPageDesc": "Mevcut bir sayfaya veya veritabanına bağlan",
+    "pageLinkSearchPlaceholder": "Sayfa ara…",
+    "pageLinkEmpty": "Sayfa bulunamadı",
+    "removeLink": "Bağlantıyı kaldır"
   },
   "Page": {
     "untitled": "Başlıksız",

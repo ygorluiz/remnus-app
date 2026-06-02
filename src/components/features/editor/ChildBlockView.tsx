@@ -18,7 +18,7 @@ export default function ChildBlockView({
   editor: any;
 }) {
   const t = useTranslations('Editor');
-  const { itemId, databaseId, title, itemType, icon, iconColor } = node.attrs;
+  const { itemId, databaseId, title, itemType, icon, iconColor, linkOnly } = node.attrs;
   const [showConfirm, setShowConfirm] = useState(false);
   const router = useRouter();
 
@@ -43,6 +43,12 @@ export default function ChildBlockView({
   const handleDeleteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Link-only blocks merely reference an existing page — removing the block
+    // must never delete the target page.
+    if (linkOnly) {
+      deleteNode();
+      return;
+    }
     const hasContent = await checkItemHasContent(itemId);
     if (hasContent) {
       setShowConfirm(true);
@@ -85,7 +91,7 @@ export default function ChildBlockView({
         <button
           onClick={handleDeleteClick}
           className="opacity-0 group-hover/child:opacity-100 transition-opacity p-1 rounded text-neutral-600 hover:text-red-400 hover:bg-neutral-800/60 cursor-pointer shrink-0 text-base leading-none"
-          title={t('deleteChildConfirm')}
+          title={linkOnly ? t('removeLink') : t('deleteChildConfirm')}
         >
           ×
         </button>

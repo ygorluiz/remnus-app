@@ -235,7 +235,6 @@
     "mcpEditHint": "Update the name, scope, or expiry. The token key itself never changes.",
     "mcpEditCTA": "Save changes",
     "mcpEditExpiryKeep": "Keep current",
-    "saving": "Saving...",
     "editToken": "Edit",
     "agentsTitle": "My AI Agents",
     "agentsHint": "Active tokens connected to your workspaces.",
@@ -394,7 +393,12 @@
     "deleteChildTitle": "Delete this item?",
     "deleteChildDesc": "This item has content that will be permanently deleted.",
     "deleteChildConfirm": "Delete",
-    "deleteChildCancel": "Cancel"
+    "deleteChildCancel": "Cancel",
+    "slashLinkPage": "Link to page",
+    "slashLinkPageDesc": "Link to an existing page or database",
+    "pageLinkSearchPlaceholder": "Search pages…",
+    "pageLinkEmpty": "No pages found",
+    "removeLink": "Remove link"
   },
   "Page": {
     "untitled": "Untitled",

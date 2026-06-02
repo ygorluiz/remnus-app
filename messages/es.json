@@ -235,7 +235,6 @@
     "mcpEditHint": "Actualiza el nombre, alcance o expiración. La clave del token nunca cambia.",
     "mcpEditCTA": "Guardar cambios",
     "mcpEditExpiryKeep": "Mantener actual",
-    "saving": "Guardando...",
     "editToken": "Editar",
     "agentsTitle": "Mis Agentes IA",
     "agentsHint": "Tokens activos conectados a tus espacios de trabajo.",
@@ -394,7 +393,12 @@
     "deleteChildTitle": "¿Eliminar este elemento?",
     "deleteChildDesc": "Este elemento tiene contenido que se eliminará permanentemente.",
     "deleteChildConfirm": "Eliminar",
-    "deleteChildCancel": "Cancelar"
+    "deleteChildCancel": "Cancelar",
+    "slashLinkPage": "Enlazar a página",
+    "slashLinkPageDesc": "Enlazar a una página o base de datos existente",
+    "pageLinkSearchPlaceholder": "Buscar páginas…",
+    "pageLinkEmpty": "No se encontraron páginas",
+    "removeLink": "Quitar enlace"
   },
   "Page": {
     "untitled": "Sin título",

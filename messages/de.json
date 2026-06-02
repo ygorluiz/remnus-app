@@ -235,7 +235,6 @@
     "mcpEditHint": "Name, Zugriffsebene oder Ablaufdatum ändern. Der Token-Schlüssel ändert sich nie.",
     "mcpEditCTA": "Änderungen speichern",
     "mcpEditExpiryKeep": "Aktuell behalten",
-    "saving": "Wird gespeichert...",
     "editToken": "Bearbeiten",
     "agentsTitle": "Meine KI-Agenten",
     "agentsHint": "Aktive Tokens, die mit Ihren Arbeitsbereichen verbunden sind.",
@@ -394,7 +393,12 @@
     "deleteChildTitle": "Dieses Element löschen?",
     "deleteChildDesc": "Dieses Element hat Inhalt, der dauerhaft gelöscht wird.",
     "deleteChildConfirm": "Löschen",
-    "deleteChildCancel": "Abbrechen"
+    "deleteChildCancel": "Abbrechen",
+    "slashLinkPage": "Mit Seite verknüpfen",
+    "slashLinkPageDesc": "Mit vorhandener Seite oder Datenbank verknüpfen",
+    "pageLinkSearchPlaceholder": "Seiten suchen…",
+    "pageLinkEmpty": "Keine Seiten gefunden",
+    "removeLink": "Link entfernen"
   },
   "Page": {
     "untitled": "Ohne Titel",

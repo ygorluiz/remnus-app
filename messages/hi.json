@@ -235,7 +235,6 @@
     "mcpEditHint": "नाम, स्कोप या समाप्ति अपडेट करें। टोकन कुंजी कभी नहीं बदलती।",
     "mcpEditCTA": "परिवर्तन सहेजें",
     "mcpEditExpiryKeep": "वर्तमान रखें",
-    "saving": "सहेजा जा रहा है...",
     "editToken": "संपादित करें",
     "agentsTitle": "मेरे AI एजेंट",
     "agentsHint": "आपके वर्कस्पेस से जुड़े सक्रिय टोकन।",
@@ -394,7 +393,12 @@
     "deleteChildTitle": "यह आइटम हटाएं?",
     "deleteChildDesc": "इस आइटम में सामग्री है जो स्थायी रूप से हटा दी जाएगी।",
     "deleteChildConfirm": "हटाएं",
-    "deleteChildCancel": "रद्द करें"
+    "deleteChildCancel": "रद्द करें",
+    "slashLinkPage": "पेज से लिंक करें",
+    "slashLinkPageDesc": "मौजूदा पेज या डेटाबेस से लिंक करें",
+    "pageLinkSearchPlaceholder": "पेज खोजें…",
+    "pageLinkEmpty": "कोई पेज नहीं मिला",
+    "removeLink": "लिंक हटाएं"
   },
   "Page": {
     "untitled": "शीर्षकहीन",

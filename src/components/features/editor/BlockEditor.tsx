@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
@@ -13,6 +14,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import BubbleMenuBar from './BubbleMenuBar';
 import { SlashCommand } from './SlashCommandMenu';
 import { ChildBlock } from './ChildBlockExtension';
+import { PageMention } from './PageMentionExtension';
 import { CollapsibleHeading, HeadingCollapsePlugin } from './HeadingCollapseExtension';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
@@ -70,6 +72,14 @@ export default function BlockEditor({
   initialSubItems,
 }: Props) {
   const editorRef = useRef<any>(null);
+  const router = useRouter();
+
+  // Kept in a ref so the (closure-captured) editorProps click handler always
+  // reaches the latest onImmediateSave without recreating the editor.
+  const onImmediateSaveRef = useRef(onImmediateSave);
+  useEffect(() => {
+    onImmediateSaveRef.current = onImmediateSave;
+  }, [onImmediateSave]);
 
   const computedInitial = useMemo(
     () => buildInitialContent(initialContent, initialSubItems ?? []),
@@ -83,6 +93,18 @@ export default function BlockEditor({
     extensions: [
       StarterKit.configure({
         heading: false,
+        // Typed/pasted URLs auto-link and become clickable. We drive navigation
+        // ourselves (openOnClick: false) so internal page links use the SPA
+        // router instead of a full page load.
+        link: {
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          defaultProtocol: 'https',
+          HTMLAttributes: {
+            rel: 'noopener noreferrer nofollow',
+          },
+        },
       }),
       CollapsibleHeading,
       HeadingCollapsePlugin.configure({
@@ -111,6 +133,7 @@ export default function BlockEditor({
         workspaceId: workspaceId ?? null,
         parentId: parentId ?? null,
       }),
+      PageMention,
     ],
     content: computedInitial,
     contentType: 'markdown',
@@ -122,6 +145,28 @@ export default function BlockEditor({
       attributes: {
         class: 'prose-editor focus:outline-none min-h-[500px]',
         spellcheck: 'false',
+      },
+      handleClick: (_view, _pos, event) => {
+        const anchor = (event.target as HTMLElement | null)?.closest('a');
+        const href = anchor?.getAttribute('href');
+        if (!href) return false;
+
+        event.preventDefault();
+        // Internal page/database links → SPA navigation (save first so edits
+        // persist on return). External links → open in a new tab.
+        if (href.startsWith('/')) {
+          const md = editorRef.current?.getMarkdown?.();
+          const save = onImmediateSaveRef.current;
+          const go = () => router.push(href);
+          if (md && typeof save === 'function') {
+            Promise.resolve(save(md)).catch(() => {}).finally(go);
+          } else {
+            go();
+          }
+        } else {
+          window.open(href, '_blank', 'noopener,noreferrer');
+        }
+        return true;
       },
       handleKeyDown: (view, event) => {
         if (event.key !== 'Backspace') return false;

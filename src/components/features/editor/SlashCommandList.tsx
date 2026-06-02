@@ -1,8 +1,9 @@
 'use client';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { CheckSquare, Heading1, Heading2, Heading3, List, ListOrdered, Minus, Quote, Code2, Table, FileText, Database } from 'lucide-react';
+import { CheckSquare, Heading1, Heading2, Heading3, List, ListOrdered, Minus, Quote, Code2, Table, FileText, Database, Link2 } from 'lucide-react';
 import { createStandalonePage, createWorkspaceDatabase } from '@/lib/actions/workspace';
 import { useTranslations } from 'next-intl';
+import { openPagePicker } from './pagePicker';
 
 export type SlashCommandItem = {
   id: string;
@@ -14,6 +15,16 @@ export type SlashCommandItem = {
 
 export function buildChildCommands(workspaceId: string, parentId: string): SlashCommandItem[] {
   return [
+    {
+      id: 'child-link',
+      label: 'Link to page',
+      description: 'Link to an existing page or database',
+      icon: <Link2 size={15} />,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).run();
+        openPagePicker(editor);
+      },
+    },
     {
       id: 'child-page',
       label: 'Page',
@@ -150,6 +161,7 @@ const SlashCommandList = forwardRef<{ onKeyDown: (props: { event: KeyboardEvent 
       quote: t('slashQuote'),
       code: t('slashCodeBlock'),
       table: t('slashTable'),
+      'child-link': t('slashLinkPage'),
       'child-page': t('slashPage'),
       'child-database': t('slashDatabase'),
     };
@@ -164,6 +176,7 @@ const SlashCommandList = forwardRef<{ onKeyDown: (props: { event: KeyboardEvent 
       quote: t('slashQuoteDesc'),
       code: t('slashCodeBlockDesc'),
       table: t('slashTableDesc'),
+      'child-link': t('slashLinkPageDesc'),
       'child-page': t('slashPageDesc'),
       'child-database': t('slashDatabaseDesc'),
     };
