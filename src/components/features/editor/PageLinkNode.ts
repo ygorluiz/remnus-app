@@ -1,5 +1,15 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 
+// Only http(s), root-relative internal routes, and pure fragments are allowed.
+// Anything else (javascript:, data:, vbscript:, protocol-relative //…) is
+// neutralized to '#' so untrusted markdown/MCP content can't smuggle an XSS
+// payload through the href.
+const SAFE_HREF = /^(https?:\/\/|\/(?!\/)|#)/i;
+function sanitizeHref(href: string | null | undefined): string {
+  const h = (href || '').trim();
+  return SAFE_HREF.test(h) ? h : '#';
+}
+
 // Inline page link rendered as a single atomic unit: the label text cannot be
 // edited character-by-character, and a single Backspace removes the whole link.
 // Serializes to inline HTML (<a data-page-link>) so it round-trips through
@@ -29,7 +39,7 @@ export const PageLink = Node.create({
         getAttrs(el) {
           const e = el as HTMLElement;
           return {
-            href: e.getAttribute('href') || '#',
+            href: sanitizeHref(e.getAttribute('href')),
             label: e.textContent || '',
             itemType: e.getAttribute('data-type') || 'page',
           };
@@ -42,7 +52,7 @@ export const PageLink = Node.create({
     return [
       'a',
       mergeAttributes(HTMLAttributes, {
-        href: node.attrs.href,
+        href: sanitizeHref(node.attrs.href),
         'data-page-link': '',
         'data-type': node.attrs.itemType,
       }),
@@ -53,7 +63,8 @@ export const PageLink = Node.create({
   // @tiptap/markdown v3 serializer — read via getExtensionField(ext, "renderMarkdown")
   // @ts-ignore — renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
   renderMarkdown(node: any) {
-    const { href, label, itemType } = node.attrs;
+    const { label, itemType } = node.attrs;
+    const href = sanitizeHref(node.attrs.href);
     const esc = (s: string) =>
       (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const escAttr = (s: string) => esc(s).replace(/"/g, '&quot;');
