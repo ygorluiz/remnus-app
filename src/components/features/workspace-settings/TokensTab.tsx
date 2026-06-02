@@ -1,12 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { AlertCircle, Check, Copy, Plus, ChevronDown, Zap } from 'lucide-react';
+import { AlertCircle, Check, Copy, Plus, ChevronDown, Zap, Pencil } from 'lucide-react';
 import AIMark from '@/components/marketing/AIMark';
 import { getAgentTokens, revokeAgentToken } from '@/lib/actions/agentToken';
 import { AGENT_OPTIONS, type AgentId, type AgentToken } from './types';
 import McpOnboarding from './McpOnboarding';
 import McpCreateToken from './McpCreateToken';
+import McpEditToken from './McpEditToken';
 
 function buildCursorInstallUrl(token: string, mcpUrl: string): string {
   const config = JSON.stringify({ url: mcpUrl, headers: { Authorization: `Bearer ${token}` } });
@@ -71,6 +72,7 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [copied, setCopied] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [editingToken, setEditingToken] = useState<AgentToken | null>(null);
   const [showInactiveTokens, setShowInactiveTokens] = useState(false);
   const [cmdCopied, setCmdCopied] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
@@ -226,6 +228,16 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
     );
   }
 
+  if (editingToken && hasPrivilegedAccess) {
+    return (
+      <McpEditToken
+        token={editingToken}
+        onSaved={() => { setEditingToken(null); loadTokens(); }}
+        onDismiss={() => setEditingToken(null)}
+      />
+    );
+  }
+
   // ── Normal view ──────────────────────────────────────────────────────────────
 
   return (
@@ -346,13 +358,23 @@ export default function TokensTab({ workspaceId, hasPrivilegedAccess }: TokensTa
                                   </p>
                                 </div>
                                 {!isRevoked && (
-                                  <button
-                                    onClick={() => handleRevokeToken(token.id)}
-                                    disabled={isRevoking}
-                                    className="shrink-0 text-[10px] font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded border border-red-500/20 transition-colors disabled:opacity-50"
-                                  >
-                                    {isRevoking ? t('revoking') : t('revokeToken')}
-                                  </button>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      onClick={() => setEditingToken(token)}
+                                      title={t('editToken')}
+                                      className="text-[10px] font-semibold text-neutral-400 hover:text-neutral-200 bg-neutral-800 hover:bg-neutral-700 px-2 py-1 rounded border border-neutral-700 transition-colors flex items-center gap-1"
+                                    >
+                                      <Pencil size={10} />
+                                      {t('editToken')}
+                                    </button>
+                                    <button
+                                      onClick={() => handleRevokeToken(token.id)}
+                                      disabled={isRevoking}
+                                      className="text-[10px] font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded border border-red-500/20 transition-colors disabled:opacity-50"
+                                    >
+                                      {isRevoking ? t('revoking') : t('revokeToken')}
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                               {/* Inline copy card shown after onboarding dismissed */}

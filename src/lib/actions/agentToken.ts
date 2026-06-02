@@ -205,6 +205,42 @@ export async function getUserAgentActivity(count = 60) {
     .limit(count);
 }
 
+export async function updateAgentToken(
+  tokenId: string,
+  updates: {
+    name: string;
+    scope: 'read' | 'write';
+    agentName: string | null;
+    expiresInDays: number | null | undefined; // undefined = keep current
+  },
+): Promise<void> {
+  const [token] = await db
+    .select({ workspaceId: agentTokens.workspaceId })
+    .from(agentTokens)
+    .where(and(eq(agentTokens.id, tokenId), isNull(agentTokens.revokedAt)))
+    .limit(1);
+
+  const t = await getTranslations('Errors');
+  if (!token) throw new Error(t('notFound'));
+
+  await assertOwnerAccess(token.workspaceId);
+
+  const patch: Partial<typeof agentTokens.$inferInsert> = {
+    name: updates.name.trim(),
+    scope: updates.scope,
+    agentName: updates.agentName,
+  };
+
+  if (updates.expiresInDays !== undefined) {
+    patch.expiresAt =
+      updates.expiresInDays != null
+        ? new Date(Date.now() + updates.expiresInDays * 24 * 60 * 60 * 1000)
+        : null;
+  }
+
+  await db.update(agentTokens).set(patch).where(eq(agentTokens.id, tokenId));
+}
+
 export async function revokeAgentToken(tokenId: string): Promise<void> {
   // Resolve workspace from token, then verify ownership
   const [token] = await db
