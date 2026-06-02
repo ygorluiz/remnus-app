@@ -2,6 +2,7 @@
   "name": "remnus-app",
   "version": "0.1.2",
   "private": true,
+  "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "next dev",
     "build": "npx tsx src/db/migrate.ts && next build",
