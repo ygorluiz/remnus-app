@@ -12,7 +12,7 @@ export default async function LandingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950">
       <div className="px-4 sm:px-8 lg:px-14 py-4">
-        <div className="max-w-7xl mx-auto flex items-center gap-4 lg:gap-7">
+        <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-4 lg:gap-7">
           <Link href="/" className="inline-flex items-center gap-2.5 shrink-0">
             <Image src="/logo-square-transparent.png" alt="Remnus" width={22} height={22} className="block" />
             <span className="font-sans font-semibold text-base tracking-[-0.01em] text-neutral-100">
@@ -20,7 +20,7 @@ export default async function LandingNav() {
             </span>
           </Link>
 
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] text-amber-400/70 bg-amber-500/8 border border-amber-500/20 px-1.5 py-0.5 rounded-full shrink-0 tracking-wide">
+          <span className="hidden sm:inline-flex items-center gap-1 font-mono text-[10px] text-amber-400/70 bg-amber-500/8 border border-amber-500/20 px-1.5 py-0.5 rounded-full shrink-0 tracking-wide">
             {t('earlyAccess')} · v0.1.2
           </span>
 
