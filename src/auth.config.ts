@@ -5,7 +5,13 @@ import GitHub from 'next-auth/providers/github';
 // Edge-compatible auth config (no DB imports — safe for middleware)
 export const authConfig: NextAuthConfig = {
   providers: [
-    Google({ allowDangerousEmailAccountLinking: true }),
+    Google({
+      allowDangerousEmailAccountLinking: true,
+      // Force the Google account chooser on every sign-in. Without this, Google
+      // can silently re-authenticate the last active account — so a user who
+      // logs out and tries to switch accounts gets signed back in as the old one.
+      authorization: { params: { prompt: 'select_account' } },
+    }),
     GitHub({ allowDangerousEmailAccountLinking: true }),
   ],
   pages: {
