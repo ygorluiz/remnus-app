@@ -37,6 +37,20 @@ export type EngagementOverview = {
 
 const DAY = 24 * 60 * 60;
 
+// Timestamp columns are stored as integer Unix seconds, but the createdAt
+// gotcha (see AGENTS.md) means some legacy rows hold a CURRENT_TIMESTAMP text
+// value instead. Normalize both forms to epoch ms, returning null when invalid
+// so callers never feed NaN into new Date().toISOString().
+function toEpochMs(val: unknown): number | null {
+  if (val == null) return null;
+  if (typeof val === 'number') {
+    if (!isFinite(val)) return null;
+    return val < 1e12 ? val * 1000 : val; // seconds vs already-ms heuristic
+  }
+  const d = new Date(val as string);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
 export async function getEngagementOverview(): Promise<EngagementOverview> {
   await assertAdmin();
 
@@ -82,7 +96,7 @@ export async function getEngagementOverview(): Promise<EngagementOverview> {
     perUser[r.userId] = {
       totalSeconds: r.totalSeconds,
       sessionCount: r.sessionCount,
-      lastActive: r.lastSeen ? r.lastSeen * 1000 : null,
+      lastActive: toEpochMs(r.lastSeen),
     };
   }
 
@@ -98,8 +112,9 @@ export async function getEngagementOverview(): Promise<EngagementOverview> {
     buckets.set(d.toISOString().slice(0, 10), 0);
   }
   for (const row of signupRows) {
-    if (!row.createdAt) continue;
-    const key = new Date(row.createdAt * 1000).toISOString().slice(0, 10);
+    const ms = toEpochMs(row.createdAt);
+    if (ms == null) continue;
+    const key = new Date(ms).toISOString().slice(0, 10);
     if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
   }
   const signupTrend = [...buckets.entries()].map(([date, count]) => ({ date, count }));
@@ -231,13 +246,13 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
       email: u.email,
       image: u.image,
       role: u.role,
-      createdAt: u.createdAt ? u.createdAt * 1000 : null,
+      createdAt: toEpochMs(u.createdAt),
       authType,
     },
     activity: {
       totalSeconds: act?.totalSeconds ?? 0,
       sessionCount: act?.sessionCount ?? 0,
-      lastActive: act?.lastSeen ? act.lastSeen * 1000 : null,
+      lastActive: toEpochMs(act?.lastSeen),
     },
     workspaces: workspacesDetail,
   };
