@@ -3,7 +3,7 @@ import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion from '@tiptap/suggestion';
 import tippy, { type Instance } from 'tippy.js';
-import SlashCommandList, { SLASH_COMMANDS, buildChildCommands, type SlashCommandItem } from './SlashCommandList';
+import SlashCommandList, { SLASH_COMMANDS, SLASH_KEYWORDS, buildChildCommands, type SlashCommandItem } from './SlashCommandList';
 
 export const SlashCommand = Extension.create({
   name: 'slashCommand',
@@ -38,8 +38,13 @@ export const SlashCommand = Extension.create({
               : [];
           const all = [...SLASH_COMMANDS, ...childCmds];
           if (!query) return all;
+          const q = query.toLowerCase();
+          // Match the (English) label, the id, or any registered shortcut/synonym
+          // so "/h1", "/img", "/todo" resolve even though the visible label differs.
           return all.filter(item =>
-            item.label.toLowerCase().includes(query.toLowerCase()),
+            item.label.toLowerCase().includes(q) ||
+            item.id.toLowerCase().includes(q) ||
+            (SLASH_KEYWORDS[item.id] ?? []).some(k => k.includes(q)),
           );
         },
 

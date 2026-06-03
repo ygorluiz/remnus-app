@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { and, eq } from 'drizzle-orm';
+import { db } from '@/db';
+import { workspaceMembers } from '@/db/schema';
 import { cloudinary } from '@/lib/cloudinary';
 import { getCurrentUser } from '@/lib/auth/session';
+import { recordAsset } from '@/lib/services/assets';
 
 // Validate actual magic bytes — never trust file.type alone (client-controlled).
 // SVG intentionally excluded: it can carry inline <script> tags.
@@ -16,6 +20,26 @@ function isSafeImageBuffer(buf: Buffer): boolean {
   return isJpeg || isPng || isGif || isWebp;
 }
 
+// kind=icon  → square 256×256 avatar/icon (default; back-compat with IconPicker)
+// kind=image → full content image, no crop, capped width, larger size limit
+// kind=file  → arbitrary attachment stored as a raw asset
+const ICON_MAX = 5 * 1024 * 1024;
+const IMAGE_MAX = 10 * 1024 * 1024;
+const FILE_MAX = 25 * 1024 * 1024;
+
+type CloudinaryResult = { secure_url: string; public_id: string; resource_type: string; bytes: number };
+
+function upload(buffer: Buffer, options: Record<string, unknown>): Promise<CloudinaryResult> {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(options, (error, result) => {
+        if (error || !result) reject(error ?? new Error('Upload failed'));
+        else resolve(result as CloudinaryResult);
+      })
+      .end(buffer);
+  });
+}
+
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,25 +48,77 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
+  const kind = (formData.get('kind') as string | null) ?? 'icon';
+
+  // The workspaceId is client-supplied; only attribute storage to it if the
+  // caller is actually a member, otherwise reject (prevents IDOR-style
+  // mis-attribution of usage to a workspace the user doesn't belong to).
+  const requestedWorkspaceId = (formData.get('workspaceId') as string | null) || null;
+  if (requestedWorkspaceId) {
+    const member = await db
+      .select({ id: workspaceMembers.id })
+      .from(workspaceMembers)
+      .where(and(eq(workspaceMembers.workspaceId, requestedWorkspaceId), eq(workspaceMembers.userId, user.id)))
+      .limit(1);
+    if (!member.length) {
+      return NextResponse.json({ error: 'Forbidden workspace' }, { status: 403 });
+    }
+  }
+  const workspaceId = requestedWorkspaceId;
+
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
+  if (kind === 'file') {
+    if (buffer.length > FILE_MAX) {
+      return NextResponse.json({ error: 'File too large' }, { status: 400 });
+    }
+    const result = await upload(buffer, { folder: 'remnus/files', resource_type: 'auto' });
+    await recordAsset({
+      publicId: result.public_id,
+      resourceType: result.resource_type,
+      kind: 'file',
+      bytes: result.bytes ?? buffer.length,
+      url: result.secure_url,
+      userId: user.id,
+      workspaceId,
+    });
+    return NextResponse.json({ url: result.secure_url, name: file.name, size: result.bytes ?? buffer.length });
+  }
+
+  // Image-based kinds: validate magic bytes.
+  const limit = kind === 'image' ? IMAGE_MAX : ICON_MAX;
+  if (buffer.length > limit) {
+    return NextResponse.json({ error: 'File too large' }, { status: 400 });
+  }
   if (!isSafeImageBuffer(buffer)) {
     return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
   }
 
-  const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      {
-        folder: 'remnus/icons',
-        transformation: [{ width: 256, height: 256, crop: 'fill', gravity: 'auto' }],
-        resource_type: 'image',
-      },
-      (error, result) => {
-        if (error || !result) reject(error ?? new Error('Upload failed'));
-        else resolve(result as { secure_url: string });
-      }
-    ).end(buffer);
+  const isContentImage = kind === 'image';
+  const result = await upload(
+    buffer,
+    isContentImage
+      ? {
+          folder: 'remnus/images',
+          transformation: [{ width: 1600, crop: 'limit', quality: 'auto', fetch_format: 'auto' }],
+          resource_type: 'image',
+        }
+      : {
+          folder: 'remnus/icons',
+          transformation: [{ width: 256, height: 256, crop: 'fill', gravity: 'auto' }],
+          resource_type: 'image',
+        },
+  );
+
+  await recordAsset({
+    publicId: result.public_id,
+    resourceType: result.resource_type,
+    kind: isContentImage ? 'image' : 'icon',
+    bytes: result.bytes ?? buffer.length,
+    url: result.secure_url,
+    userId: user.id,
+    workspaceId,
   });
 
   return NextResponse.json({ url: result.secure_url });

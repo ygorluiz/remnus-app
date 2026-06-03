@@ -5,9 +5,9 @@ import { getTranslations } from 'next-intl/server';
 import AIMark from './AIMark';
 
 const AI_TILES = [
-  { id: 'claude',      name: 'Claude',      sub: 'Desktop · Claude Code', color: '#d97757' },
-  { id: 'cursor',      name: 'Cursor',      sub: 'IDE · Composer',        color: '#4cb5a8' },
-  { id: 'antigravity', name: 'Antigravity', sub: 'Agent · Google Gemini', color: '#8a6dba' },
+  { id: 'claude',      name: 'Claude',      sub: 'Desktop · Claude Code', color: '#d97757', action: 'creating page' },
+  { id: 'cursor',      name: 'Cursor',      sub: 'IDE · Composer',        color: '#dfe2ea', action: 'editing status' },
+  { id: 'antigravity', name: 'Antigravity', sub: 'Agent · Google Gemini', color: '#4d8df0', action: 'removing page' },
 ] as const;
 
 const KANBAN_COLS = [
@@ -322,6 +322,15 @@ function HeroWorkspaceShot() {
                     {AI_TILES.map((tile, i) => (
                       <span key={tile.id} className="hero-story-icon" style={{ animationDelay: `${i * 8}s` }}>
                         <AIMark name={tile.id} size={13} />
+                      </span>
+                    ))}
+                    {AI_TILES.map((tile, i) => (
+                      <span
+                        key={`act-${tile.id}`}
+                        className="hero-story-label font-mono"
+                        style={{ animationDelay: `${i * 8}s` }}
+                      >
+                        {tile.action}
                       </span>
                     ))}
                   </div>

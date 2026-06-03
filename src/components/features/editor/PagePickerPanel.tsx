@@ -19,8 +19,20 @@ export default function PagePickerPanel({ onSelect, onClose }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // The picker is opened by a slash command while ProseMirror still owns focus,
+  // and its async focus can land back on the editor after our mount effect runs.
+  // Retry across a few frames so the search input reliably wins the focus race.
   useEffect(() => {
-    inputRef.current?.focus();
+    let frame = 0;
+    const grab = () => {
+      const input = inputRef.current;
+      if (input && document.activeElement !== input) input.focus();
+      if (frame < 5) {
+        frame++;
+        requestAnimationFrame(grab);
+      }
+    };
+    requestAnimationFrame(grab);
   }, []);
 
   useEffect(() => {
@@ -36,24 +48,35 @@ export default function PagePickerPanel({ onSelect, onClose }: Props) {
     };
   }, [query]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-      return;
-    }
-    if (!items.length) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex(i => (i + 1) % items.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex(i => (i - 1 + items.length) % items.length);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (items[selectedIndex]) onSelect(items[selectedIndex]);
-    }
-  };
+  // Intercept navigation keys at the capture phase so they take effect even if
+  // the editor (ProseMirror) still has DOM focus — otherwise arrows/Enter would
+  // edit the document line instead of moving the selection.
+  useEffect(() => {
+    const onKeyDownCapture = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedIndex(i => (i + 1) % items.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedIndex(i => (i - 1 + items.length) % items.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (items[selectedIndex]) onSelect(items[selectedIndex]);
+      }
+    };
+    document.addEventListener('keydown', onKeyDownCapture, true);
+    return () => document.removeEventListener('keydown', onKeyDownCapture, true);
+  }, [items, selectedIndex, onSelect, onClose]);
 
   return (
     <div className="w-[280px] bg-neutral-900 border border-neutral-800 rounded-md shadow-xl overflow-hidden">
@@ -62,7 +85,6 @@ export default function PagePickerPanel({ onSelect, onClose }: Props) {
           ref={inputRef}
           value={query}
           onChange={e => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder={t('pageLinkSearchPlaceholder')}
           className="w-full bg-neutral-850 text-sm text-neutral-100 placeholder:text-neutral-500 px-2.5 py-1.5 rounded focus:outline-none"
         />

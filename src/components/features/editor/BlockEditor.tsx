@@ -14,6 +14,11 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import BubbleMenuBar from './BubbleMenuBar';
 import { SlashCommand } from './SlashCommandMenu';
 import { ChildBlock } from './ChildBlockExtension';
+import { YoutubeEmbed } from './YoutubeEmbedExtension';
+import { ImageBlock } from './ImageBlockExtension';
+import { CalloutBlock } from './CalloutBlockExtension';
+import { BookmarkBlock } from './BookmarkBlockExtension';
+import { FileBlock } from './FileBlockExtension';
 import { PageLink } from './PageLinkNode';
 import { PageMention } from './PageMentionExtension';
 import { CollapsibleHeading, HeadingCollapsePlugin } from './HeadingCollapseExtension';
@@ -39,6 +44,28 @@ type Props = {
 
 // Block-level markdown patterns that HTML clipboard cannot reliably represent.
 const BLOCK_MARKDOWN_RE = /^#{1,6} |^[-*+] |^\d+\. |^> |^```|^\|/m;
+
+// Upload a dropped/pasted image and insert it as an imageBlock at `pos`
+// (or the current selection when pos is omitted).
+async function uploadAndInsertImage(editor: any, file: File, workspaceId: string | null, pos?: number) {
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', 'image');
+    if (workspaceId) fd.append('workspaceId', workspaceId);
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) return;
+    const { url } = await res.json();
+    const attrs = { src: url, alt: file.name.replace(/\.[^.]+$/, '') };
+    if (typeof pos === 'number') {
+      editor.chain().insertContentAt(pos, { type: 'imageBlock', attrs }).run();
+    } else {
+      editor.chain().focus().insertContent({ type: 'imageBlock', attrs }).run();
+    }
+  } catch {
+    /* best-effort */
+  }
+}
 
 function buildInitialContent(markdown: string, subItems: WorkspaceItemRow[]): string {
   if (!subItems.length) return markdown;
@@ -134,6 +161,11 @@ export default function BlockEditor({
         workspaceId: workspaceId ?? null,
         parentId: parentId ?? null,
       }),
+      YoutubeEmbed,
+      ImageBlock.configure({ workspaceId: workspaceId ?? null }),
+      CalloutBlock,
+      BookmarkBlock,
+      FileBlock.configure({ workspaceId: workspaceId ?? null }),
       PageLink,
       PageMention,
     ],
@@ -191,7 +223,26 @@ export default function BlockEditor({
         view.dispatch(state.tr.delete(hrFrom, pos));
         return true;
       },
+      handleDrop: (view, event) => {
+        const files = Array.from((event as DragEvent).dataTransfer?.files ?? []);
+        const images = files.filter(f => f.type.startsWith('image/'));
+        if (!images.length) return false;
+        event.preventDefault();
+        const coords = { left: (event as DragEvent).clientX, top: (event as DragEvent).clientY };
+        const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
+        const ed = editorRef.current;
+        if (ed) images.forEach(img => uploadAndInsertImage(ed, img, workspaceId ?? null, pos));
+        return true;
+      },
       handlePaste: (_view, event) => {
+        const files = Array.from(event.clipboardData?.files ?? []);
+        const images = files.filter(f => f.type.startsWith('image/'));
+        if (images.length) {
+          const ed = editorRef.current;
+          if (ed) images.forEach(img => uploadAndInsertImage(ed, img, workspaceId ?? null));
+          return true;
+        }
+
         const text = event.clipboardData?.getData('text/plain');
         if (!text || !BLOCK_MARKDOWN_RE.test(text)) return false;
 

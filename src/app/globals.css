@@ -421,9 +421,9 @@ pre,
   animation: hero-agent-tint 24s linear infinite;
 }
 @keyframes hero-agent-tint {
-  0%,    31%  { color: #e0805c; } /* Claude  — clay   */
-  34%,   64%  { color: #4cc3b4; } /* Cursor  — teal   */
-  67%,   100% { color: #9a7bd0; } /* Antigr. — purple */
+  0%,    31%  { color: #e0805c; } /* Claude      — clay (Anthropic)   */
+  34%,   64%  { color: #eceff5; } /* Cursor      — white (logo)       */
+  67%,   100% { color: #5e9bf6; } /* Antigravity — blue (Google)      */
 }
 
 /* AI tile glows in its own --tile-color during its 8s window (delay i*8s) */
@@ -576,4 +576,24 @@ pre,
   0%, 2%    { opacity: 0; transform: scale(0.6); }
   6%, 30%   { opacity: 1; transform: scale(1); }
   33%, 100% { opacity: 0; transform: scale(0.6); }
+}
+
+/* Action caption under the moving card — what the current agent is doing.
+   Low opacity, current agent's colour; one per phase (delay i*8s). */
+.hero-story-label {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 2px;
+  white-space: nowrap;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: currentColor; /* inherits the card's animated agent colour */
+  opacity: 0;
+  animation: hero-story-label 24s ease-in-out infinite;
+}
+@keyframes hero-story-label {
+  0%, 2%    { opacity: 0; transform: translateY(-2px); }
+  8%, 28%   { opacity: 0.9; transform: translateY(0); }
+  31%, 100% { opacity: 0; transform: translateY(-2px); }
 }

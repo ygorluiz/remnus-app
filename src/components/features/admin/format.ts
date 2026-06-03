@@ -26,6 +26,20 @@ export function formatDuration(totalSeconds: number | null | undefined): string 
   return remH ? `${d}d ${remH}h` : `${d}d`;
 }
 
+/** Human-readable file size: "0 B", "12 KB", "3.4 MB", "1.2 GB". */
+export function formatBytes(bytes: number | null | undefined): string {
+  const n = Math.max(0, Math.floor(bytes ?? 0));
+  if (n < 1024) return `${n} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v >= 10 ? v.toFixed(0) : v.toFixed(1)} ${units[i]}`;
+}
+
 /** Relative "last active" label, e.g. "5m ago", "2d ago", or "—". */
 export function formatRelative(
   ms: number | null | undefined,

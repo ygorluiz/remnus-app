@@ -187,6 +187,14 @@ export async function switchWorkspace(workspaceId: string) {
   return { success: true };
 }
 
+// Total bytes of assets uploaded into this workspace. Used by the settings
+// panel to surface storage usage (foundation for future plan limits).
+export async function getWorkspaceStorageUsage(workspaceId: string): Promise<number> {
+  await assertWorkspaceAccess(workspaceId);
+  const { getWorkspaceStorageBytes } = await import('@/lib/services/assets');
+  return getWorkspaceStorageBytes(workspaceId);
+}
+
 // ── Workspace items ───────────────────────────────────────────────────────────
 
 export async function getWorkspaceItems(workspaceId: string): Promise<WorkspaceItemRow[]> {

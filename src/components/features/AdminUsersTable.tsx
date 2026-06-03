@@ -3,12 +3,12 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Shield, Calendar, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
-  Mail, Globe, Trash2, Search, Clock, Activity,
+  Mail, Globe, Trash2, Search, Clock, Activity, HardDrive,
 } from 'lucide-react';
 import { adminDeleteUser } from '@/lib/actions/auth';
 import type { PerUserActivity } from '@/lib/actions/analytics';
 import { useTranslations, useLocale } from 'next-intl';
-import { formatDate, formatDuration, formatRelative } from './admin/format';
+import { formatDate, formatDuration, formatRelative, formatBytes } from './admin/format';
 import AdminUserDetailModal from './admin/AdminUserDetailModal';
 
 type UserRow = {
@@ -21,7 +21,7 @@ type UserRow = {
   authType: 'google' | 'github' | 'email' | 'unknown';
 };
 
-type SortKey = 'name' | 'email' | 'authType' | 'role' | 'createdAt' | 'lastActive' | 'totalSeconds';
+type SortKey = 'name' | 'email' | 'authType' | 'role' | 'createdAt' | 'lastActive' | 'totalSeconds' | 'storageBytes';
 type SortDir = 'asc' | 'desc';
 
 const PAGE_SIZE = 10;
@@ -83,6 +83,7 @@ export default function AdminUsersTable({
           case 'createdAt': va = new Date(a.createdAt ?? 0).getTime() || 0; vb = new Date(b.createdAt ?? 0).getTime() || 0; break;
           case 'lastActive': va = activity[a.id]?.lastActive ?? 0; vb = activity[b.id]?.lastActive ?? 0; break;
           case 'totalSeconds': va = activity[a.id]?.totalSeconds ?? 0; vb = activity[b.id]?.totalSeconds ?? 0; break;
+          case 'storageBytes': va = activity[a.id]?.storageBytes ?? 0; vb = activity[b.id]?.storageBytes ?? 0; break;
         }
         if (va < vb) return -1 * dir;
         if (va > vb) return 1 * dir;
@@ -159,6 +160,7 @@ export default function AdminUsersTable({
                 <Th sk="role" label={t('colRole')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="w-24" />
                 <Th sk="lastActive" label={t('colLastActive')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell w-32" />
                 <Th sk="totalSeconds" label={t('colTotalTime')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell w-28" />
+                <Th sk="storageBytes" label={t('colStorage')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell w-24" />
                 <Th sk="createdAt" label={t('colJoined')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden md:table-cell w-36" />
                 <th className="w-24 px-4 py-2.5" />
               </tr>
@@ -224,6 +226,12 @@ export default function AdminUsersTable({
                       <div className="flex items-center gap-1.5 text-neutral-500 text-xs">
                         <Clock size={11} />
                         {formatDuration(act?.totalSeconds)}
+                      </div>
+                    </td>
+                    <td className="hidden lg:table-cell px-4 py-3">
+                      <div className="flex items-center gap-1.5 text-neutral-500 text-xs">
+                        <HardDrive size={11} />
+                        {formatBytes(act?.storageBytes)}
                       </div>
                     </td>
                     <td className="hidden md:table-cell px-4 py-3">

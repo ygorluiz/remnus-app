@@ -2,12 +2,12 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  X, Shield, Globe, Mail, Calendar, Clock, Activity, Layers, FileText, Database,
+  X, Shield, Globe, Mail, Calendar, Clock, Activity, Layers, FileText, Database, HardDrive,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { getUserDetail, type UserDetail } from '@/lib/actions/analytics';
 import { setUserRole } from '@/lib/actions/auth';
-import { formatDate, formatDuration, formatRelative } from './format';
+import { formatDate, formatDuration, formatRelative, formatBytes } from './format';
 
 function ItemIcon({ icon, type }: { icon: string | null; type: 'page' | 'database' }) {
   const isEmoji = icon && [...icon].length <= 2;
@@ -154,10 +154,11 @@ export default function AdminUserDetailModal({
               {/* Activity summary */}
               <section>
                 <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">{t('activitySummary')}</h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <Stat icon={<Clock size={13} />} label={t('totalTime')} value={formatDuration(detail.activity.totalSeconds)} />
                   <Stat icon={<Layers size={13} />} label={t('sessions')} value={String(detail.activity.sessionCount)} />
                   <Stat icon={<Activity size={13} />} label={t('lastActive')} value={formatRelative(detail.activity.lastActive, relLabels)} />
+                  <Stat icon={<HardDrive size={13} />} label={t('storageUsed')} value={formatBytes(detail.storageBytes)} />
                 </div>
               </section>
 
@@ -181,6 +182,7 @@ export default function AdminUserDetailModal({
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 capitalize">
                               {ws.role === 'owner' ? t('roleOwner') : ws.role === 'viewer' ? t('roleViewer') : t('roleMember')}
                             </span>
+                            <span className="flex items-center gap-1 text-[10px] text-neutral-500"><HardDrive size={10} />{formatBytes(ws.storageBytes)}</span>
                             <span className="flex items-center gap-1 text-[10px] text-neutral-500"><FileText size={10} />{ws.items.length}</span>
                           </div>
                         </div>

@@ -1,10 +1,11 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { AlertCircle, Check } from 'lucide-react';
-import { renameWorkspace, deleteWorkspace, updateWorkspaceIcon } from '@/lib/actions/workspace';
+import { AlertCircle, Check, HardDrive } from 'lucide-react';
+import { renameWorkspace, deleteWorkspace, updateWorkspaceIcon, getWorkspaceStorageUsage } from '@/lib/actions/workspace';
 import IconPicker from '@/components/features/IconPicker';
 import PageIcon from '@/components/features/PageIcon';
+import { formatBytes } from '@/components/features/admin/format';
 
 interface GeneralTabProps {
   workspaceId: string;
@@ -40,6 +41,15 @@ export default function GeneralTab({
   const [currentIcon, setCurrentIcon] = useState<string | null>(workspaceIcon ?? null);
   const [currentIconColor, setCurrentIconColor] = useState<string | null>(workspaceIconColor ?? null);
   const [showIconPicker, setShowIconPicker] = useState(false);
+
+  const [storageBytes, setStorageBytes] = useState<number | null>(null);
+  useEffect(() => {
+    let active = true;
+    getWorkspaceStorageUsage(workspaceId)
+      .then(b => { if (active) setStorageBytes(b); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [workspaceId]);
 
   const handleRename = () => {
     const trimmed = newName.trim();
@@ -147,6 +157,20 @@ export default function GeneralTab({
         {!hasPrivilegedAccess && (
           <p className="text-[11px] text-neutral-500 italic">{t('ownerOnlyHint')}</p>
         )}
+      </div>
+
+      {/* Storage usage */}
+      <div className="space-y-2">
+        <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
+          {t('storageTitle')}
+        </label>
+        <div className="flex items-center gap-2.5 bg-neutral-900 border border-neutral-700 rounded-md px-3 py-2">
+          <HardDrive size={15} className="text-neutral-500 shrink-0" />
+          <span className="text-sm text-neutral-200">
+            {storageBytes === null ? '…' : formatBytes(storageBytes)}
+          </span>
+        </div>
+        <p className="text-[11px] text-neutral-500 leading-relaxed">{t('storageHint')}</p>
       </div>
 
       {/* Danger Zone */}

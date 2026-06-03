@@ -151,6 +151,76 @@ export default function DownloadView() {
           {t('latestNote')}
         </p>
       </div>
+
+      {/* About + requirements + install — helpful content (also gives crawlers real text to index) */}
+      <div className="relative max-w-3xl mx-auto mt-20 space-y-14 text-left">
+        {/* What is Remnus Desktop */}
+        <div>
+          <div className="flex items-center gap-3 mb-5">
+            <span className="font-mono text-[11px] text-dim uppercase tracking-[0.16em]">
+              {t('aboutHeading')}
+            </span>
+            <span className="flex-1 h-px bg-neutral-800" />
+          </div>
+          <p className="text-[15px] leading-[1.7] text-neutral-50">{t('aboutBody')}</p>
+        </div>
+
+        {/* System requirements */}
+        <div>
+          <div className="flex items-center gap-3 mb-5">
+            <span className="font-mono text-[11px] text-dim uppercase tracking-[0.16em]">
+              {t('requirementsHeading')}
+            </span>
+            <span className="flex-1 h-px bg-neutral-800" />
+          </div>
+          <div className="grid gap-px bg-neutral-800 border border-neutral-800 rounded-md overflow-hidden">
+            {[
+              { logo: '/os/windows.svg', title: 'reqWindowsTitle', body: 'reqWindowsBody' },
+              { logo: '/os/apple.svg', title: 'reqMacTitle', body: 'reqMacBody' },
+              { logo: '/os/linux.svg', title: 'reqLinuxTitle', body: 'reqLinuxBody' },
+            ].map((r) => (
+              <div key={r.title} className="flex items-start gap-4 px-5 py-4 bg-neutral-900">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={r.logo} alt="" width={22} height={22} className="shrink-0 opacity-90 mt-0.5" aria-hidden />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[14px] text-neutral-100 font-medium">
+                    {t(r.title as Parameters<typeof t>[0])}
+                  </span>
+                  <span className="text-[13px] text-neutral-50 leading-[1.6] mt-0.5">
+                    {t(r.body as Parameters<typeof t>[0])}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Installation notes */}
+        <div>
+          <div className="flex items-center gap-3 mb-5">
+            <span className="font-mono text-[11px] text-dim uppercase tracking-[0.16em]">
+              {t('installHeading')}
+            </span>
+            <span className="flex-1 h-px bg-neutral-800" />
+          </div>
+          <div className="space-y-5">
+            {[
+              { title: 'installWindowsTitle', body: 'installWindowsBody' },
+              { title: 'installMacTitle', body: 'installMacBody' },
+              { title: 'installLinuxTitle', body: 'installLinuxBody' },
+            ].map((s) => (
+              <div key={s.title}>
+                <h3 className="text-[14px] text-neutral-100 font-medium mb-1">
+                  {t(s.title as Parameters<typeof t>[0])}
+                </h3>
+                <p className="text-[13px] text-neutral-50 leading-[1.7]">
+                  {t(s.body as Parameters<typeof t>[0])}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

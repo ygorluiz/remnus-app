@@ -1,7 +1,7 @@
 'use server';
 import { db } from '@/db';
 import {
-  users, accounts, userSessions, workspaceMembers, workspaces, workspaceItems,
+  users, accounts, userSessions, workspaceMembers, workspaces, workspaceItems, uploadedAssets,
 } from '@/db/schema';
 import { eq, inArray, asc, sql } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -20,6 +20,7 @@ export type PerUserActivity = {
   totalSeconds: number;
   sessionCount: number;
   lastActive: number | null; // epoch ms
+  storageBytes: number;
 };
 
 export type EngagementOverview = {
@@ -91,13 +92,28 @@ export async function getEngagementOverview(): Promise<EngagementOverview> {
     .from(userSessions)
     .groupBy(userSessions.userId);
 
+  // Storage per user (uploaders) — independent of whether they have sessions.
+  const storageRows = await db
+    .select({ userId: uploadedAssets.userId, total: sql<number>`coalesce(sum(${uploadedAssets.bytes}), 0)` })
+    .from(uploadedAssets)
+    .groupBy(uploadedAssets.userId);
+  const storageByUser: Record<string, number> = {};
+  for (const r of storageRows) storageByUser[r.userId] = Number(r.total ?? 0);
+
   const perUser: Record<string, PerUserActivity> = {};
   for (const r of perUserRows) {
     perUser[r.userId] = {
       totalSeconds: r.totalSeconds,
       sessionCount: r.sessionCount,
       lastActive: toEpochMs(r.lastSeen),
+      storageBytes: storageByUser[r.userId] ?? 0,
     };
+  }
+  // Include users who uploaded but have no sessions yet.
+  for (const [userId, bytes] of Object.entries(storageByUser)) {
+    if (!perUser[userId]) {
+      perUser[userId] = { totalSeconds: 0, sessionCount: 0, lastActive: null, storageBytes: bytes };
+    }
   }
 
   // Acquisition trend: signups per day over the last 30 days, bucketed in JS.
@@ -140,6 +156,7 @@ export type UserDetailWorkspace = {
   id: string;
   name: string;
   role: string;
+  storageBytes: number; // total bytes uploaded into this workspace (all members)
   items: { id: string; type: 'page' | 'database'; title: string; icon: string | null }[];
 };
 
@@ -154,6 +171,7 @@ export type UserDetail = {
     authType: 'google' | 'github' | 'email' | 'unknown';
   };
   activity: PerUserActivity;
+  storageBytes: number; // total bytes this user has uploaded
   workspaces: UserDetailWorkspace[];
 };
 
@@ -232,10 +250,29 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
     return acc;
   }, {});
 
+  // Storage: total uploaded by this user, and per-workspace totals (all members).
+  const [userStorage] = await db
+    .select({ total: sql<number>`coalesce(sum(${uploadedAssets.bytes}), 0)` })
+    .from(uploadedAssets)
+    .where(eq(uploadedAssets.userId, userId));
+
+  const wsStorageRows = wsIds.length
+    ? await db
+        .select({ workspaceId: uploadedAssets.workspaceId, total: sql<number>`coalesce(sum(${uploadedAssets.bytes}), 0)` })
+        .from(uploadedAssets)
+        .where(inArray(uploadedAssets.workspaceId, wsIds))
+        .groupBy(uploadedAssets.workspaceId)
+    : [];
+  const storageByWs = wsStorageRows.reduce<Record<string, number>>((acc, r) => {
+    if (r.workspaceId) acc[r.workspaceId] = Number(r.total ?? 0);
+    return acc;
+  }, {});
+
   const workspacesDetail: UserDetailWorkspace[] = memberships.map((m) => ({
     id: m.workspaceId,
     name: m.name,
     role: m.role,
+    storageBytes: storageByWs[m.workspaceId] ?? 0,
     items: itemsByWs[m.workspaceId] ?? [],
   }));
 
@@ -253,7 +290,9 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
       totalSeconds: act?.totalSeconds ?? 0,
       sessionCount: act?.sessionCount ?? 0,
       lastActive: toEpochMs(act?.lastSeen),
+      storageBytes: Number(userStorage?.total ?? 0),
     },
+    storageBytes: Number(userStorage?.total ?? 0),
     workspaces: workspacesDetail,
   };
 }

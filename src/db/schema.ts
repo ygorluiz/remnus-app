@@ -168,6 +168,27 @@ export const userSessions = sqliteTable('user_sessions', {
   index('user_sessions_last_seen_at_idx').on(table.lastSeenAt),
 ]);
 
+// ── Uploaded assets (Cloudinary) ──────────────────────────────────────────────
+// One row per file uploaded through /api/upload. Powers (a) reliable Cloudinary
+// cleanup on delete — we keep the exact public_id + resource_type — and (b)
+// storage-usage accounting per user and per workspace (future plan limits).
+
+export const uploadedAssets = sqliteTable('uploaded_assets', {
+  id:           text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  publicId:     text('public_id').notNull(),
+  resourceType: text('resource_type').notNull(), // 'image' | 'raw' | 'video'
+  kind:         text('kind').notNull(),           // 'icon' | 'image' | 'file'
+  bytes:        integer('bytes').notNull().default(0),
+  url:          text('url').notNull(),
+  userId:       text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workspaceId:  text('workspace_id').references(() => workspaces.id, { onDelete: 'set null' }),
+  createdAt:    integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex('uploaded_assets_public_id_unique').on(table.publicId),
+  index('uploaded_assets_user_id_idx').on(table.userId),
+  index('uploaded_assets_workspace_id_idx').on(table.workspaceId),
+]);
+
 export const agentActivity = sqliteTable('agent_activity', {
   id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   tokenId:     text('token_id').notNull().references(() => agentTokens.id, { onDelete: 'cascade' }),
