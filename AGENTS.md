@@ -72,6 +72,13 @@ Remnus is fully internationalized using **next-intl v4** (App Router native). Al
 6. **Date formatting** — use `useLocale()` (client) or locale from `getRequestConfig` (server) instead of `'en-US'`.
 7. **Namespace selection** — pick the closest existing namespace. Create a new one only for a clearly standalone domain (add to all 6 files and document here).
 
+### Agent Task Management & Work Plan
+
+When working on project tasks, agents MUST use the **remnus-mcp** server to interact with the **Work Plan** database:
+1. **Querying Tasks:** Retrieve pending tasks (e.g. Sprint-specific) from the "Work Plan" database using the `query_database` tool (optionally listing all rows and filtering in memory if database query filters fail).
+2. **Updating Status:** When starting a task, update its status to `In Progress` (if applicable), and when completed, update its status to `Done` in the database via the `update_page` tool.
+3. **Writing Task Outputs:** Upon task completion, write a detailed markdown summary of the changes made, files modified, and test outcomes directly into the task's page content in the database using the `update_page` tool.
+
 ## Color Theme
 
 | Role                | Hex       | Tailwind token |

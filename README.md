@@ -28,6 +28,8 @@ Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)
 
 ## Quick Start — Self-host
 
+### Local Development
+
 ```bash
 git clone https://github.com/Ranork/remnus-app.git
 cd remnus-app
@@ -38,6 +40,25 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The first user to sign up is auto-promoted to admin.
+
+### Docker Compose (5-minute setup)
+
+If you prefer to run Remnus using Docker:
+
+1. Clone the repository and navigate into it:
+   ```bash
+   git clone https://github.com/Ranork/remnus-app.git
+   cd remnus-app
+   ```
+2. Copy the environment template and fill in the required variables (especially `AUTH_SECRET` and OAuth credentials):
+   ```bash
+   cp .env.example .env
+   ```
+3. Start the application:
+   ```bash
+   docker compose up -d
+   ```
+4. Access Remnus at `http://localhost:3000`. The SQLite database will be persisted automatically using a Docker volume.
 
 ### Deploy
 

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  remnus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: remnus:latest
+    container_name: remnus
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - remnus-data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/local.db
+      - AUTH_SECRET=GDjlewq5nSmwJkLmOVI2dZv3zyWWsGYYRb9bbwOkaKg= # Değiştirilmesi zorunludur (örn: openssl rand -base64 33)
+      - AUTH_TRUST_HOST=true
+      - MCP_TOKEN_PREFIX=rmns
+      - CLOUDINARY_CLOUD_NAME=your_cloud_name
+      - CLOUDINARY_API_KEY=your_api_key
+      - CLOUDINARY_API_SECRET=your_api_secret
+      - AUTH_GOOGLE_ID=your_google_id
+      - AUTH_GOOGLE_SECRET=your_google_secret
+      - AUTH_GITHUB_ID=your_github_id
+      - AUTH_GITHUB_SECRET=your_github_secret
+      - NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=your_posthog_token
+      - NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
+
+volumes:
+  remnus-data:
+    driver: local
