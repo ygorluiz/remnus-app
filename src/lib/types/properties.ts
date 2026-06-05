@@ -72,6 +72,13 @@ export function getCardBorderDots(
 
 export function formatDateValue(val: string, type: 'date' | 'datetime', format?: string): string {
   if (!val) return '—';
+  // Date range: "start/end"
+  if (val.includes('/')) {
+    const [startStr, endStr] = val.split('/');
+    const startFmt = formatDateValue(startStr, type, format);
+    const endFmt = endStr ? formatDateValue(endStr, type, format) : '';
+    return endFmt ? `${startFmt} → ${endFmt}` : startFmt;
+  }
   const d = new Date(val);
   if (isNaN(d.getTime())) return val;
 

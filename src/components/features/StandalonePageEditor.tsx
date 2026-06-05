@@ -66,6 +66,10 @@ export default function StandalonePageEditor({
     const saved = localStorage.getItem(`page-width-${item.id}`) as WidthMode | null;
     if (saved === 'narrow' || saved === 'wide' || saved === 'full') setWidthMode(saved);
     else if (saved === 'true') setWidthMode('full'); // migrate old boolean
+    else {
+      const pref = document.documentElement.dataset.defaultWidth as WidthMode | undefined;
+      if (pref === 'narrow' || pref === 'wide' || pref === 'full') setWidthMode(pref);
+    }
   }, [item.id]);
 
   const cycleWidth = () => {

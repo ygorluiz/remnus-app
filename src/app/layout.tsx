@@ -31,11 +31,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = routing.locales.includes(localeCookie as (typeof routing.locales)[number])
     ? localeCookie!
     : 'en';
+  const editorFontSize = cookieStore.get('remnus_editor_font_size')?.value ?? 'md';
+  const defaultPageWidth = cookieStore.get('remnus_default_width')?.value ?? 'narrow';
 
   return (
     <html
       lang={locale}
       className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+      data-editor-size={editorFontSize}
+      data-default-width={defaultPageWidth}
       suppressHydrationWarning
     >
       <body className="font-sans bg-neutral-950 text-neutral-50" suppressHydrationWarning>

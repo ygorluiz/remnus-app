@@ -208,6 +208,13 @@ export async function getWorkspaceStorageUsage(workspaceId: string): Promise<num
   return getWorkspaceStorageBytes(workspaceId);
 }
 
+// Total bytes of assets uploaded by the current user across all workspaces.
+export async function getCurrentUserStorageBytes(): Promise<number> {
+  const user = await getCurrentUser();
+  const { getUserStorageBytes } = await import('@/lib/services/assets');
+  return getUserStorageBytes(user.id);
+}
+
 // ── Workspace items ───────────────────────────────────────────────────────────
 
 export async function getWorkspaceItems(workspaceId: string): Promise<WorkspaceItemRow[]> {

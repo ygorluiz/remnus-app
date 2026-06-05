@@ -45,6 +45,7 @@ import WorkspaceSettingsModal from './WorkspaceSettingsModal';
 import DesktopSettingsModal, { initDesktopZoom } from './DesktopSettingsModal';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 import AgentsModal from './AgentsModal';
+import UserSettingsModal from './UserSettingsModal';
 import { getUserAgentTokenCount } from '@/lib/actions/agentToken';
 import { useWorkspaceEvents } from '@/hooks/useWorkspaceEvents';
 
@@ -76,12 +77,14 @@ export default function WorkspaceSidebar({
   activeWorkspace,
   currentUser,
   hideBrandHeader = false,
+  density = 'comfortable',
 }: {
   items: WorkspaceItemRow[];
   workspaces: WorkspaceType[];
   activeWorkspace: WorkspaceType;
   currentUser: CurrentUser;
   hideBrandHeader?: boolean;
+  density?: 'compact' | 'comfortable';
 }) {
   const t = useTranslations('Workspace');
   const tSharing = useTranslations('Sharing');
@@ -162,6 +165,7 @@ export default function WorkspaceSidebar({
   const [settingsModalWorkspace, setSettingsModalWorkspace] = useState<{ id: string; name: string; icon?: string | null; iconColor?: string | null } | null>(null);
   const [desktopSettingsOpen, setDesktopSettingsOpen] = useState(false);
   const [agentsModalOpen, setAgentsModalOpen] = useState(false);
+  const [userSettingsOpen, setUserSettingsOpen] = useState(false);
   const [agentTokenCount, setAgentTokenCount] = useState(0);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'members' | 'tokens' | 'sharing'>('general');
   const [shareModalItemId, setShareModalItemId] = useState<string | null>(null);
@@ -757,7 +761,7 @@ export default function WorkspaceSidebar({
       </div>
 
       {/* Tree view list */}
-      <div className="flex-1 overflow-y-auto px-2 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-2 py-4 space-y-4 group/wslist">
         {localWorkspaces.map((w) => {
           const isExpanded = expandedWorkspaces[w.id] !== false;
           const workspaceChildren = itemsByWorkspace[w.id] || [];
@@ -861,6 +865,7 @@ export default function WorkspaceSidebar({
                   </button>
                   <button
                     onClick={() => {
+                      setSettingsInitialTab('general');
                       setSettingsModalWorkspace({ id: w.id, name: w.name, icon: w.icon, iconColor: w.iconColor });
                     }}
                     className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
@@ -900,7 +905,7 @@ export default function WorkspaceSidebar({
                       return (
                         <div key={item.id} className="space-y-0.5">
                           <div
-                            className={`flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm transition-all duration-200 group/item cursor-pointer relative ${
+                            className={`flex items-center gap-1.5 min-w-0 px-2 ${density === 'compact' ? 'py-1' : 'py-1.5'} rounded-md text-sm transition-all duration-200 group/item cursor-pointer relative ${
                               isActive(item)
                                 ? 'bg-neutral-850 text-white font-medium'
                                 : 'text-neutral-400 hover:bg-neutral-850/50 hover:text-neutral-200'
@@ -934,7 +939,7 @@ export default function WorkspaceSidebar({
                                 {isItemExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                               </button>
                             ) : (
-                              <div className="w-4.5 h-4.5 shrink-0" />
+                              <div className="w-4 h-4 shrink-0" />
                             )}
 
                             {/* Icon picker trigger */}
@@ -1093,7 +1098,7 @@ export default function WorkspaceSidebar({
           ) : (
             <button
               onClick={() => setIsCreatingWorkspace(true)}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-neutral-500 hover:text-neutral-350 hover:bg-neutral-850/30 border border-dashed border-neutral-800 hover:border-neutral-700 rounded-lg transition-all"
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-neutral-500 hover:text-neutral-350 hover:bg-neutral-850/30 border border-dashed border-neutral-800 hover:border-neutral-700 rounded-lg transition-all opacity-0 group-hover/wslist:opacity-100"
             >
               <Plus size={12} /> {t('addWorkspace')}
             </button>
@@ -1286,6 +1291,13 @@ export default function WorkspaceSidebar({
         <DesktopSettingsModal onClose={() => setDesktopSettingsOpen(false)} />
       )}
 
+      {userSettingsOpen && (
+        <UserSettingsModal
+          currentUser={currentUser}
+          onClose={() => setUserSettingsOpen(false)}
+        />
+      )}
+
       {agentsModalOpen && (
         <AgentsModal
           onClose={() => {
@@ -1340,7 +1352,7 @@ export default function WorkspaceSidebar({
       })()}
 
       {/* AI Agents button */}
-      <div className="shrink-0 px-2 py-1">
+      <div className="shrink-0 px-2 pt-1">
         <button
           onClick={() => setAgentsModalOpen(true)}
           className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all duration-200"
@@ -1352,6 +1364,17 @@ export default function WorkspaceSidebar({
               {agentTokenCount}
             </span>
           )}
+        </button>
+      </div>
+
+      {/* Settings button */}
+      <div className="shrink-0 px-2 pb-1">
+        <button
+          onClick={() => setUserSettingsOpen(true)}
+          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all duration-200"
+        >
+          <Settings size={14} className="shrink-0 text-neutral-400" />
+          <span className="truncate">{t('settings')}</span>
         </button>
       </div>
 

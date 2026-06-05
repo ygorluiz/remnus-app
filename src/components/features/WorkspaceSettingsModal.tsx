@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, Zap } from 'lucide-react';
+import { X, Zap, Settings, Users, Link, Share2 } from 'lucide-react';
 import { getWorkspaceMembers } from '@/lib/actions/auth';
 import GeneralTab from './workspace-settings/GeneralTab';
 import MembersTab from './workspace-settings/MembersTab';
@@ -22,6 +22,8 @@ interface WorkspaceSettingsModalProps {
   onDeleted: () => void;
 }
 
+type Tab = 'general' | 'members' | 'tokens' | 'sharing';
+
 export default function WorkspaceSettingsModal({
   workspaceId,
   workspaceName,
@@ -36,7 +38,7 @@ export default function WorkspaceSettingsModal({
 }: WorkspaceSettingsModalProps) {
   const t = useTranslations('WorkspaceSettings');
   const tSharing = useTranslations('Sharing');
-  const [activeTab, setActiveTab] = useState<'general' | 'members' | 'tokens' | 'sharing'>(initialTab ?? 'general');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'general');
 
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
@@ -64,6 +66,13 @@ export default function WorkspaceSettingsModal({
   const myRole = members.find((m) => m.id === currentUser.id)?.role;
   const hasPrivilegedAccess = myRole === 'owner' || currentUser.role === 'admin';
 
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; accent?: string }[] = [
+    { id: 'general',  label: t('tabGeneral'),         icon: <Settings size={13} /> },
+    { id: 'members',  label: t('tabMembers'),          icon: <Users size={13} /> },
+    { id: 'tokens',   label: t('tabTokens'),           icon: <Zap size={13} />,   accent: 'amber' },
+    { id: 'sharing',  label: tSharing('tabSharing'),   icon: <Share2 size={13} />, accent: 'green' },
+  ];
+
   return (
     <div
       className="fixed inset-0 bg-black/60 z-100 flex items-center justify-center p-4 md:p-6"
@@ -72,7 +81,7 @@ export default function WorkspaceSettingsModal({
       <div
         className="w-full max-w-full sm:max-w-2xl bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: '88vh' }}
+        style={{ maxHeight: '88vh', minHeight: '480px' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-900/30 shrink-0">
@@ -83,78 +92,84 @@ export default function WorkspaceSettingsModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800"
+            className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800 cursor-pointer"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-neutral-800 bg-neutral-900/10 px-6 shrink-0">
-          {(['general', 'members', 'tokens', 'sharing'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
-                tab === 'tokens'
-                  ? activeTab === tab
-                    ? 'border-amber-400 text-amber-300'
-                    : 'border-transparent text-amber-500/70 hover:text-amber-400'
-                  : tab === 'sharing'
-                    ? activeTab === tab
-                      ? 'border-green-500 text-green-300'
-                      : 'border-transparent text-neutral-400 hover:text-neutral-200'
-                    : activeTab === tab
-                      ? 'border-blue-500 text-white'
-                      : 'border-transparent text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              {tab === 'tokens' && <Zap size={11} className="shrink-0" />}
-              {tab === 'general' ? t('tabGeneral') : tab === 'members' ? t('tabMembers') : tab === 'tokens' ? t('tabTokens') : tSharing('tabSharing')}
-              {tab === 'tokens' && activeTab !== 'tokens' && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400/70 shrink-0" />
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Body: left nav + content */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* Scrollable Body */}
-        <div className="overflow-y-auto p-6 space-y-6 flex-1">
-          {activeTab === 'general' && (
-            <GeneralTab
-              workspaceId={workspaceId}
-              workspaceName={workspaceName}
-              workspaceIcon={workspaceIcon}
-              workspaceIconColor={workspaceIconColor}
-              hasPrivilegedAccess={hasPrivilegedAccess}
-              onRenamed={onRenamed}
-              onIconChanged={onIconChanged}
-              onDeleted={onDeleted}
-              onClose={onClose}
-            />
-          )}
-          {activeTab === 'members' && (
-            <MembersTab
-              workspaceId={workspaceId}
-              currentUser={currentUser}
-              hasPrivilegedAccess={hasPrivilegedAccess}
-              members={members}
-              isLoadingMembers={isLoadingMembers}
-              onMembersChanged={loadMembers}
-            />
-          )}
-          {activeTab === 'tokens' && (
-            <TokensTab
-              workspaceId={workspaceId}
-              hasPrivilegedAccess={hasPrivilegedAccess}
-            />
-          )}
-          {activeTab === 'sharing' && (
-            <SharingTab
-              workspaceId={workspaceId}
-              isAdmin={currentUser.role === 'admin'}
-            />
-          )}
+          {/* Left nav */}
+          <div className="w-44 shrink-0 border-r border-neutral-800 flex flex-col bg-neutral-900/50">
+            <nav className="flex-1 p-2 space-y-0.5 pt-3">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors cursor-pointer rounded ${
+                    activeTab === tab.id
+                      ? tab.accent === 'amber'
+                        ? 'bg-neutral-800 text-amber-300 font-medium'
+                        : tab.accent === 'green'
+                          ? 'bg-neutral-800 text-green-300 font-medium'
+                          : 'bg-neutral-800 text-neutral-100 font-medium'
+                      : tab.accent === 'amber'
+                        ? 'text-amber-500/80 hover:text-amber-400 hover:bg-neutral-800/60'
+                        : tab.accent === 'green'
+                          ? 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/60'
+                          : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/60'
+                  }`}
+                >
+                  {tab.icon}
+                  <span className="truncate">{tab.label}</span>
+                  {tab.id === 'tokens' && activeTab !== 'tokens' && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400/70 shrink-0" />
+                  )}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Scrollable content */}
+          <div key={activeTab} className="flex-1 overflow-y-auto p-6 space-y-6 animate-tab-fade">
+            {activeTab === 'general' && (
+              <GeneralTab
+                workspaceId={workspaceId}
+                workspaceName={workspaceName}
+                workspaceIcon={workspaceIcon}
+                workspaceIconColor={workspaceIconColor}
+                hasPrivilegedAccess={hasPrivilegedAccess}
+                onRenamed={onRenamed}
+                onIconChanged={onIconChanged}
+                onDeleted={onDeleted}
+                onClose={onClose}
+              />
+            )}
+            {activeTab === 'members' && (
+              <MembersTab
+                workspaceId={workspaceId}
+                currentUser={currentUser}
+                hasPrivilegedAccess={hasPrivilegedAccess}
+                members={members}
+                isLoadingMembers={isLoadingMembers}
+                onMembersChanged={loadMembers}
+              />
+            )}
+            {activeTab === 'tokens' && (
+              <TokensTab
+                workspaceId={workspaceId}
+                hasPrivilegedAccess={hasPrivilegedAccess}
+              />
+            )}
+            {activeTab === 'sharing' && (
+              <SharingTab
+                workspaceId={workspaceId}
+                isAdmin={currentUser.role === 'admin'}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

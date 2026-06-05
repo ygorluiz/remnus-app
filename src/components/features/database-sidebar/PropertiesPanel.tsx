@@ -80,6 +80,10 @@ export default function PropertiesPanel({
                 <option value="number">{t('typeNumber')}</option>
                 <option value="date">{t('typeDate')}</option>
                 <option value="datetime">{t('typeDateTime')}</option>
+                <option value="checkbox">{t('typeCheckbox')}</option>
+                <option value="url">{t('typeUrl')}</option>
+                <option value="email">{t('typeEmail')}</option>
+                <option value="phone">{t('typePhone')}</option>
               </select>
               {!isTitle ? (
                 <button onClick={() => onRemoveColumn(idx)} className="text-neutral-500 hover:text-red-400 p-0.5 transition-colors cursor-pointer shrink-0">

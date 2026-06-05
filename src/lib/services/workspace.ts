@@ -401,6 +401,7 @@ export async function createPageInWorkspace(
     parentId?: string;
     databaseId?: string;
     properties?: Record<string, any>;
+    iconColor?: string;
   },
   agentCtx?: { tokenId: string },
 ) {
@@ -442,6 +443,7 @@ export async function createPageInWorkspace(
     title: input.title,
     parentId: input.parentId ?? null,
     sortOrder: 0,
+    ...(input.iconColor ? { iconColor: input.iconColor } : {}),
   });
 
   await db.insert(standalonePages).values({
@@ -567,6 +569,7 @@ export async function createDatabaseInWorkspace(
     name: string;
     schema?: Array<{ name: string; type: string; options?: any[] }>;
     parentId?: string;
+    iconColor?: string;
   },
 ) {
   if (input.parentId) {
@@ -599,6 +602,7 @@ export async function createDatabaseInWorkspace(
     title: input.name,
     parentId: input.parentId ?? null,
     sortOrder: 0,
+    ...(input.iconColor ? { iconColor: input.iconColor } : {}),
   });
 
   await db.insert(databases).values({

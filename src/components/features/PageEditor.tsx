@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { updatePageContent, updatePageProperties, duplicatePage, deletePage, updatePageIcon } from '@/lib/actions/page';
-import { ArrowLeft, X, ChevronDown, MoreHorizontal, Trash2, Copy, Smile, ArrowLeftRight, Globe } from 'lucide-react';
+import { ArrowLeft, X, ChevronDown, MoreHorizontal, Trash2, Copy, Smile, ArrowLeftRight, Globe, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -18,7 +18,9 @@ import {
   normalizeOption,
   getOptionColorByValue,
   getOptionColor,
+  formatDateValue,
 } from '@/lib/types/properties';
+import DateRangePicker from './DateRangePicker';
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timer: ReturnType<typeof setTimeout>;
@@ -55,6 +57,8 @@ export default function PageEditor({
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [openSelectId, setOpenSelectId] = useState<string | null>(null);
+  const [openDateColId, setOpenDateColId] = useState<string | null>(null);
+  const [dateAnchorRect, setDateAnchorRect] = useState<DOMRect | null>(null);
   const selectDropdownRef = useRef<HTMLDivElement>(null);
   const iconButtonRef = useRef<HTMLButtonElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -418,19 +422,69 @@ export default function PageEditor({
                     </div>
                   )}
                 </div>
-              ) : col.type === 'date' ? (
+              ) : (col.type === 'date' || col.type === 'datetime') ? (
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      setDateAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect());
+                      setOpenDateColId(openDateColId === col.id ? null : col.id);
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-neutral-200 hover:text-white cursor-pointer p-1 -ml-1 hover:bg-neutral-800/40 rounded transition-colors"
+                  >
+                    <span className={val ? 'text-neutral-200' : 'text-neutral-600'}>
+                      {val ? formatDateValue(String(val), col.type as 'date' | 'datetime', col.dateFormat) : tDb('empty')}
+                    </span>
+                  </button>
+                  {openDateColId === col.id && (
+                    <DateRangePicker
+                      value={String(val || '')}
+                      showTime={col.type === 'datetime'}
+                      anchorRect={dateAnchorRect}
+                      onChange={(v) => handlePropertyChange(col.id, v)}
+                      onClose={() => setOpenDateColId(null)}
+                    />
+                  )}
+                </div>
+              ) : col.type === 'checkbox' ? (
+                <button
+                  onClick={() => handlePropertyChange(col.id, val === true || val === 'true' ? 'false' : 'true')}
+                  className="flex items-center gap-1.5 text-sm cursor-pointer pt-1"
+                >
+                  {val === true || val === 'true'
+                    ? <CheckSquare size={16} className="text-blue-400" />
+                    : <Square size={16} className="text-neutral-500" />
+                  }
+                </button>
+              ) : col.type === 'url' ? (
+                <div className="flex items-center gap-1.5 flex-1">
+                  <input
+                    type="url"
+                    value={val || ''}
+                    onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
+                    placeholder={tDb('empty')}
+                    className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
+                  />
+                  {typeof val === 'string' && /^https?:\/\//i.test(val) && (
+                    <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 shrink-0">
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
+                </div>
+              ) : col.type === 'email' ? (
                 <input
-                  type="date"
+                  type="email"
                   value={val || ''}
-                  onChange={(e) => handlePropertyChange(col.id, e.target.value)}
-                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 text-sm transition-shadow scheme-dark"
+                  onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
+                  placeholder={tDb('empty')}
+                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
                 />
-              ) : col.type === 'datetime' ? (
+              ) : col.type === 'phone' ? (
                 <input
-                  type="datetime-local"
+                  type="tel"
                   value={val || ''}
-                  onChange={(e) => handlePropertyChange(col.id, e.target.value)}
-                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 text-sm transition-shadow scheme-dark"
+                  onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
+                  placeholder={tDb('empty')}
+                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
                 />
               ) : (
                 <input

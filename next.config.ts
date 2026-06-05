@@ -14,6 +14,11 @@ const withPWA = withPWAInit({
   },
 });
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Allow large file uploads (Notion ZIP imports up to 100 MB) through middleware
+  experimental: {
+    proxyClientMaxBodySize: '150mb',
+  },
+};
 
 export default withPWA(withNextIntl(nextConfig));

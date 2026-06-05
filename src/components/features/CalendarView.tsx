@@ -220,6 +220,19 @@ export default function CalendarView({
     return pages.filter((page) => {
       const val = page.properties[dateCol];
       if (!val) return false;
+      // Range format: "start/end"
+      if (typeof val === 'string' && val.includes('/')) {
+        const [startStr, endStr] = val.split('/');
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        if (isNaN(start.getTime())) return false;
+        const dayTime = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate()).getTime();
+        const startTime = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+        const endTime = isNaN(end.getTime())
+          ? startTime
+          : new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+        return dayTime >= startTime && dayTime <= endTime;
+      }
       const d = new Date(val);
       if (isNaN(d.getTime())) return false;
       return isSameDay(d, dayDate);

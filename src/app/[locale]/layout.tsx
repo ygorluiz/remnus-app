@@ -91,6 +91,7 @@ export default async function LocaleLayout({
   const cookieStore = await cookies();
   const activeWorkspaceId = cookieStore.get('remnus_workspace_id')?.value;
   const activeWorkspace = workspacesList.find((w) => w.id === activeWorkspaceId) || workspacesList[0];
+  const sidebarDensity = (cookieStore.get('remnus_sidebar_density')?.value ?? 'comfortable') as 'compact' | 'comfortable';
 
   const currentUser = {
     id: session.user.id,
@@ -139,6 +140,7 @@ export default async function LocaleLayout({
                   workspaces={workspacesList}
                   activeWorkspace={activeWorkspace ?? { id: '', name: 'Workspace' }}
                   currentUser={currentUser}
+                  density={sidebarDensity}
                 />
               }
               mobileNav={

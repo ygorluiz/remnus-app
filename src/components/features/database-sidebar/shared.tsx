@@ -1,4 +1,4 @@
-import { Type, List, Tags, Hash, Calendar, Clock, AlignLeft } from 'lucide-react';
+import { Type, List, Tags, Hash, Calendar, Clock, AlignLeft, CheckSquare, Link, Mail, Phone } from 'lucide-react';
 
 export function getPropertyIcon(type: string) {
   switch (type) {
@@ -8,6 +8,10 @@ export function getPropertyIcon(type: string) {
     case 'number':       return <Hash size={11} className="text-neutral-500 shrink-0" />;
     case 'date':         return <Calendar size={11} className="text-neutral-500 shrink-0" />;
     case 'datetime':     return <Clock size={11} className="text-neutral-500 shrink-0" />;
+    case 'checkbox':     return <CheckSquare size={11} className="text-neutral-500 shrink-0" />;
+    case 'url':          return <Link size={11} className="text-neutral-500 shrink-0" />;
+    case 'email':        return <Mail size={11} className="text-neutral-500 shrink-0" />;
+    case 'phone':        return <Phone size={11} className="text-neutral-500 shrink-0" />;
     default:             return <AlignLeft size={11} className="text-neutral-500 shrink-0" />;
   }
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { GripVertical, Settings, Trash2, Plus, Copy } from 'lucide-react';
+import { GripVertical, Settings, Trash2, Plus, Copy, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import { normalizeOption, getOptionColorByValue, getCardBorderDots, formatDateValue } from '@/lib/types/properties';
 import { useTranslations } from 'next-intl';
 import type { SelectOption } from '@/lib/types/properties';
@@ -469,6 +469,24 @@ export default function KanbanBoard({
                               <span className={`text-neutral-100 ${textClass}`}>
                                 {formatDateValue(val, c.type as 'date' | 'datetime', c.dateFormat)}
                               </span>
+                            );
+                          } else if (c.type === 'checkbox') {
+                            display = (val === true || val === 'true')
+                              ? <CheckSquare size={13} className="text-blue-400" />
+                              : <Square size={13} className="text-neutral-600" />;
+                          } else if (c.type === 'url' && val) {
+                            const safeHref = typeof val === 'string' && /^https?:\/\//i.test(val) ? val : null;
+                            display = safeHref ? (
+                              <a href={safeHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className={`text-blue-400 hover:text-blue-300 flex items-center gap-0.5 ${textClass}`}>
+                                <span className="truncate">{val}</span>
+                                <ExternalLink size={9} className="shrink-0" />
+                              </a>
+                            ) : (
+                              <span className={`text-neutral-100 ${textClass}`}>{val}</span>
+                            );
+                          } else if (c.type === 'email' && val) {
+                            display = (
+                              <a href={`mailto:${val}`} onClick={(e) => e.stopPropagation()} className={`text-blue-400 hover:text-blue-300 ${textClass}`}>{val}</a>
                             );
                           } else {
                             display = (

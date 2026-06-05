@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { getOptionColorByValue, formatDateValue, normalizeOption, type SelectOption } from '@/lib/types/properties';
 import { useTranslations } from 'next-intl';
 import InlineCellEditor from './InlineCellEditor';
-import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, Plus, Copy, EyeOff, ArrowUp, ArrowDown, Filter, X, RotateCcw } from 'lucide-react';
+import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, Plus, Copy, EyeOff, ArrowUp, ArrowDown, Filter, X, RotateCcw, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import type { ViewFilter, ViewSort, FilterOperator } from '@/lib/types/views';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
@@ -651,6 +651,36 @@ export default function TableLayout({
                           </span>
                         ) : (col.type === 'date' || col.type === 'datetime') ? (
                           <span className="text-xs text-neutral-100">{val ? formatDateValue(val, col.type, col.dateFormat) : '—'}</span>
+                        ) : col.type === 'checkbox' ? (
+                          (val === true || val === 'true')
+                            ? <CheckSquare size={14} className="text-blue-400" />
+                            : <Square size={14} className="text-neutral-600" />
+                        ) : col.type === 'url' ? (
+                          (() => {
+                            const safeHref = typeof val === 'string' && /^https?:\/\//i.test(val) ? val : null;
+                            return safeHref ? (
+                              <a
+                                href={safeHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-0.5 truncate"
+                              >
+                                <span className="truncate">{val}</span>
+                                <ExternalLink size={9} className="shrink-0" />
+                              </a>
+                            ) : val ? <span className="text-neutral-100 truncate">{val}</span> : <span className="text-neutral-500">—</span>;
+                          })()
+                        ) : col.type === 'email' ? (
+                          val ? (
+                            <a
+                              href={`mailto:${val}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-blue-400 hover:text-blue-300 truncate"
+                            >
+                              {val}
+                            </a>
+                          ) : <span className="text-neutral-500">—</span>
                         ) : (
                           <span className="text-neutral-100">{val || ''}</span>
                         )}

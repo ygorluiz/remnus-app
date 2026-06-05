@@ -74,6 +74,14 @@
     from { transform: scale(0.96); opacity: 0; }
     to { opacity: 1; }
   }
+  @keyframes tab-fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+.animate-tab-fade {
+  animation: tab-fade 0.18s ease-out both;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -393,6 +401,17 @@ pre,
   opacity: 0.3;
   pointer-events: none;
 }
+
+/* Editor font size preferences */
+[data-editor-size="sm"] .prose-editor { font-size: 13px; line-height: 1.65; }
+[data-editor-size="md"] .prose-editor { font-size: 15px; line-height: 1.75; }
+[data-editor-size="lg"] .prose-editor { font-size: 17px; line-height: 1.8; }
+[data-editor-size="sm"] .prose-editor h1 { font-size: 1.9rem; }
+[data-editor-size="lg"] .prose-editor h1 { font-size: 2.6rem; }
+[data-editor-size="sm"] .prose-editor h2 { font-size: 1.3rem; }
+[data-editor-size="lg"] .prose-editor h2 { font-size: 1.7rem; }
+[data-editor-size="sm"] .prose-editor h3 { font-size: 1.1rem; }
+[data-editor-size="lg"] .prose-editor h3 { font-size: 1.3rem; }
 
 /* ProseMirror selection — suppress outline on React NodeViews (child blocks) */
 .prose-editor .ProseMirror-selectednode {

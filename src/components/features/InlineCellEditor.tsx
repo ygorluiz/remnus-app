@@ -2,14 +2,16 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Check } from 'lucide-react';
+import { Check, CheckSquare, Square } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
   type SelectOption,
   normalizeOption,
   getOptionColor,
   getOptionColorByValue,
+  formatDateValue,
 } from '@/lib/types/properties';
+import DateRangePicker from './DateRangePicker';
 
 export default function InlineCellEditor({
   column,
@@ -26,84 +28,48 @@ export default function InlineCellEditor({
   const [inputValue, setInputValue] = useState(value ?? '');
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const DROPDOWN_H = 244; // max-h-60 = 240px + 4px margin
+      setAnchorRect(rect);
+      const DROPDOWN_H = 244;
       const MARGIN = 4;
       const spaceBelow = window.innerHeight - rect.bottom;
       const top = spaceBelow >= DROPDOWN_H
         ? rect.bottom + window.scrollY + MARGIN
         : rect.top + window.scrollY - DROPDOWN_H - MARGIN;
-      setCoords({
-        top,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
+      setCoords({ top, left: rect.left + window.scrollX, width: rect.width });
     }
   }, []);
 
-  useEffect(() => {
-    if (mounted && (column.type === 'date' || column.type === 'datetime') && dateInputRef.current) {
-      try {
-        dateInputRef.current.showPicker();
-      } catch (err) {
-        // Fallback for browsers that do not support it
-      }
-    }
-  }, [mounted, column.type]);
-
-  const handleTextSave = () => {
-    onSave(inputValue);
-    onClose();
-  };
-
+  const handleTextSave = () => { onSave(inputValue); onClose(); };
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleTextSave();
-    } else if (e.key === 'Escape') {
-      onClose();
-    }
+    if (e.key === 'Enter') handleTextSave();
+    else if (e.key === 'Escape') onClose();
   };
 
+  // ── SELECT ─────────────────────────────────────────────────────────────────
   if (column.type === 'select') {
-    if (!mounted) {
-      return <div ref={containerRef} className="relative min-h-5" />;
-    }
+    if (!mounted) return <div ref={containerRef} className="relative min-h-5" />;
     const c = value ? getOptionColorByValue(column.options || [], value) : null;
-
     return (
       <div ref={containerRef} className="relative w-full h-full">
-        {value ? (
-          <span className="text-xs px-1.5 py-0.5 rounded-sm inline-block" style={{ backgroundColor: c?.bg, color: c?.text }}>
-            {value}
-          </span>
-        ) : (
-          <span className="text-neutral-700">—</span>
-        )}
+        {value
+          ? <span className="text-xs px-1.5 py-0.5 rounded-sm inline-block" style={{ backgroundColor: c?.bg, color: c?.text }}>{value}</span>
+          : <span className="text-neutral-700">—</span>
+        }
         {createPortal(
           <div onClick={(e) => e.stopPropagation()}>
             <div className="fixed inset-0 z-9998 cursor-default" onClick={onClose} />
             <div
               className="absolute z-9999 bg-neutral-900 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-40 max-h-60 overflow-y-auto text-left"
-              style={{
-                top: coords ? coords.top : 0,
-                left: coords ? coords.left : 0,
-                width: coords ? Math.max(160, coords.width) : 160,
-                visibility: coords ? 'visible' : 'hidden',
-              }}
+              style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, width: coords ? Math.max(160, coords.width) : 160, visibility: coords ? 'visible' : 'hidden' }}
             >
-              <button
-                onClick={() => {
-                  onSave('');
-                  onClose();
-                }}
-                className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer"
-              >
+              <button onClick={() => { onSave(''); onClose(); }} className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer">
                 {t('empty')}
               </button>
               {(column.options || []).map((rawOpt: string | SelectOption) => {
@@ -111,31 +77,22 @@ export default function InlineCellEditor({
                 const c = getOptionColor(opt);
                 const isSelected = value === opt.value;
                 return (
-                  <button
-                    key={opt.value}
-                    onClick={() => {
-                      onSave(opt.value);
-                      onClose();
-                    }}
-                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${
-                      isSelected ? 'bg-neutral-850' : ''
-                    }`}
-                  >
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
-                      {opt.value}
-                    </span>
+                  <button key={opt.value} onClick={() => { onSave(opt.value); onClose(); }}
+                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${isSelected ? 'bg-neutral-850' : ''}`}>
+                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
                     {isSelected && <Check size={12} className="text-neutral-400" />}
                   </button>
                 );
               })}
             </div>
           </div>,
-          document.body
+          document.body,
         )}
       </div>
     );
   }
 
+  // ── MULTI-SELECT ──────────────────────────────────────────────────────────
   if (column.type === 'multi_select') {
     const currentList = Array.isArray(value) ? value : [];
     const handleToggle = (optVal: string) => {
@@ -144,38 +101,24 @@ export default function InlineCellEditor({
         : [...currentList, optVal];
       onSave(newList);
     };
-
-    if (!mounted) {
-      return <div ref={containerRef} className="relative min-h-5" />;
-    }
-
+    if (!mounted) return <div ref={containerRef} className="relative min-h-5" />;
     return (
       <div ref={containerRef} className="relative w-full h-full">
         <span className="flex flex-wrap gap-1">
-          {currentList.length > 0 ? (
-            currentList.map((optVal: string) => {
-              const c = getOptionColorByValue(column.options || [], optVal);
-              return (
-                <span key={optVal} className="text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
-                  {optVal}
-                </span>
-              );
-            })
-          ) : (
-            <span className="text-neutral-700">—</span>
-          )}
+          {currentList.length > 0
+            ? currentList.map((optVal: string) => {
+                const c = getOptionColorByValue(column.options || [], optVal);
+                return <span key={optVal} className="text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>{optVal}</span>;
+              })
+            : <span className="text-neutral-700">—</span>
+          }
         </span>
         {createPortal(
           <div onClick={(e) => e.stopPropagation()}>
             <div className="fixed inset-0 z-9998 cursor-default" onClick={onClose} />
             <div
               className="absolute z-9999 bg-neutral-900 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-45 max-h-60 overflow-y-auto text-left"
-              style={{
-                top: coords ? coords.top : 0,
-                left: coords ? coords.left : 0,
-                width: coords ? Math.max(180, coords.width) : 180,
-                visibility: coords ? 'visible' : 'hidden',
-              }}
+              style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, width: coords ? Math.max(180, coords.width) : 180, visibility: coords ? 'visible' : 'hidden' }}
             >
               <div className="px-3 py-1 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider border-b border-neutral-850 mb-1">
                 {t('toggleOptions')}
@@ -185,16 +128,9 @@ export default function InlineCellEditor({
                 const c = getOptionColor(opt);
                 const isSelected = currentList.includes(opt.value);
                 return (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleToggle(opt.value)}
-                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${
-                      isSelected ? 'bg-neutral-850' : ''
-                    }`}
-                  >
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
-                      {opt.value}
-                    </span>
+                  <button key={opt.value} onClick={() => handleToggle(opt.value)}
+                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${isSelected ? 'bg-neutral-850' : ''}`}>
+                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
                     {isSelected && <Check size={12} className="text-neutral-400" />}
                   </button>
                 );
@@ -204,12 +140,13 @@ export default function InlineCellEditor({
               )}
             </div>
           </div>,
-          document.body
+          document.body,
         )}
       </div>
     );
   }
 
+  // ── TITLE ─────────────────────────────────────────────────────────────────
   if (column.id === 'title') {
     return (
       <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
@@ -227,28 +164,45 @@ export default function InlineCellEditor({
     );
   }
 
-  if (column.type === 'date' || column.type === 'datetime') {
+  // ── CHECKBOX ─────────────────────────────────────────────────────────────
+  if (column.type === 'checkbox') {
+    const isChecked = value === true || value === 'true';
     return (
-      <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
-        <input
-          ref={dateInputRef}
-          type={column.type === 'datetime' ? 'datetime-local' : 'date'}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onBlur={handleTextSave}
-          onKeyDown={handleKeyDown}
-          autoFocus
-          className="bg-transparent text-white text-xs w-full focus:outline-none border-none p-0 m-0 scheme-dark cursor-pointer"
-          style={{ fontFamily: 'inherit' }}
+      <div className="relative w-full flex items-center cursor-pointer"
+        onClick={(e) => { e.stopPropagation(); onSave(!isChecked); onClose(); }}>
+        {isChecked
+          ? <CheckSquare size={14} className="text-blue-400" />
+          : <Square size={14} className="text-neutral-500" />
+        }
+      </div>
+    );
+  }
+
+  // ── DATE / DATETIME ───────────────────────────────────────────────────────
+  if (column.type === 'date' || column.type === 'datetime') {
+    if (!mounted) return <div ref={containerRef} className="relative min-h-5 w-full" />;
+    const displayVal = typeof value === 'string' ? value : '';
+    return (
+      <div ref={containerRef} className="relative w-full">
+        <span className="text-xs text-neutral-400 pointer-events-none">
+          {displayVal ? formatDateValue(displayVal, column.type as 'date' | 'datetime', column.dateFormat) : '—'}
+        </span>
+        <DateRangePicker
+          value={displayVal}
+          showTime={column.type === 'datetime'}
+          anchorRect={anchorRect}
+          onChange={onSave}
+          onClose={onClose}
         />
       </div>
     );
   }
 
+  // ── TEXT / NUMBER / URL / EMAIL / PHONE ───────────────────────────────────
   return (
     <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
       <input
-        type={column.type === 'number' ? 'number' : 'text'}
+        type={column.type === 'number' ? 'number' : column.type === 'url' ? 'url' : column.type === 'email' ? 'email' : column.type === 'phone' ? 'tel' : 'text'}
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onBlur={handleTextSave}
