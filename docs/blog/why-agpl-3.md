@@ -1,5 +1,3 @@
-# Why We Chose AGPL-3.0 for Remnus
-
 Open source licensing is one of those decisions that looks simple from the outside — "just pick MIT and move on" — but actually carries real strategic weight for a product-led company. We spent a few weeks on this before committing. Here is what we considered and why we landed on AGPL-3.0.
 
 ## The Problem with MIT for Infrastructure Software

@@ -1,5 +1,3 @@
-# MCP-Native vs MCP-Integrated: What's the Difference?
-
 The Model Context Protocol (MCP) is becoming a de facto standard for how AI clients talk to tools and data sources. As more products add MCP support, a vocabulary distinction is emerging that is worth naming clearly: **MCP-integrated** vs **MCP-native**. These are not official terms, but they describe architecturally different things — and the difference matters if you are choosing tooling for an AI-heavy workflow.
 
 ## MCP-Integrated: Bolting On After the Fact
