@@ -5,10 +5,11 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "next dev",
-    "build": "npx tsx src/db/migrate.ts && next build",
+    "build": "npx tsx src/db/migrate.ts && npm run db:seed && next build",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "npx tsx src/db/migrate.ts",
+    "db:seed": "npx tsx scripts/seed-mcp-docs.ts && npx tsx scripts/seed-blog.ts",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
