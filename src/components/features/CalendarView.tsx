@@ -408,7 +408,7 @@ export default function CalendarView({
                       className={`relative py-2.5 px-2 cursor-pointer transition-colors group flex flex-col select-none overflow-hidden rounded ${
                         draggedCardId === page.id ? 'opacity-25' : ''
                       }`}
-                      style={{ backgroundColor: bgColor ?? 'rgba(64,68,75,0.45)' }}
+                      style={{ backgroundColor: bgColor ?? 'rgba(64,68,75,0.55)' }}
                     >
                       {borderDots.length > 0 && (
                         <div className={`${borderLineClass} pointer-events-none`} aria-hidden>

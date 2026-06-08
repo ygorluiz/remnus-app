@@ -109,9 +109,9 @@ export default function KanbanBoard({
   pages.forEach((page) => {
     const val = page.properties[groupByCol];
     if (val && options.includes(val)) {
-      groupedPages[val].push(page);
+      groupedPages[val]?.push(page);
     } else {
-      groupedPages['Uncategorized'].push(page);
+      groupedPages['Uncategorized']?.push(page);
     }
   });
 
@@ -325,7 +325,7 @@ export default function KanbanBoard({
                       ${draggedCardId === page.id ? 'opacity-25' : ''}
                       ${dragOverCardId === page.id ? 'border-t-2 border-t-blue-500/60' : ''}
                     `}
-                    style={{ backgroundColor: bgColor ?? 'rgba(64,68,75,0.4)' }}
+                    style={{ backgroundColor: bgColor ?? 'rgba(64,68,75,0.55)' }}
                   >
                     {borderDots.length > 0 && (
                       <div className={`${borderLineClass} pointer-events-none`} aria-hidden>
