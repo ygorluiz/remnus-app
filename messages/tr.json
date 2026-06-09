@@ -1075,7 +1075,10 @@
     "successTitle": "Yetkilendirme Başarılı",
     "successMessage": "Uygulamaya yönlendiriliyorsunuz…",
     "successClose": "Sekme otomatik kapanmazsa kapatabilirsiniz.",
-    "invalidRedirect": "Geçersiz veya eksik yönlendirme URL'si."
+    "invalidRedirect": "Geçersiz veya eksik yönlendirme URL'si.",
+    "accessLevel": "Erişim seviyesi",
+    "scopeReadLabel": "Salt okunur",
+    "scopeWriteLabel": "Okuma ve yazma"
   },
   "Security": {
     "title": "Güvenlik ve Kimlik Doğrulama",

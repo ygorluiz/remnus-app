@@ -1075,7 +1075,10 @@
     "successTitle": "Autorisation Réussie",
     "successMessage": "Retour à l'application en cours…",
     "successClose": "Vous pouvez fermer cet onglet s'il ne se ferme pas automatiquement.",
-    "invalidRedirect": "URL de redirection invalide ou manquante."
+    "invalidRedirect": "URL de redirection invalide ou manquante.",
+    "accessLevel": "Niveau d’accès",
+    "scopeReadLabel": "Lecture seule",
+    "scopeWriteLabel": "Lecture et écriture"
   },
   "Security": {
     "title": "Sécurité et Authentification",

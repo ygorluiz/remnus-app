@@ -102,6 +102,9 @@ export default async function OAuthAuthorizePage({
     const workspaceId = formData.get('workspace_id') as string;
     if (!workspaceId) return;
 
+    // User-chosen scope from the consent form (defaults to the requested scope, can be upgraded to write).
+    const chosenScope = formData.get('scope') === 'write' ? 'write' : 'read';
+
     // Verify user still has access to this workspace
     const currentUser = await getCurrentUser().catch(() => null);
     if (!currentUser) return;
@@ -126,7 +129,7 @@ export default async function OAuthAuthorizePage({
       redirectUri:         redirect_uri!,
       codeChallenge:       code_challenge!,
       codeChallengeMethod: code_challenge_method,
-      scope:               validScope,
+      scope:               chosenScope,
       expiresAt:           new Date(Date.now() + 10 * 60 * 1000), // 10 min
     });
 

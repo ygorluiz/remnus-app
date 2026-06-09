@@ -1075,7 +1075,10 @@
     "successTitle": "Authorization Successful",
     "successMessage": "Returning you to the application…",
     "successClose": "You can close this tab if it does not close automatically.",
-    "invalidRedirect": "Invalid or missing redirect URL."
+    "invalidRedirect": "Invalid or missing redirect URL.",
+    "accessLevel": "Access level",
+    "scopeReadLabel": "Read only",
+    "scopeWriteLabel": "Read & write"
   },
   "Security": {
     "title": "Security & Authentication",

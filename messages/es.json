@@ -1075,7 +1075,10 @@
     "successTitle": "Autorización Exitosa",
     "successMessage": "Regresando a la aplicación…",
     "successClose": "Puede cerrar esta pestaña si no se cierra automáticamente.",
-    "invalidRedirect": "URL de redirección inválida o faltante."
+    "invalidRedirect": "URL de redirección inválida o faltante.",
+    "accessLevel": "Nivel de acceso",
+    "scopeReadLabel": "Solo lectura",
+    "scopeWriteLabel": "Lectura y escritura"
   },
   "Security": {
     "title": "Seguridad y Autenticación",

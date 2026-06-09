@@ -1075,7 +1075,10 @@
     "successTitle": "प्राधिकरण सफल",
     "successMessage": "एप्लिकेशन पर वापस ले जाया जा रहा है…",
     "successClose": "यदि टैब स्वचालित रूप से बंद न हो तो आप इसे बंद कर सकते हैं।",
-    "invalidRedirect": "अमान्य या अनुपस्थित रीडायरेक्ट URL।"
+    "invalidRedirect": "अमान्य या अनुपस्थित रीडायरेक्ट URL।",
+    "accessLevel": "एक्सेस स्तर",
+    "scopeReadLabel": "केवल पढ़ें",
+    "scopeWriteLabel": "पढ़ें और लिखें"
   },
   "Security": {
     "title": "सुरक्षा और प्रमाणीकरण",

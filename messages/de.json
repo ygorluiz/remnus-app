@@ -1075,7 +1075,10 @@
     "successTitle": "Autorisierung Erfolgreich",
     "successMessage": "Sie werden zur Anwendung zurückgeleitet…",
     "successClose": "Sie können diesen Tab schließen, falls er nicht automatisch geschlossen wird.",
-    "invalidRedirect": "Ungültige oder fehlende Weiterleitungs-URL."
+    "invalidRedirect": "Ungültige oder fehlende Weiterleitungs-URL.",
+    "accessLevel": "Zugriffsebene",
+    "scopeReadLabel": "Nur Lesen",
+    "scopeWriteLabel": "Lesen & Schreiben"
   },
   "Security": {
     "title": "Sicherheit und Authentifizierung",

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -22,7 +23,10 @@ interface Props {
 export function OAuthAuthorizeForm({ clientName, scope, workspaces, userName, onApprove, onDeny }: Props) {
   const t = useTranslations('OAuthAuthorize');
 
-  const scopePermissions = scope === 'write'
+  // Default to the scope the client requested, but let the user choose (incl. upgrading to write).
+  const [selectedScope, setSelectedScope] = useState<'read' | 'write'>(scope);
+
+  const scopePermissions = selectedScope === 'write'
     ? [t('permReadWrite'), t('permCreateEdit')]
     : [t('permReadOnly')];
 
@@ -57,9 +61,27 @@ export function OAuthAuthorizeForm({ clientName, scope, workspaces, userName, on
 
         {/* Card */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
-          {/* Permissions */}
+          {/* Access level selector */}
           <div className="px-6 pt-5 pb-4 border-b border-neutral-800">
-            <p className="text-xs text-neutral-500 uppercase tracking-wider mb-3">{t('permissions')}</p>
+            <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2.5">{t('accessLevel')}</p>
+            <div className="flex gap-2 mb-3">
+              {(['read', 'write'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSelectedScope(s)}
+                  className={`flex-1 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                    selectedScope === s
+                      ? s === 'write'
+                        ? 'bg-amber-500/10 border-amber-500/40 text-amber-300'
+                        : 'bg-blue-500/10 border-blue-500/40 text-blue-300'
+                      : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200 hover:border-neutral-600'
+                  }`}
+                >
+                  {s === 'read' ? t('scopeReadLabel') : t('scopeWriteLabel')}
+                </button>
+              ))}
+            </div>
             <ul className="space-y-2">
               {scopePermissions.map((perm) => (
                 <li key={perm} className="flex items-center gap-2.5 text-sm text-neutral-300">
@@ -74,6 +96,7 @@ export function OAuthAuthorizeForm({ clientName, scope, workspaces, userName, on
 
           {/* Workspace selector + Authorize */}
           <form action={onApprove} className="px-6 py-5">
+            <input type="hidden" name="scope" value={selectedScope} />
             <label className="text-xs text-neutral-500 uppercase tracking-wider mb-2 block">
               {t('selectWorkspace')}
             </label>
