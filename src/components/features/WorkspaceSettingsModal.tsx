@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, Zap, Settings, Users, Link, Share2 } from 'lucide-react';
+import { X, Zap, Settings, Users, Share2 } from 'lucide-react';
 import { getWorkspaceMembers } from '@/lib/actions/auth';
 import GeneralTab from './workspace-settings/GeneralTab';
 import MembersTab from './workspace-settings/MembersTab';
@@ -20,6 +20,8 @@ interface WorkspaceSettingsModalProps {
   onRenamed: (newName: string) => void;
   onIconChanged?: (icon: string | null, iconColor: string | null) => void;
   onDeleted: () => void;
+  /** Closes this modal and opens the AI Agents control center (from the Tokens tab). */
+  onOpenAgents: () => void;
 }
 
 type Tab = 'general' | 'members' | 'tokens' | 'sharing';
@@ -35,6 +37,7 @@ export default function WorkspaceSettingsModal({
   onRenamed,
   onIconChanged,
   onDeleted,
+  onOpenAgents,
 }: WorkspaceSettingsModalProps) {
   const t = useTranslations('WorkspaceSettings');
   const tSharing = useTranslations('Sharing');
@@ -185,11 +188,7 @@ export default function WorkspaceSettingsModal({
               />
             )}
             {activeTab === 'tokens' && (
-              <TokensTab
-                workspaceId={workspaceId}
-                workspaceName={workspaceName}
-                hasPrivilegedAccess={hasPrivilegedAccess}
-              />
+              <TokensTab onOpenAgents={onOpenAgents} />
             )}
             {activeTab === 'sharing' && (
               <SharingTab

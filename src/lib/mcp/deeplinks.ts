@@ -7,7 +7,7 @@
 //   • token omitted    → OAuth mode: only the URL is given, so the client runs
 //                         its own OAuth 2.1 discovery + browser flow on first 401
 //
-// Used by ConnectFlow (AgentsModal), TokensTab, and McpOnboarding.
+// Used by ConnectFlow (the editor-connect step, rendered by ConnectModal / AgentsModal).
 
 export type EditorId = 'claude' | 'cursor' | 'vscode' | 'windsurf' | 'continue' | 'antigravity';
 export type OS = 'mac' | 'linux' | 'windows';

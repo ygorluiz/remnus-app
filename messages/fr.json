@@ -151,7 +151,8 @@
     "resetZoom": "Réinitialiser",
     "myAgents": "Agents IA",
     "settings": "Paramètres",
-    "earlyAccess": "Accès anticipé"
+    "earlyAccess": "Accès anticipé",
+    "agentsConnectNudge": "Connecter"
   },
   "WorkspaceSettings": {
     "title": "Paramètres de l'Espace",
@@ -298,9 +299,9 @@
     "mcpOnboardDoneClose": "Compris",
     "mcpOnboardBack": "Retour",
     "mcpOnboardDismiss": "Ignorer la configuration",
-    "connectButton": "Connecter un éditeur",
+    "connectButton": "Connecter un agent",
     "connectHeroDesc": "Laissez Claude, Cursor ou n'importe quel éditeur IA travailler directement avec les pages et bases de données de cet espace de travail. Connectez-vous avec OAuth pour un lien rapide, ou utilisez un jeton d'accès.",
-    "connectTitle": "Connecter un éditeur",
+    "connectTitle": "Connecter un agent",
     "connectStep": "Étape {current} sur {total}",
     "connectChooseTitle": "Choisissez votre éditeur",
     "connectChooseHint": "Choisissez l'outil de codage IA que vous souhaitez connecter à Remnus.",
@@ -339,7 +340,7 @@
     "editToken": "Modifier",
     "agentsTitle": "Mes Agents IA",
     "agentsHint": "Tokens actifs connectés à vos espaces de travail.",
-    "agentsNoTokens": "Aucun token actif. Créez-en un depuis les Paramètres.",
+    "agentsNoTokens": "Donnez à Claude, Cursor ou à n’importe quel agent IA un accès direct à vos pages et bases de données — connectez-en un pour commencer.",
     "agentsActivity": "Activité Récente",
     "agentsNoActivity": "Aucune activité récente pour l'instant.",
     "agentsWorkspaceEmpty": "Aucun token pour l'instant",
@@ -351,7 +352,11 @@
     "deleteSharedPagesTitle": "L'espace de travail a des pages partagées",
     "deleteSharedPagesConfirm": "Supprimer quand même",
     "transferOwnershipTitle": "Transférer la propriété",
-    "removeMemberTitle": "Supprimer le membre"
+    "removeMemberTitle": "Supprimer le membre",
+    "openAgentsCenter": "Ouvrir le centre des agents IA",
+    "tokensManagedInCenter": "Gérez toutes vos connexions d’agents et jetons d’accès depuis le centre des agents IA.",
+    "agentSetType": "Type d’agent",
+    "agentAutoDetect": "Détection automatique"
   },
   "Templates": {
     "modalTitle": "Nouvel Élément",

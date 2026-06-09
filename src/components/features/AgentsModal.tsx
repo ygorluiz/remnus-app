@@ -1,19 +1,20 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, Bot, ChevronDown, Zap, Globe, RefreshCw, Link2 } from 'lucide-react';
-import AIMark from '@/components/marketing/AIMark';
+import { X, Bot, ChevronDown, RefreshCw, Link2, Check } from 'lucide-react';
 import PageIcon from '@/components/features/PageIcon';
 import { ConfirmDialog } from '@/components/features/ConfirmDialog';
-import ConnectFlow from '@/components/features/agents/ConnectFlow';
+import ConnectModal from '@/components/features/agents/ConnectModal';
+import AgentMark, { AGENT_MARKS, MarkIcon, markForId, resolveAgentMark } from '@/components/features/agents/AgentMark';
 import {
   getUserWorkspacesWithTokens,
   getUserAgentActivity,
   getUserOAuthTokens,
   revokeAgentToken,
   revokeOAuthToken,
+  setAgentTokenAgent,
+  setOAuthTokenAgent,
 } from '@/lib/actions/agentToken';
-import { AGENT_OPTIONS } from '@/components/features/workspace-settings/types';
 
 type WsWithTokens = Awaited<ReturnType<typeof getUserWorkspacesWithTokens>>[number];
 type WorkspaceToken = WsWithTokens['tokens'][number];
@@ -61,6 +62,67 @@ function formatTool(tool: string): string {
   return tool.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+// ── AgentTypePicker ─────────────────────────────────────────────────────────────
+// Clickable agent icon that opens a dropdown to set the agent type (brand icon).
+function AgentTypePicker({
+  override, hint, fallback, canEdit, onPick, t,
+}: {
+  override: string | null;
+  hint: string | null;
+  fallback: 'globe' | 'zap';
+  canEdit: boolean;
+  onPick: (agentId: string | null) => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const pick = (agentId: string | null) => { setOpen(false); onPick(agentId); };
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => canEdit && setOpen(v => !v)}
+        disabled={!canEdit}
+        title={canEdit ? t('agentSetType') : undefined}
+        className={`w-7 h-7 rounded-md flex items-center justify-center border transition-colors ${
+          fallback === 'zap' || override ? 'bg-neutral-800 border-neutral-700' : 'bg-blue-500/10 border-blue-500/20'
+        } ${canEdit ? 'hover:border-neutral-500 cursor-pointer' : ''}`}
+      >
+        <AgentMark override={override} hint={hint} size={14} fallback={fallback} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[120]" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-8 z-[121] w-44 bg-neutral-900 border border-neutral-700 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.6)] py-1 max-h-64 overflow-y-auto">
+            <p className="px-2.5 py-1 text-[9px] font-semibold text-neutral-500 uppercase tracking-widest">{t('agentSetType')}</p>
+            {AGENT_MARKS.map(a => (
+              <button
+                key={a.id}
+                onClick={() => pick(a.id)}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] text-neutral-300 hover:bg-neutral-800 transition-colors"
+              >
+                <MarkIcon mark={a.mark} size={13} />
+                <span className="flex-1 text-left">{a.label}</span>
+                {override === a.id && <Check size={11} className="text-green-400 shrink-0" />}
+              </button>
+            ))}
+            <div className="border-t border-neutral-800 my-1" />
+            <button
+              onClick={() => pick(null)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] text-neutral-400 hover:bg-neutral-800 transition-colors"
+            >
+              <span className="w-[13px] text-center text-neutral-500">∅</span>
+              <span className="flex-1 text-left">{t('agentAutoDetect')}</span>
+              {!override && <Check size={11} className="text-green-400 shrink-0" />}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── TokenRow ──────────────────────────────────────────────────────────────────
 
 function TokenRow({
@@ -82,8 +144,17 @@ function TokenRow({
   const canRevoke = isPat ? row.data.canRevoke : row.data.canRevoke;
   const id = row.data.id;
 
-  // For PAT: agent icon from agentName; for OAuth: client icon
-  const agent = isPat ? AGENT_OPTIONS.find(a => a.id === row.data.agentName) : null;
+  // Brand icon: explicit agentName override → else inferred from name/clientName → else fallback.
+  const override = row.data.agentName ?? null;
+  const iconHint = isPat ? row.data.name : (row.data.clientName ?? null);
+
+  const handlePickAgent = async (agentId: string | null) => {
+    try {
+      if (isPat) await setAgentTokenAgent(id, agentId);
+      else        await setOAuthTokenAgent(id, agentId);
+      onRevoked();
+    } catch { /* silent */ }
+  };
 
   const doRevoke = async () => {
     setShowConfirm(false);
@@ -118,14 +189,14 @@ function TokenRow({
 
   return (
     <div className="flex items-center gap-2.5 p-3 group">
-      <div className={`shrink-0 w-7 h-7 rounded-md flex items-center justify-center border ${
-        isPat ? 'bg-neutral-800 border-neutral-700' : 'bg-blue-500/10 border-blue-500/20'
-      }`}>
-        {isPat
-          ? (agent ? <AIMark name={agent.aiMarkName} size={14} /> : <Zap size={12} className="text-amber-400/60" />)
-          : <Globe size={12} className="text-blue-400" />
-        }
-      </div>
+      <AgentTypePicker
+        override={override}
+        hint={iconHint}
+        fallback={isPat ? 'zap' : 'globe'}
+        canEdit={canRevoke}
+        onPick={handlePickAgent}
+        t={t}
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-semibold text-neutral-200 truncate">{name}</span>
@@ -264,6 +335,7 @@ export default function AgentsModal({ onClose }: Props) {
   }, [onClose]);
 
   return (
+    <>
     <div
       className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 md:p-6"
       onClick={onClose}
@@ -287,15 +359,13 @@ export default function AgentsModal({ onClose }: Props) {
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            {!showConnect && (
-              <button
-                onClick={() => setShowConnect(true)}
-                className="flex items-center gap-1.5 text-[11px] font-semibold text-white bg-blue-500 hover:bg-blue-400 px-3 py-1.5 rounded-md transition-colors"
-              >
-                <Link2 size={12} />
-                {t('connectButton')}
-              </button>
-            )}
+            <button
+              onClick={() => setShowConnect(true)}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-white bg-blue-500 hover:bg-blue-400 px-3 py-1.5 rounded-md transition-colors"
+            >
+              <Link2 size={12} />
+              {t('connectButton')}
+            </button>
             <button
               onClick={onClose}
               className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800"
@@ -307,23 +377,27 @@ export default function AgentsModal({ onClose }: Props) {
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6 space-y-5">
-          {showConnect && (
-            <ConnectFlow
-              mcpUrl={mcpUrl}
-              onClose={() => { setShowConnect(false); load(); }}
-              mintTargets={mintTargets}
-            />
-          )}
           {loading ? (
             <div className="py-16 flex justify-center">
               <div className="w-5 h-5 rounded-full border-2 border-neutral-800 border-t-neutral-500 animate-spin" />
             </div>
-          ) : workspaces.length === 0 ? (
-            <div className="py-16 flex flex-col items-center gap-3 text-center">
-              <div className="w-12 h-12 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-                <Bot size={20} className="text-neutral-500" />
+          ) : totalTokens === 0 ? (
+            /* First-run: no agent connected anywhere → centered connect CTA */
+            <div className="py-12 flex flex-col items-center gap-4 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <Bot size={26} className="text-amber-400" />
               </div>
-              <p className="text-xs text-neutral-500 max-w-xs leading-relaxed">{t('agentsNoTokens')}</p>
+              <div className="space-y-1.5 max-w-sm">
+                <h3 className="text-sm font-semibold text-neutral-100">{t('mcpHeroTitle')}</h3>
+                <p className="text-xs text-neutral-400 leading-relaxed">{t('agentsNoTokens')}</p>
+              </div>
+              <button
+                onClick={() => setShowConnect(true)}
+                className="flex items-center gap-2 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-400 px-5 py-2.5 rounded-lg shadow-[0_0_20px_-6px_rgba(68,92,149,0.6)] transition-colors"
+              >
+                <Link2 size={15} />
+                {t('connectButton')}
+              </button>
             </div>
           ) : (
             workspaces.map(ws => (
@@ -337,8 +411,8 @@ export default function AgentsModal({ onClose }: Props) {
             ))
           )}
 
-          {/* Activity section */}
-          {!loading && (
+          {/* Activity section — hidden until at least one agent is connected */}
+          {!loading && totalTokens > 0 && (
             <div className="border-t border-neutral-800 pt-4">
               <button
                 onClick={() => setShowActivity(v => !v)}
@@ -367,7 +441,8 @@ export default function AgentsModal({ onClose }: Props) {
                   ) : (
                     <div className="space-y-px">
                       {activity.map(act => {
-                        const agent = AGENT_OPTIONS.find(a => a.id === act.agentName);
+                        const actMark = markForId(act.agentName) ?? resolveAgentMark(act.agentName) ?? resolveAgentMark(act.tokenName);
+                        const actLabel = AGENT_MARKS.find(a => a.id === act.agentName)?.label;
                         return (
                           <div
                             key={act.id}
@@ -378,10 +453,10 @@ export default function AgentsModal({ onClose }: Props) {
                               {formatTool(act.tool)}
                             </span>
                             <div className="flex items-center gap-1 min-w-0">
-                              {agent && (
+                              {actMark && (
                                 <span className="flex items-center gap-1 text-[9px] font-semibold text-neutral-400 bg-neutral-800 border border-neutral-700 px-1.5 py-0.5 rounded-full shrink-0">
-                                  <AIMark name={agent.aiMarkName} size={9} />
-                                  {agent.label}
+                                  <MarkIcon mark={actMark} size={9} />
+                                  {actLabel && <span>{actLabel}</span>}
                                 </span>
                               )}
                               <span className="text-[9px] text-neutral-500 bg-neutral-800/60 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">
@@ -406,5 +481,14 @@ export default function AgentsModal({ onClose }: Props) {
         </div>
       </div>
     </div>
+
+    {showConnect && (
+      <ConnectModal
+        mcpUrl={mcpUrl}
+        mintTargets={mintTargets}
+        onClose={() => { setShowConnect(false); load(); }}
+      />
+    )}
+    </>
   );
 }

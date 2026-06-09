@@ -151,7 +151,8 @@
     "resetZoom": "Reset",
     "myAgents": "AI Agents",
     "settings": "Settings",
-    "earlyAccess": "Early access"
+    "earlyAccess": "Early access",
+    "agentsConnectNudge": "Connect"
   },
   "WorkspaceSettings": {
     "title": "Workspace Settings",
@@ -298,9 +299,9 @@
     "mcpOnboardDoneClose": "Got it",
     "mcpOnboardBack": "Back",
     "mcpOnboardDismiss": "Skip setup",
-    "connectButton": "Connect editor",
+    "connectButton": "Connect agent",
     "connectHeroDesc": "Let Claude, Cursor, or any AI editor work directly with the pages and databases in this workspace. Sign in with OAuth for a quick link, or use an access token.",
-    "connectTitle": "Connect an editor",
+    "connectTitle": "Connect an agent",
     "connectStep": "Step {current} of {total}",
     "connectChooseTitle": "Choose your editor",
     "connectChooseHint": "Pick the AI coding tool you want to connect to Remnus.",
@@ -339,7 +340,7 @@
     "editToken": "Edit",
     "agentsTitle": "My AI Agents",
     "agentsHint": "Active tokens connected to your workspaces.",
-    "agentsNoTokens": "No active tokens. Create one from Workspace Settings.",
+    "agentsNoTokens": "Give Claude, Cursor, or any AI agent direct access to your pages and databases — connect one to get started.",
     "agentsActivity": "Recent Activity",
     "agentsNoActivity": "No recent activity yet.",
     "agentsWorkspaceEmpty": "No tokens yet",
@@ -351,7 +352,11 @@
     "deleteSharedPagesTitle": "Workspace has shared pages",
     "deleteSharedPagesConfirm": "Delete anyway",
     "transferOwnershipTitle": "Transfer Ownership",
-    "removeMemberTitle": "Remove Member"
+    "removeMemberTitle": "Remove Member",
+    "openAgentsCenter": "Open AI Agents center",
+    "tokensManagedInCenter": "Manage all your agent connections and access tokens from the AI Agents center.",
+    "agentSetType": "Agent type",
+    "agentAutoDetect": "Auto-detect"
   },
   "Templates": {
     "modalTitle": "New Item",

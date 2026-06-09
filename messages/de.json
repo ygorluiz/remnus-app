@@ -151,7 +151,8 @@
     "resetZoom": "Zurücksetzen",
     "myAgents": "KI-Agenten",
     "settings": "Einstellungen",
-    "earlyAccess": "Früher Zugang"
+    "earlyAccess": "Früher Zugang",
+    "agentsConnectNudge": "Verbinden"
   },
   "WorkspaceSettings": {
     "title": "Arbeitsbereichseinstellungen",
@@ -298,9 +299,9 @@
     "mcpOnboardDoneClose": "Verstanden",
     "mcpOnboardBack": "Zurück",
     "mcpOnboardDismiss": "Einrichtung überspringen",
-    "connectButton": "Editor verbinden",
+    "connectButton": "Agent verbinden",
     "connectHeroDesc": "Lass Claude, Cursor oder einen beliebigen KI-Editor direkt mit den Seiten und Datenbanken in diesem Arbeitsbereich arbeiten. Melde dich mit OAuth für eine schnelle Verbindung an oder verwende ein Zugriffstoken.",
-    "connectTitle": "Einen Editor verbinden",
+    "connectTitle": "Einen Agenten verbinden",
     "connectStep": "Schritt {current} von {total}",
     "connectChooseTitle": "Wähle deinen Editor",
     "connectChooseHint": "Wähle das KI-Coding-Tool, das du mit Remnus verbinden möchtest.",
@@ -339,7 +340,7 @@
     "editToken": "Bearbeiten",
     "agentsTitle": "Meine KI-Agenten",
     "agentsHint": "Aktive Tokens, die mit Ihren Arbeitsbereichen verbunden sind.",
-    "agentsNoTokens": "Keine aktiven Tokens. Erstellen Sie einen in den Einstellungen.",
+    "agentsNoTokens": "Gib Claude, Cursor oder einem beliebigen KI-Agenten direkten Zugriff auf deine Seiten und Datenbanken – verbinde einen, um zu starten.",
     "agentsActivity": "Letzte Aktivität",
     "agentsNoActivity": "Noch keine Aktivität aufgezeichnet.",
     "agentsWorkspaceEmpty": "Noch keine Tokens",
@@ -351,7 +352,11 @@
     "deleteSharedPagesTitle": "Workspace hat geteilte Seiten",
     "deleteSharedPagesConfirm": "Trotzdem löschen",
     "transferOwnershipTitle": "Eigentümerschaft übertragen",
-    "removeMemberTitle": "Mitglied entfernen"
+    "removeMemberTitle": "Mitglied entfernen",
+    "openAgentsCenter": "KI-Agenten-Center öffnen",
+    "tokensManagedInCenter": "Verwalte alle deine Agent-Verbindungen und Zugriffstokens im KI-Agenten-Center.",
+    "agentSetType": "Agententyp",
+    "agentAutoDetect": "Automatisch erkennen"
   },
   "Templates": {
     "modalTitle": "Neues Element",

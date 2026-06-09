@@ -151,7 +151,8 @@
     "resetZoom": "Sıfırla",
     "myAgents": "AI Ajanlarım",
     "settings": "Ayarlar",
-    "earlyAccess": "Erken erişim"
+    "earlyAccess": "Erken erişim",
+    "agentsConnectNudge": "Bağla"
   },
   "WorkspaceSettings": {
     "title": "Çalışma Alanı Ayarları",
@@ -298,9 +299,9 @@
     "mcpOnboardDoneClose": "Anladım",
     "mcpOnboardBack": "Geri",
     "mcpOnboardDismiss": "Kurulumu atla",
-    "connectButton": "Editör bağla",
+    "connectButton": "Ajan bağla",
     "connectHeroDesc": "Claude, Cursor veya herhangi bir yapay zekâ editörü, bu çalışma alanındaki sayfa ve veritabanlarıyla doğrudan çalışsın. Hızlı bağlantı için OAuth ile giriş yap ya da bir erişim token'ı kullan.",
-    "connectTitle": "Bir editör bağla",
+    "connectTitle": "Bir ajan bağla",
     "connectStep": "Adım {current}/{total}",
     "connectChooseTitle": "Editörünü seç",
     "connectChooseHint": "Remnus'a bağlamak istediğin yapay zekâ kodlama aracını seç.",
@@ -339,7 +340,7 @@
     "editToken": "Düzenle",
     "agentsTitle": "AI Ajanlarım",
     "agentsHint": "Çalışma alanlarınıza bağlı aktif tokenler.",
-    "agentsNoTokens": "Aktif token yok. Çalışma Alanı Ayarlarından oluşturun.",
+    "agentsNoTokens": "Claude, Cursor veya herhangi bir AI ajanına sayfalarına ve veritabanlarına doğrudan erişim ver — başlamak için birini bağla.",
     "agentsActivity": "Son Aktivite",
     "agentsNoActivity": "Henüz aktivite kaydı yok.",
     "agentsWorkspaceEmpty": "Henüz token yok",
@@ -351,7 +352,11 @@
     "deleteSharedPagesTitle": "Çalışma alanında paylaşılan sayfalar var",
     "deleteSharedPagesConfirm": "Yine de sil",
     "transferOwnershipTitle": "Sahipliği Devret",
-    "removeMemberTitle": "Üyeyi Kaldır"
+    "removeMemberTitle": "Üyeyi Kaldır",
+    "openAgentsCenter": "AI Ajanlar merkezini aç",
+    "tokensManagedInCenter": "Tüm ajan bağlantılarını ve erişim token’larını AI Ajanlar merkezinden yönetebilirsin.",
+    "agentSetType": "Agent türü",
+    "agentAutoDetect": "Otomatik algıla"
   },
   "Templates": {
     "modalTitle": "Yeni Öğe",

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Copy, ArrowRight, ChevronLeft, ChevronDown, X, KeyRound, Globe, AlertCircle, AlertTriangle } from 'lucide-react';
 import AIMark from '@/components/marketing/AIMark';
+import { VscodeMark } from '@/components/features/agents/AgentMark';
 import { mintAgentToken } from '@/lib/actions/agentToken';
 import {
   EDITORS, OAUTH_READY, CONFIG_PATHS, TEST_PROMPT,
@@ -10,17 +11,8 @@ import {
   type EditorId, type OS,
 } from '@/lib/mcp/deeplinks';
 
-/** Workspaces the user can mint a PAT in (passed by AgentsModal / TokensTab). */
+/** Workspaces the user can mint a PAT in (passed down through ConnectModal from AgentsModal). */
 export interface MintTarget { id: string; name: string }
-
-// ── Custom VS Code mark (not in AIMark) ──────────────────────────────────────
-function VscodeMark({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="text-blue-400">
-      <path d="M17.583.063L9.963 7.087 4.19 2.383 2 3.436v17.125l2.19 1.054 5.773-4.704 7.62 7.026L22 22.564V1.436L17.583.063zM20 19.437l-6-5.453v-3.97l6-5.451v14.874zM4 19.204V4.797l4 3.26v7.888L4 19.204z" />
-    </svg>
-  );
-}
 
 function EditorMark({ id, size = 14 }: { id: EditorId; size?: number }) {
   const meta = EDITORS.find(e => e.id === id);
@@ -153,7 +145,8 @@ function StepConnect({
     setMinting(true);
     setMintError('');
     try {
-      const res = await mintAgentToken(selectedWs, meta.label, scope);
+      // Pass the editor id as the canonical agent id so the right brand icon renders.
+      const res = await mintAgentToken(selectedWs, meta.label, scope, editor);
       setMintedToken(res.token);
     } catch (err) {
       setMintError(err instanceof Error ? err.message : 'Failed to create token');
@@ -482,12 +475,37 @@ interface Props {
   onClose: () => void;
   /** Workspaces the user can mint a PAT in. Empty = token mode unavailable. */
   mintTargets?: MintTarget[];
+  /** When true, render only the step body (no outer card/header). Used by ConnectModal, which supplies its own chrome. */
+  bare?: boolean;
 }
 
-export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [] }: Props) {
+export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [], bare = false }: Props) {
   const t = useTranslations('WorkspaceSettings');
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [editor, setEditor] = useState<EditorId | null>(null);
+
+  const steps = (
+    <>
+      {step === 1 && (
+        <StepChoose t={t} current={editor ?? undefined} onSelect={id => { setEditor(id); setStep(2); }} />
+      )}
+      {step === 2 && editor && (
+        <StepConnect
+          t={t}
+          editor={editor}
+          mcpUrl={mcpUrl}
+          onNext={() => setStep(3)}
+          onBack={() => setStep(1)}
+          mintTargets={mintTargets}
+        />
+      )}
+      {step === 3 && (
+        <StepTest t={t} onDone={onClose} onBack={() => setStep(2)} />
+      )}
+    </>
+  );
+
+  if (bare) return steps;
 
   return (
     <div className="border border-neutral-800 rounded-xl bg-neutral-900/30 overflow-hidden">
@@ -498,24 +516,7 @@ export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [] }: Props
         </button>
       </div>
 
-      <div className="px-5 py-5">
-        {step === 1 && (
-          <StepChoose t={t} current={editor ?? undefined} onSelect={id => { setEditor(id); setStep(2); }} />
-        )}
-        {step === 2 && editor && (
-          <StepConnect
-            t={t}
-            editor={editor}
-            mcpUrl={mcpUrl}
-            onNext={() => setStep(3)}
-            onBack={() => setStep(1)}
-            mintTargets={mintTargets}
-          />
-        )}
-        {step === 3 && (
-          <StepTest t={t} onDone={onClose} onBack={() => setStep(2)} />
-        )}
-      </div>
+      <div className="px-5 py-5">{steps}</div>
     </div>
   );
 }

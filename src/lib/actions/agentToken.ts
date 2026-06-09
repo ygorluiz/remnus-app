@@ -84,17 +84,29 @@ export async function getAgentTokens(workspaceId: string) {
     .orderBy(agentTokens.createdAt);
 }
 
+/** Total active agent connections for the user: PAT tokens + OAuth tokens (both non-revoked). */
 export async function getUserAgentTokenCount(): Promise<number> {
   const user = await getCurrentUser();
-  const rows = await db
-    .select({ id: agentTokens.id })
-    .from(agentTokens)
-    .innerJoin(workspaceMembers, and(
-      eq(workspaceMembers.workspaceId, agentTokens.workspaceId),
-      eq(workspaceMembers.userId, user.id),
-    ))
-    .where(isNull(agentTokens.revokedAt));
-  return rows.length;
+
+  const [patRows, oauthRows] = await Promise.all([
+    db
+      .select({ id: agentTokens.id })
+      .from(agentTokens)
+      .innerJoin(workspaceMembers, and(
+        eq(workspaceMembers.workspaceId, agentTokens.workspaceId),
+        eq(workspaceMembers.userId, user.id),
+      ))
+      .where(isNull(agentTokens.revokedAt)),
+    db
+      .select({ id: oauthAccessTokens.id })
+      .from(oauthAccessTokens)
+      .where(and(
+        eq(oauthAccessTokens.userId, user.id),
+        isNull(oauthAccessTokens.revokedAt),
+      )),
+  ]);
+
+  return patRows.length + oauthRows.length;
 }
 
 export async function getUserWorkspacesWithTokens() {
@@ -253,6 +265,7 @@ export async function getUserOAuthTokens() {
       expiresAt:      oauthAccessTokens.expiresAt,
       createdAt:      oauthAccessTokens.createdAt,
       revokedAt:      oauthAccessTokens.revokedAt,
+      agentName:      oauthAccessTokens.agentName,
       workspaceName:  workspaces.name,
       workspaceIcon:  workspaces.icon,
       memberRole:     workspaceMembers.role,
@@ -275,6 +288,45 @@ export async function getUserOAuthTokens() {
     ...row,
     canRevoke: row.memberRole === 'owner' || true, // owners can revoke; OAuth tokens are always user-owned
   }));
+}
+
+/** Set the canonical agent id (AGENT_MARKS id) override on an OAuth token — for brand-icon display. User-owned. */
+export async function setOAuthTokenAgent(tokenId: string, agentName: string | null): Promise<void> {
+  const user = await getCurrentUser();
+  const t = await getTranslations('Errors');
+
+  const [token] = await db
+    .select({ userId: oauthAccessTokens.userId })
+    .from(oauthAccessTokens)
+    .where(and(eq(oauthAccessTokens.id, tokenId), isNull(oauthAccessTokens.revokedAt)))
+    .limit(1);
+
+  if (!token) throw new Error(t('notFound'));
+  if (token.userId !== user.id && user.role !== 'admin') throw new Error(t('unauthorized'));
+
+  await db
+    .update(oauthAccessTokens)
+    .set({ agentName })
+    .where(eq(oauthAccessTokens.id, tokenId));
+}
+
+/** Set the canonical agent id (AGENT_MARKS id) on a PAT token — for brand-icon display. Owner/admin only. */
+export async function setAgentTokenAgent(tokenId: string, agentName: string | null): Promise<void> {
+  const [token] = await db
+    .select({ workspaceId: agentTokens.workspaceId })
+    .from(agentTokens)
+    .where(and(eq(agentTokens.id, tokenId), isNull(agentTokens.revokedAt)))
+    .limit(1);
+
+  const t = await getTranslations('Errors');
+  if (!token) throw new Error(t('notFound'));
+
+  await assertOwnerAccess(token.workspaceId);
+
+  await db
+    .update(agentTokens)
+    .set({ agentName })
+    .where(eq(agentTokens.id, tokenId));
 }
 
 export async function revokeOAuthToken(tokenId: string): Promise<void> {

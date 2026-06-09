@@ -166,7 +166,8 @@ export default function WorkspaceSidebar({
   const [desktopSettingsOpen, setDesktopSettingsOpen] = useState(false);
   const [agentsModalOpen, setAgentsModalOpen] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
-  const [agentTokenCount, setAgentTokenCount] = useState(0);
+  // null = not yet loaded (avoids a false "no agents" warning flash on first render)
+  const [agentTokenCount, setAgentTokenCount] = useState<number | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'members' | 'tokens' | 'sharing'>('general');
   const [shareModalItemId, setShareModalItemId] = useState<string | null>(null);
 
@@ -1284,6 +1285,11 @@ export default function WorkspaceSidebar({
             setSettingsModalWorkspace(null);
             router.push('/app');
           }}
+          onOpenAgents={() => {
+            setSettingsModalWorkspace(null);
+            setSettingsInitialTab('general');
+            setAgentsModalOpen(true);
+          }}
         />
       )}
 
@@ -1349,13 +1355,22 @@ export default function WorkspaceSidebar({
           onClick={() => setAgentsModalOpen(true)}
           className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all duration-200"
         >
-          <Bot size={14} className="shrink-0 text-amber-400" />
+          <span className="relative shrink-0">
+            <Bot size={14} className="text-amber-400" />
+            {agentTokenCount === 0 && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-neutral-900 animate-pulse" />
+            )}
+          </span>
           <span className="truncate">{t('myAgents')}</span>
-          {agentTokenCount > 0 && (
+          {agentTokenCount !== null && agentTokenCount > 0 ? (
             <span className="ml-auto shrink-0 text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full leading-none">
               {agentTokenCount}
             </span>
-          )}
+          ) : agentTokenCount === 0 ? (
+            <span className="ml-auto shrink-0 text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full leading-none">
+              {t('agentsConnectNudge')}
+            </span>
+          ) : null}
         </button>
       </div>
 

@@ -151,7 +151,8 @@
     "resetZoom": "रीसेट",
     "myAgents": "AI एजेंट",
     "settings": "सेटिंग्स",
-    "earlyAccess": "अर्ली एक्सेस"
+    "earlyAccess": "अर्ली एक्सेस",
+    "agentsConnectNudge": "कनेक्ट करें"
   },
   "WorkspaceSettings": {
     "title": "कार्यक्षेत्र सेटिंग",
@@ -298,9 +299,9 @@
     "mcpOnboardDoneClose": "समझ गया",
     "mcpOnboardBack": "वापस",
     "mcpOnboardDismiss": "सेटअप छोड़ें",
-    "connectButton": "एडिटर कनेक्ट करें",
+    "connectButton": "एजेंट कनेक्ट करें",
     "connectHeroDesc": "Claude, Cursor या किसी भी AI एडिटर को इस वर्कस्पेस के पेज और डेटाबेस के साथ सीधे काम करने दें। त्वरित लिंक के लिए OAuth से साइन इन करें या एक्सेस टोकन का उपयोग करें।",
-    "connectTitle": "एक एडिटर कनेक्ट करें",
+    "connectTitle": "एक एजेंट कनेक्ट करें",
     "connectStep": "चरण {current}/{total}",
     "connectChooseTitle": "अपना एडिटर चुनें",
     "connectChooseHint": "वह AI कोडिंग टूल चुनें जिसे आप Remnus से कनेक्ट करना चाहते हैं।",
@@ -339,7 +340,7 @@
     "editToken": "संपादित करें",
     "agentsTitle": "मेरे AI एजेंट",
     "agentsHint": "आपके वर्कस्पेस से जुड़े सक्रिय टोकन।",
-    "agentsNoTokens": "कोई सक्रिय टोकन नहीं। Workspace Settings से बनाएं।",
+    "agentsNoTokens": "Claude, Cursor या किसी भी AI एजेंट को अपने पेज और डेटाबेस तक सीधी पहुँच दें — शुरू करने के लिए एक कनेक्ट करें।",
     "agentsActivity": "हाल की गतिविधि",
     "agentsNoActivity": "अभी तक कोई गतिविधि नहीं।",
     "agentsWorkspaceEmpty": "अभी कोई टोकन नहीं",
@@ -351,7 +352,11 @@
     "deleteSharedPagesTitle": "वर्कस्पेस में साझा पृष्ठ हैं",
     "deleteSharedPagesConfirm": "फिर भी हटाएं",
     "transferOwnershipTitle": "स्वामित्व स्थानांतरित करें",
-    "removeMemberTitle": "सदस्य हटाएं"
+    "removeMemberTitle": "सदस्य हटाएं",
+    "openAgentsCenter": "AI एजेंट केंद्र खोलें",
+    "tokensManagedInCenter": "अपने सभी एजेंट कनेक्शन और एक्सेस टोकन AI एजेंट केंद्र से प्रबंधित करें।",
+    "agentSetType": "एजेंट प्रकार",
+    "agentAutoDetect": "स्वतः पहचानें"
   },
   "Templates": {
     "modalTitle": "नया आइटम",

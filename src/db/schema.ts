@@ -244,6 +244,8 @@ export const oauthAccessTokens = sqliteTable('oauth_access_tokens', {
   userId:             text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   workspaceId:        text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   scope:              text('scope').notNull().default('read'),
+  // User-set canonical agent id override (AGENT_MARKS id) for icon display; nullable. Migration 0024.
+  agentName:          text('agent_name'),
   expiresAt:          integer('expires_at', { mode: 'timestamp' }).notNull(),
   revokedAt:          integer('revoked_at', { mode: 'timestamp' }),
   createdAt:          integer('created_at', { mode: 'timestamp' }).notNull(),
