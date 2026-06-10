@@ -90,6 +90,11 @@ pub fn run() {
             .center()
             .decorations(false)
             .shadow(true)
+            // Disable Tauri's OS-level drag-and-drop interception so the WebView
+            // receives native HTML5 dragover/drop events. Without this, kanban/
+            // calendar card dragging and the Notion-import file drop silently fail
+            // in the desktop app (they work in the browser).
+            .disable_drag_drop_handler()
             .additional_browser_args("--disable-spell-checking --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection")
             .initialization_script(ZOOM_INIT)
             .build()?;
