@@ -24,6 +24,7 @@ import { BookmarkBlock } from './BookmarkBlockExtension';
 import { FileBlock } from './FileBlockExtension';
 import { PageLink } from './PageLinkNode';
 import { PageMention } from './PageMentionExtension';
+import { FencedCodeBlock } from './CodeBlockExtension';
 import { CollapsibleHeading, HeadingCollapsePlugin } from './HeadingCollapseExtension';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
@@ -129,6 +130,10 @@ export default function BlockEditor({
     extensions: [
       StarterKit.configure({
         heading: false,
+        // Replaced with FencedCodeBlock (below) which sizes the markdown fence
+        // to be longer than any ``` run inside the code body, so code blocks
+        // containing backtick fences survive the markdown round-trip.
+        codeBlock: false,
         // Typed/pasted URLs auto-link and become clickable. We drive navigation
         // ourselves (openOnClick: false) so internal page links use the SPA
         // router instead of a full page load.
@@ -177,6 +182,7 @@ export default function BlockEditor({
       FileBlock.configure({ workspaceId: workspaceId ?? null }),
       PageLink,
       PageMention,
+      FencedCodeBlock,
     ],
     content: computedInitial,
     contentType: 'markdown',
