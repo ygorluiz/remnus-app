@@ -12,15 +12,31 @@ const PING_URL = '/api/activity/ping';
  * hidden and resumes on return, so we measure real time-in-app (presence)
  * rather than wall-clock time with the tab buried.
  *
+ * The ping response carries a cheap `changeVersion` (max updatedAt across the
+ * user's workspaces). We re-broadcast it as a `remnus:change` window event so
+ * useWorkspaceEvents can refresh server components ONLY when something actually
+ * changed — instead of an unconditional 10s router.refresh() poll.
+ *
  * Mounted only for authenticated users (see [locale]/layout.tsx).
  */
+export const CHANGE_EVENT = 'remnus:change';
+
 export default function ActivityTracker() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const ping = () => {
-      // keepalive lets the request survive a tab close / navigation
-      fetch(PING_URL, { method: 'POST', keepalive: true }).catch(() => {});
+    const ping = async () => {
+      try {
+        // keepalive lets the request survive a tab close / navigation
+        const res = await fetch(PING_URL, { method: 'POST', keepalive: true });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (data && typeof data.changeVersion === 'number') {
+          window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: data.changeVersion }));
+        }
+      } catch {
+        // best-effort — ignore network/parse failures
+      }
     };
 
     const start = () => {
