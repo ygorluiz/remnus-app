@@ -1,7 +1,7 @@
 'use server';
 import { db } from '@/db';
-import { pages, databases, workspaceItems, workspaceMembers, agentTokens } from '@/db/schema';
-import { eq, asc, and } from 'drizzle-orm';
+import { pages, databases, workspaceItems, workspaceMembers, agentTokens, oauthAccessTokens, oauthClients } from '@/db/schema';
+import { eq, asc, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth/session';
 import { deleteWorkspaceItem } from './workspace';
@@ -86,11 +86,13 @@ export async function getPages(databaseId: string) {
       updatedAt: pages.updatedAt,
       agentEditedAt: pages.agentEditedAt,
       agentTokenId: pages.agentTokenId,
-      agentName: agentTokens.agentName,
-      agentTokenName: agentTokens.name,
+      agentName: sql<string | null>`coalesce(${agentTokens.agentName}, ${oauthAccessTokens.agentName})`,
+      agentTokenName: sql<string | null>`coalesce(${agentTokens.name}, ${oauthClients.clientName})`,
     })
     .from(pages)
     .leftJoin(agentTokens, eq(pages.agentTokenId, agentTokens.id))
+    .leftJoin(oauthAccessTokens, eq(pages.agentTokenId, oauthAccessTokens.id))
+    .leftJoin(oauthClients, eq(oauthAccessTokens.clientId, oauthClients.clientId))
     .where(eq(pages.databaseId, databaseId))
     .orderBy(asc(pages.sortOrder), asc(pages.createdAt));
 }
@@ -109,11 +111,34 @@ export async function updatePageProperties(id: string, properties: any) {
 }
 
 export async function getPage(id: string) {
-  const result = await db.select().from(pages).where(eq(pages.id, id));
-  if (!result[0]) return undefined;
+  const [row] = await db
+    .select({
+      id: pages.id,
+      databaseId: pages.databaseId,
+      title: pages.title,
+      content: pages.content,
+      properties: pages.properties,
+      sortOrder: pages.sortOrder,
+      icon: pages.icon,
+      iconColor: pages.iconColor,
+      createdAt: pages.createdAt,
+      updatedAt: pages.updatedAt,
+      agentEditedAt: pages.agentEditedAt,
+      agentTokenId: pages.agentTokenId,
+      agentName: sql<string | null>`coalesce(${agentTokens.agentName}, ${oauthAccessTokens.agentName})`,
+      agentTokenName: sql<string | null>`coalesce(${agentTokens.name}, ${oauthClients.clientName})`,
+    })
+    .from(pages)
+    .leftJoin(agentTokens, eq(pages.agentTokenId, agentTokens.id))
+    .leftJoin(oauthAccessTokens, eq(pages.agentTokenId, oauthAccessTokens.id))
+    .leftJoin(oauthClients, eq(oauthAccessTokens.clientId, oauthClients.clientId))
+    .where(eq(pages.id, id))
+    .limit(1);
 
-  await assertDatabaseAccess(result[0].databaseId);
-  return result[0];
+  if (!row) return undefined;
+
+  await assertDatabaseAccess(row.databaseId);
+  return row;
 }
 
 export async function updatePageContent(id: string, content: string) {

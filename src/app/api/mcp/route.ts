@@ -95,7 +95,7 @@ async function verifyBearerToken(authHeader: string | null): Promise<TokenContex
     }
 
     console.log('[mcp/auth] oauth_token_ok', { prefix: prefix8, scope: row.scope });
-    return { tokenId: row.id, workspaceId: row.workspaceId, scope: row.scope as 'read' | 'write', agentName: null };
+    return { tokenId: row.id, workspaceId: row.workspaceId, scope: row.scope as 'read' | 'write', agentName: row.agentName ?? null };
   }
 
   // Personal access token (rmns_ prefix)
