@@ -5,6 +5,7 @@ import { eq, and, isNull, desc, inArray } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getTranslations } from 'next-intl/server';
 import { checkCanAddAgent } from '@/lib/services/billing';
+import { captureServer, isCaptureAllowedFromRequest } from '@/lib/analytics/server';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 
@@ -71,6 +72,20 @@ export async function mintAgentToken(
     createdAt: new Date(),
     expiresAt,
   });
+
+  // Funnel: 'mcp_token_created' (second activation step).
+  try {
+    const u = await getCurrentUser();
+    await captureServer({
+      event: 'mcp_token_created',
+      userId,
+      allowed: await isCaptureAllowedFromRequest(),
+      role: u.role,
+      properties: { type: 'pat', scope, agentName: agentName ?? null, workspaceId },
+    });
+  } catch {
+    // best-effort
+  }
 
   return { token: fullToken };
 }

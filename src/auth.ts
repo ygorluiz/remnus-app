@@ -9,6 +9,8 @@ import { users, accounts, sessions, verificationTokens, workspaces, workspaceMem
 import { eq, ne } from 'drizzle-orm';
 import { authConfig } from './auth.config';
 import { createSeedWorkspace } from '@/lib/seed';
+import { cookies } from 'next/headers';
+import { captureServer, isCaptureAllowedFromRequest } from '@/lib/analytics/server';
 
 // ── Type augmentation ─────────────────────────────────────────────────────────
 
@@ -136,7 +138,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // Count real (non-demo) users; if this is the first one, promote to admin and claim orphaned workspaces
       const allRealUsers = await db.select({ id: users.id }).from(users).where(ne(users.role, 'demo'));
-      if (allRealUsers.length !== 1) return;
+      const isFirstUser = allRealUsers.length === 1;
+
+      // Funnel: 'signup' (entry into activation). The first user becomes admin and
+      // is skipped by captureServer. Attach the provider + first-touch attribution
+      // (set once) so the funnel breaks down by channel.
+      try {
+        const [acc] = await db
+          .select({ provider: accounts.provider })
+          .from(accounts)
+          .where(eq(accounts.userId, user.id))
+          .limit(1);
+
+        let setOnce: Record<string, unknown> | undefined;
+        const firstTouchRaw = (await cookies()).get('remnus_first_touch')?.value;
+        if (firstTouchRaw) {
+          try {
+            const ft = JSON.parse(decodeURIComponent(firstTouchRaw));
+            setOnce = {
+              initial_utm_source: ft.utm_source ?? null,
+              initial_utm_medium: ft.utm_medium ?? null,
+              initial_utm_campaign: ft.utm_campaign ?? null,
+              initial_referrer: ft.referrer ?? null,
+            };
+          } catch {
+            // malformed cookie — skip attribution
+          }
+        }
+
+        await captureServer({
+          event: 'signup',
+          userId: user.id,
+          allowed: await isCaptureAllowedFromRequest(),
+          role: isFirstUser ? 'admin' : 'user',
+          properties: { provider: acc?.provider ?? null },
+          setOnce,
+        });
+      } catch {
+        // analytics is best-effort — never block account creation
+      }
+
+      if (!isFirstUser) return;
 
       await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
 

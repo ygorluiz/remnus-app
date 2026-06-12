@@ -1,12 +1,13 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import posthog from 'posthog-js';
 import {
   CONSENT_COOKIE,
   CONSENT_COOKIE_MAX_AGE,
   type ConsentValue,
 } from '@/lib/consent';
+import { setAnalyticsConsent } from '@/lib/actions/consent';
 
 interface ConsentContextValue {
   /** Whether this visitor's jurisdiction requires prior opt-in (EU/EEA/UK). */
@@ -43,6 +44,8 @@ export function ConsentProvider({
   userRole?: string;
 }) {
   const [consent, setConsent] = useState<ConsentValue | null>(initialConsent);
+  // Avoid redundant server writes when the effective permission is unchanged.
+  const persistedConsent = useRef<boolean | null>(null);
 
   useEffect(() => {
     const isAdmin = userRole === 'admin';
@@ -56,6 +59,16 @@ export function ConsentProvider({
       // Drop cookies for visitors who must consent but haven't (or rejected).
       if (consentRequired && consent !== 'accepted') {
         posthog.set_config({ persistence: 'memory' });
+      }
+    }
+
+    // Persist the effective permission for logged-in users so server-side funnel
+    // events with no cookie context (MCP agent calls) can decide identified vs
+    // anonymous capture. admin/demo are never captured, so skip the write.
+    if (userRole && userRole !== 'admin' && userRole !== 'demo') {
+      if (persistedConsent.current !== allowed) {
+        persistedConsent.current = allowed;
+        setAnalyticsConsent(allowed).catch(() => {});
       }
     }
   }, [consent, consentRequired, userRole]);

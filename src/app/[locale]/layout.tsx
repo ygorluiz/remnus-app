@@ -15,6 +15,7 @@ import { getTranslations } from 'next-intl/server';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
 import PostHogPageView from '@/components/providers/PostHogPageView';
 import PostHogIdentify from '@/components/providers/PostHogIdentify';
+import AttributionCapture from '@/components/providers/AttributionCapture';
 import { ConsentProvider } from '@/components/providers/ConsentContext';
 import CookieConsentBanner from '@/components/features/CookieConsentBanner';
 import { CONSENT_COOKIE, isConsentRequired, parseConsent } from '@/lib/consent';
@@ -83,6 +84,7 @@ export default async function LocaleLayout({
       <>
         <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
           <PostHogPageView />
+          <AttributionCapture />
           <NextIntlClientProvider messages={messages}>
             <ConsentProvider consentRequired={consentRequired} initialConsent={initialConsent}>
               {children}

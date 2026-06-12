@@ -6,6 +6,7 @@ import { eq, and, isNull } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { randomBytes, createHash, randomUUID } from 'crypto';
 import { checkCanAddAgent } from '@/lib/services/billing';
+import { captureServer, isCaptureAllowedForUser } from '@/lib/analytics/server';
 
 const ACCESS_TOKEN_TTL_MS  = 60 * 60 * 1000;          // 1 hour
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -119,6 +120,22 @@ async function handleAuthorizationCode(params: URLSearchParams): Promise<Respons
   });
 
   console.log('[oauth/token] success', { tokenPrefix: tokens.accessPrefix, scope: row.scope });
+
+  // Funnel: 'mcp_token_created' (OAuth connection — a genuinely new agent link).
+  // Only on the authorization_code grant; refresh_token is rotation, not a new
+  // agent. No cookie context here, so resolve consent from the user's record.
+  try {
+    const { allowed, role } = await isCaptureAllowedForUser(row.userId);
+    await captureServer({
+      event: 'mcp_token_created',
+      userId: row.userId,
+      allowed,
+      role,
+      properties: { type: 'oauth', scope: row.scope, clientId: row.clientId, workspaceId: row.workspaceId },
+    });
+  } catch {
+    // best-effort
+  }
 
   return tokenResponse({
     access_token:  tokens.accessToken,

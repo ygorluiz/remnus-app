@@ -79,6 +79,9 @@ export const users = sqliteTable('user', {
   image:         text('image'),
   passwordHash:  text('password_hash'),
   role:          text('role').notNull().default('user'),
+  // Effective analytics-capture permission for server-side funnel events
+  // (persisted by the client ConsentProvider): 'granted' | 'denied' | null.
+  analyticsConsent: text('analytics_consent'),
   createdAt:     integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
