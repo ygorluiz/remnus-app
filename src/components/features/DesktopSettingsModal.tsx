@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect } from 'react';
 import { X, Monitor, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -67,7 +67,7 @@ export default function DesktopSettingsModal({ onClose }: Props) {
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div className="w-full max-w-sm bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden pointer-events-auto animate-in zoom-in-95 duration-200">
+        <div className="w-full max-w-sm bg-neutral-850 border border-neutral-800 rounded-lg modal-shadow overflow-hidden pointer-events-auto animate-in zoom-in-95 duration-200">
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-800 bg-neutral-900/30 shrink-0">

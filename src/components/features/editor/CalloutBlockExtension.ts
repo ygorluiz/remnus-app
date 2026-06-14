@@ -64,8 +64,10 @@ export const CalloutBlock = Node.create({
     return ReactNodeViewRenderer(CalloutBlockView, { stopEvent: mediaStopEvent });
   },
 
-  // @ts-ignore — renderMarkdown is a @tiptap/markdown extension field
+  // @ts-ignore — renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
   renderMarkdown(node: any) {
-    return `<div data-callout-icon="${escAttr(node.attrs.icon || '💡')}" data-callout-color="${escAttr(node.attrs.color || 'blue')}" data-callout-text="${escAttr(node.attrs.text || '')}"></div>`;
+    const indent = (node.attrs?.indent as number) ?? 0;
+    const indentAttr = indent ? ` data-indent="${indent}"` : '';
+    return `<div data-callout-icon="${escAttr(node.attrs.icon || '💡')}" data-callout-color="${escAttr(node.attrs.color || 'blue')}" data-callout-text="${escAttr(node.attrs.text || '')}"${indentAttr}></div>`;
   },
 });

@@ -5,6 +5,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import HeadingView from './HeadingView';
+import { MAX_INDENT } from './IndentExtension';
 
 export const headingCollapseKey = new PluginKey<{
   collapsed: Set<number>;
@@ -48,8 +49,37 @@ declare module '@tiptap/core' {
 }
 
 export const CollapsibleHeading = Heading.configure({ levels: [1, 2, 3] }).extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      indent: {
+        default: 0,
+        parseHTML: (el: HTMLElement) => {
+          const val = parseInt(el.getAttribute('data-indent') ?? '0', 10);
+          return isNaN(val) ? 0 : Math.min(Math.max(val, 0), MAX_INDENT);
+        },
+        renderHTML: (attrs: Record<string, any>) => {
+          if (!attrs.indent) return {};
+          return {
+            'data-indent': String(attrs.indent),
+            style: `padding-left: ${attrs.indent * 1.5}rem`,
+          };
+        },
+      },
+    };
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(HeadingView);
+  },
+
+  // @ts-ignore — renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
+  renderMarkdown(node: any, h: any) {
+    const level = node.attrs?.level ?? 1;
+    const indent = (node.attrs?.indent as number) ?? 0;
+    const content = node.content ? h.renderChildren(node.content) : '';
+    if (!indent) return `${'#'.repeat(level)} ${content}`;
+    return `<h${level} data-indent="${indent}">${content}</h${level}>`;
   },
 });
 

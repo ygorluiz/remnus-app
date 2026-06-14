@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, Zap, Settings, Users, Share2, CreditCard } from 'lucide-react';
@@ -88,7 +88,7 @@ export default function WorkspaceSettingsModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-full sm:max-w-3xl bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-scale-in"
+        className="w-full max-w-full sm:max-w-3xl bg-neutral-850 border border-neutral-800 rounded-lg modal-shadow flex flex-col overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: '92vh', minHeight: 'min(520px, 85vh)' }}
       >

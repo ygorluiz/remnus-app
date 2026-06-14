@@ -1,5 +1,6 @@
 'use server';
 import { cookies } from 'next/headers';
+import type { AppTheme } from '@/lib/themes';
 
 export type EditorFontSize = 'sm' | 'md' | 'lg';
 export type SidebarDensity = 'compact' | 'comfortable';
@@ -20,6 +21,11 @@ export async function setSidebarDensity(density: SidebarDensity) {
 export async function setDefaultPageWidth(width: DefaultPageWidth) {
   const store = await cookies();
   store.set('remnus_default_width', width, { path: '/', maxAge: YEAR });
+}
+
+export async function setTheme(theme: AppTheme) {
+  const store = await cookies();
+  store.set('remnus_theme', theme, { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
 
 export async function getPreferences(): Promise<{

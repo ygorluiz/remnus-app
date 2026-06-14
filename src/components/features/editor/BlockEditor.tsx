@@ -12,7 +12,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import BubbleMenuBar from './BubbleMenuBar';
-import BlockDragHandle, { getDragSource } from './BlockDragHandle';
+import BlockDragHandle, { getDragSource, getNestTarget, clearNestTarget } from './BlockDragHandle';
 import { Slice, Fragment } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import { dropPoint } from '@tiptap/pm/transform';
@@ -30,15 +30,11 @@ import { PageLink } from './PageLinkNode';
 import { PageMention } from './PageMentionExtension';
 import { FencedCodeBlock } from './CodeBlockExtension';
 import { CollapsibleHeading, HeadingCollapsePlugin } from './HeadingCollapseExtension';
+import { IndentedParagraph, IndentShortcuts, IndentGlobal, MAX_INDENT } from './IndentExtension';
+import { BlockSelection } from './BlockSelectionExtension';
+import BlockSelectionToolbar from './BlockSelectionToolbar';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
-function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
-  let timer: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-}
 
 export type BlockEditorHandle = {
   focusStart: () => void;
@@ -153,7 +149,10 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
     editable,
     extensions: [
       StarterKit.configure({
+        dropcursor: false,
         heading: false,
+        // Replaced by IndentedParagraph below which adds indent attribute support.
+        paragraph: false,
         // Replaced with FencedCodeBlock (below) which sizes the markdown fence
         // to be longer than any ``` run inside the code body, so code blocks
         // containing backtick fences survive the markdown round-trip.
@@ -171,6 +170,9 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
           },
         },
       }),
+      IndentedParagraph,
+      IndentGlobal,
+      IndentShortcuts,
       CollapsibleHeading,
       HeadingCollapsePlugin.configure({
         pageId: parentId ?? null,
@@ -210,6 +212,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      BlockSelection,
     ],
     content: computedInitial,
     contentType: 'markdown',
@@ -294,6 +297,50 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
           const ed = editorRef.current;
           if (ed) images.forEach(img => uploadAndInsertImage(ed, img, workspaceId ?? null, pos));
           return true;
+        }
+
+        // Nest-inside drop: block was dragged into the middle zone of another block.
+        if (moved) {
+          const nestTgt = getNestTarget();
+          if (nestTgt) {
+            clearNestTarget();
+            const dragSrc = getDragSource();
+            if (dragSrc) {
+              const { pos: srcPos, node: srcNode } = dragSrc;
+              // Re-read target node from current state (doc may have changed)
+              const tgtNode = view.state.doc.nodeAt(nestTgt.pos);
+              if (tgtNode && srcPos !== nestTgt.pos) {
+                const tgtIndent = (tgtNode.attrs?.indent as number) ?? 0;
+                const newIndent = Math.min(tgtIndent + 1, MAX_INDENT);
+
+                // Build moved node with increased indent
+                const newNode = srcNode.type.create(
+                  { ...srcNode.attrs, indent: newIndent },
+                  srcNode.content,
+                  srcNode.marks,
+                );
+
+                const insertPos = nestTgt.pos + tgtNode.nodeSize;
+                const tr = view.state.tr;
+
+                if (srcPos < insertPos) {
+                  // Source is before insert point → delete src first, then insert
+                  tr.delete(srcPos, srcPos + srcNode.nodeSize);
+                  tr.insert(insertPos - srcNode.nodeSize, newNode);
+                } else {
+                  // Source is after insert point → insert first, then delete shifted src
+                  tr.insert(insertPos, newNode);
+                  tr.delete(srcPos + newNode.nodeSize, srcPos + newNode.nodeSize + srcNode.nodeSize);
+                }
+
+                view.dispatch(tr.scrollIntoView());
+                event.preventDefault();
+                return true;
+              }
+            }
+            clearNestTarget();
+            return false;
+          }
         }
 
         // Custom drop handling for blocks dragged from our handle.
@@ -444,8 +491,11 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
   useEffect(() => {
     if (!editor || !initialSubItems?.length) return;
     const map = new Map(initialSubItems.map(i => [i.id, i]));
-    let changed = false;
-    const tr = editor.view.state.tr;
+
+    // Collect changes first so we can apply them in reverse-position order.
+    // Applying high→low ensures each setNodeMarkup doesn't shift positions
+    // that haven't been processed yet (safe even for non-atom nodes).
+    const changes: Array<{ pos: number; attrs: Record<string, unknown> }> = [];
 
     editor.view.state.doc.descendants((node: any, pos: number) => {
       if (node.type.name !== 'childBlock') return;
@@ -458,13 +508,26 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
         iconColor: item.iconColor ?? null,
       };
       if (next.title !== node.attrs.title || next.icon !== node.attrs.icon || next.iconColor !== node.attrs.iconColor) {
-        tr.setNodeMarkup(pos, undefined, next);
-        changed = true;
+        changes.push({ pos, attrs: next });
       }
     });
 
-    if (changed) editor.view.dispatch(tr);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (changes.length === 0) return;
+
+    try {
+      const state = editor.view.state;
+      const tr = state.tr;
+      // Descending order: later positions processed first so earlier ones stay valid.
+      for (const { pos, attrs } of changes.sort((a, b) => b.pos - a.pos)) {
+        const mappedPos = tr.mapping.map(pos);
+        if (mappedPos >= 0 && mappedPos < tr.doc.content.size) {
+          tr.setNodeMarkup(mappedPos, undefined, attrs);
+        }
+      }
+      editor.view.dispatch(tr);
+    } catch {
+      // Position became stale (e.g. concurrent edit) — skip; values update on next save.
+    }
   }, [editor, initialSubItems]);
 
   if (!editor) return null;
@@ -473,6 +536,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
     <div className="relative">
       <BubbleMenuBar editor={editor} />
       {editable && <BlockDragHandle editor={editor} />}
+      {editable && <BlockSelectionToolbar editor={editor} />}
       <EditorContent editor={editor} />
     </div>
   );

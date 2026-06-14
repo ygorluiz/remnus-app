@@ -59,7 +59,7 @@ export default function InlineCellEditor({
     return (
       <div ref={containerRef} className="relative w-full h-full">
         {value
-          ? <span className="text-xs px-1.5 py-0.5 rounded-sm inline-block" style={{ backgroundColor: c?.bg, color: c?.text }}>{value}</span>
+          ? <span className="text-xs px-2 py-0.5 rounded-full font-medium inline-block" style={{ backgroundColor: c?.bg, color: c?.text }}>{value}</span>
           : <span className="text-neutral-700">—</span>
         }
         {createPortal(
@@ -79,7 +79,7 @@ export default function InlineCellEditor({
                 return (
                   <button key={opt.value} onClick={() => { onSave(opt.value); onClose(); }}
                     className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${isSelected ? 'bg-neutral-850' : ''}`}>
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
+                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
                     {isSelected && <Check size={12} className="text-neutral-400" />}
                   </button>
                 );
@@ -108,7 +108,7 @@ export default function InlineCellEditor({
           {currentList.length > 0
             ? currentList.map((optVal: string) => {
                 const c = getOptionColorByValue(column.options || [], optVal);
-                return <span key={optVal} className="text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>{optVal}</span>;
+                return <span key={optVal} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>{optVal}</span>;
               })
             : <span className="text-neutral-700">—</span>
           }
@@ -130,7 +130,7 @@ export default function InlineCellEditor({
                 return (
                   <button key={opt.value} onClick={() => handleToggle(opt.value)}
                     className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${isSelected ? 'bg-neutral-850' : ''}`}>
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
+                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
                     {isSelected && <Check size={12} className="text-neutral-400" />}
                   </button>
                 );

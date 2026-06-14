@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useZoom } from '@/components/providers/ZoomProvider';
+import { hasBlockSelection } from './BlockSelectionExtension';
 
 type BlockType = 'paragraph' | 'h1' | 'h2' | 'h3' | 'bullet' | 'ordered' | 'quote' | 'code';
 
@@ -249,7 +250,7 @@ export default function BubbleMenuBar({ editor }: Props) {
   useEffect(() => {
     const update = () => {
       const { empty } = editor.state.selection;
-      if (empty || (!editor.isFocused && modeRef.current !== 'link')) {
+      if (empty || hasBlockSelection(editor.state) || (!editor.isFocused && modeRef.current !== 'link')) {
         setLayout(null);
         return;
       }

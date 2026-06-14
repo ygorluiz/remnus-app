@@ -397,7 +397,7 @@ export default function PageEditor({
                       {val.map((optVal: string) => {
                         const c = getOptionColorByValue(col.options || [], optVal);
                         return (
-                          <span key={optVal} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded" style={{ backgroundColor: c.bg, color: c.text }}>
+                          <span key={optVal} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
                             {optVal}
                             <button
                               onClick={() => handleMultiSelectToggle(col.id, optVal)}
@@ -422,7 +422,7 @@ export default function PageEditor({
                             <button
                               key={opt.value}
                               onClick={() => handleMultiSelectToggle(col.id, opt.value)}
-                              className="text-xs px-2 py-0.5 rounded border border-neutral-700/40 opacity-50 hover:opacity-80 transition-opacity cursor-pointer"
+                              className="text-xs px-2 py-0.5 rounded-full font-medium border border-neutral-700/40 opacity-50 hover:opacity-80 transition-opacity cursor-pointer"
                               style={{ backgroundColor: c.bg, color: c.text }}
                             >
                               + {opt.value}

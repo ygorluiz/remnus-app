@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -6,9 +6,11 @@ import { X, User, Download, HardDrive, Crown, SlidersHorizontal } from 'lucide-r
 import ImportTab from './workspace-settings/ImportTab';
 import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
 import {
-  setEditorFontSize, setSidebarDensity, setDefaultPageWidth,
+  setEditorFontSize, setSidebarDensity, setDefaultPageWidth, setTheme,
   type EditorFontSize, type SidebarDensity, type DefaultPageWidth,
 } from '@/lib/actions/preferences';
+import { APP_THEMES } from '@/lib/themes';
+import type { AppTheme } from '@/lib/themes';
 import { setLocale } from '@/lib/actions/locale';
 
 function formatBytes(bytes: number): string {
@@ -48,6 +50,51 @@ function PrefRow<T extends string>({
             }`}
           >
             {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Theme picker ──────────────────────────────────────────────────────────────
+
+function ThemePicker({ value, onChange }: { value: AppTheme; onChange: (v: AppTheme) => void }) {
+  const t = useTranslations('UserSettings');
+  return (
+    <div className="py-4 border-b border-neutral-800">
+      <div className="mb-3">
+        <p className="text-sm font-medium text-neutral-200">{t('prefTheme')}</p>
+        <p className="text-[11px] text-neutral-500 mt-0.5">{t('prefThemeHint')}</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {APP_THEMES.map(theme => (
+          <button
+            key={theme.value}
+            onClick={() => onChange(theme.value)}
+            title={theme.label}
+            className={`group flex flex-col items-center gap-1.5 cursor-pointer transition-opacity ${
+              value === theme.value ? 'opacity-100' : 'opacity-60 hover:opacity-90'
+            }`}
+          >
+            {/* Swatch strip — extra outline ensures visibility on light and dark bg */}
+            <div
+              className={`flex h-8 w-16 overflow-hidden border transition-all ${
+                value === theme.value
+                  ? 'border-blue-500 ring-1 ring-blue-500/50'
+                  : 'border-neutral-700 group-hover:border-neutral-500'
+              }`}
+              style={theme.dark ? undefined : { outline: '1px solid #d1d5db', outlineOffset: '-1px' }}
+            >
+              {theme.swatches.map((color, i) => (
+                <div key={i} className="flex-1 h-full" style={{ background: color }} />
+              ))}
+            </div>
+            <span className={`text-[10px] font-medium leading-none ${
+              value === theme.value ? 'text-neutral-100' : 'text-neutral-500'
+            }`}>
+              {theme.label}
+            </span>
           </button>
         ))}
       </div>
@@ -103,6 +150,10 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
     if (typeof document === 'undefined') return 'narrow';
     return (document.documentElement.dataset.defaultWidth as DefaultPageWidth) ?? 'narrow';
   });
+  const [theme, setThemeState] = useState<AppTheme>(() => {
+    if (typeof document === 'undefined') return 'remnus';
+    return (document.documentElement.dataset.theme as AppTheme) ?? 'remnus';
+  });
 
   useEffect(() => {
     getCurrentUserStorageBytes().then(setStorageBytes).catch(() => setStorageBytes(0));
@@ -133,6 +184,12 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
     router.refresh();
   }
 
+  async function handleTheme(v: AppTheme) {
+    setThemeState(v);
+    document.documentElement.dataset.theme = v;
+    await setTheme(v);
+  }
+
   const initials = (currentUser.name || currentUser.email || 'U').trim().charAt(0).toUpperCase();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -147,7 +204,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
       onClick={onClose}
     >
       <div
-        className="w-full max-w-full sm:max-w-2xl bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-scale-in"
+        className="w-full max-w-full sm:max-w-2xl bg-neutral-850 border border-neutral-800 rounded-lg modal-shadow flex flex-col overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: '92vh', minHeight: 'min(480px, 85vh)' }}
       >
@@ -270,6 +327,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
           {/* Preferences */}
           {activeTab === 'preferences' && (
             <div>
+              <ThemePicker value={theme} onChange={handleTheme} />
               <PrefRow
                 label={t('prefLanguage')}
                 hint={t('prefLanguageHint')}

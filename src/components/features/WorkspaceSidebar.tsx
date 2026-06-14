@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useTransition, useRef, useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -271,11 +271,11 @@ export default function WorkspaceSidebar({
     if (!localItemsRef.current.some((i) => i.id.startsWith('temp-'))) {
       setLocalItems(items);
     }
-  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [items]);  
 
   useEffect(() => {
     setLocalWorkspaces(workspaces);
-  }, [workspaces]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [workspaces]);  
 
   const isAnyModalOrPickerOpen = !!(
     settingsModalWorkspace ||
@@ -831,9 +831,9 @@ export default function WorkspaceSidebar({
             </div>
           )}
 
-          <Link href={logoHref ?? '#'} className="font-semibold flex items-center gap-2.5 text-white hover:text-neutral-300 transition-colors">
+          <Link href={logoHref ?? '#'} className="font-semibold flex items-center gap-2.5 text-neutral-50 hover:text-neutral-300 transition-colors">
             <img src="/logo-square-dark.png" alt="Remnus Logo" className={`w-5 h-5 object-contain rounded-md shrink-0 shadow-sm ${isSaving ? 'animate-pulse' : ''}`} />
-            <span className="font-bold tracking-tight text-white">Remnus</span>
+            <span className="font-bold tracking-tight text-neutral-50">Remnus</span>
             <span className="font-mono text-[9px] text-amber-400/60 bg-amber-500/8 border border-amber-500/15 px-1.5 py-0.5 rounded-full leading-none tracking-wide">
               {t('earlyAccess')}
             </span>
@@ -889,7 +889,7 @@ export default function WorkspaceSidebar({
                 onDrop={(e) => handleWorkspaceItemDropOnRoot(e, w.id)}
                 className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-sm transition-all group/root cursor-pointer ${
                   isCurrentActive
-                    ? 'bg-neutral-850 text-white font-medium shadow-sm'
+                    ? 'bg-neutral-850 text-neutral-50 font-medium shadow-sm'
                     : 'text-neutral-400 hover:bg-neutral-850/50 hover:text-neutral-200'
                 } ${
                   dragOverWorkspaceForItemId === w.id
@@ -901,7 +901,7 @@ export default function WorkspaceSidebar({
                   {/* Chevron Toggle */}
                   <button
                     onClick={(e) => toggleExpand(w.id, e)}
-                    className="p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-white transition-colors shrink-0"
+                    className="p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-neutral-50 transition-colors shrink-0"
                   >
                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
@@ -950,14 +950,14 @@ export default function WorkspaceSidebar({
                       setTemplatePickerWorkspaceId(w.id);
                       setExpandedWorkspaces(prev => ({ ...prev, [w.id]: true }));
                     }}
-                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
+                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-50"
                     title={t('newItem')}
                   >
                     <Plus size={12} />
                   </button>
                   <button
                     onClick={() => handleToggleWorkspaceHidden(w.id, !w.hidden)}
-                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
+                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-50"
                     title={w.hidden ? t('unhideWorkspace') : t('hideWorkspace')}
                   >
                     {w.hidden ? <EyeOff size={12} /> : <Eye size={12} />}
@@ -967,7 +967,7 @@ export default function WorkspaceSidebar({
                       setSettingsInitialTab('general');
                       setSettingsModalWorkspace({ id: w.id, name: w.name, icon: w.icon, iconColor: w.iconColor });
                     }}
-                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
+                    className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-50"
                     title={t('workspaceSettings')}
                   >
                     <Settings size={12} />
@@ -1012,7 +1012,7 @@ export default function WorkspaceSidebar({
                           <div
                             className={`flex items-center gap-1.5 min-w-0 px-2 ${density === 'compact' ? 'py-1' : 'py-1.5'} rounded-md text-sm transition-all duration-200 group/item cursor-pointer relative ${
                               isActive(item)
-                                ? 'bg-neutral-850 text-white font-medium'
+                                ? 'bg-neutral-850 text-neutral-50 font-medium'
                                 : 'text-neutral-400 hover:bg-neutral-850/50 hover:text-neutral-200'
                             } ${isLoading ? 'opacity-40 pointer-events-none' : ''} ${
                               isItemDragged ? 'opacity-30 animate-pulse' : ''
@@ -1044,7 +1044,7 @@ export default function WorkspaceSidebar({
                                   e.preventDefault();
                                   setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }));
                                 }}
-                                className="p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-white transition-colors shrink-0"
+                                className="p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-neutral-50 transition-colors shrink-0"
                               >
                                 {isItemExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                               </button>
@@ -1096,7 +1096,7 @@ export default function WorkspaceSidebar({
                                 }}
                                 onBlur={() => handleRenameItem(item)}
                                 onClick={e => e.stopPropagation()}
-                                className="flex-1 min-w-0 bg-neutral-800 border border-neutral-600 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none focus:border-blue-500/60"
+                                className="flex-1 min-w-0 bg-neutral-800 border border-neutral-600 rounded px-1.5 py-0.5 text-xs text-neutral-50 focus:outline-none focus:border-blue-500/60"
                               />
                             ) : (
                               <Link
@@ -1128,7 +1128,7 @@ export default function WorkspaceSidebar({
                                         setTemplatePickerWorkspaceId(w.id);
                                         setExpandedItems(prev => ({ ...prev, [item.id]: true }));
                                       }}
-                                      className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white"
+                                      className="p-1 rounded hover:bg-neutral-700 text-neutral-400 hover:text-neutral-50"
                                       title={t('addSubPage')}
                                     >
                                       <Plus size={12} />
@@ -1197,7 +1197,7 @@ export default function WorkspaceSidebar({
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
                 placeholder={t('workspaceNamePlaceholder')}
-                className="w-full bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500"
+                className="w-full bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-50 placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCreateWorkspace();
                   if (e.key === 'Escape') { setIsCreatingWorkspace(false); setWorkspaceCreateError(null); }
@@ -1303,14 +1303,14 @@ export default function WorkspaceSidebar({
                   setRenamingItemId(activeMenuItem.id);
                   setRenamingTitle(activeMenuItem.title);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50 transition-colors"
               >
                 <Edit3 size={12} className="text-neutral-500" />
                 {t('rename')}
               </button>
               <button
                 onClick={() => handleDuplicateItem(activeMenuItem)}
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50 transition-colors"
               >
                 <Copy size={12} className="text-neutral-500" />
                 {t('duplicate')}
@@ -1320,7 +1320,7 @@ export default function WorkspaceSidebar({
                   setOpenMenuItemId(null);
                   setShareModalItemId(activeMenuItem.id);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50 transition-colors"
               >
                 <Globe size={12} className="text-neutral-500" />
                 {tSharing('shareButton')}
@@ -1492,7 +1492,7 @@ export default function WorkspaceSidebar({
       <div className="shrink-0 px-2 pt-1">
         <button
           onClick={() => setAgentsModalOpen(true)}
-          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all duration-200"
+          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50 transition-all duration-200"
         >
           <span className="relative shrink-0">
             <Bot size={14} className="text-amber-400" />
@@ -1517,7 +1517,7 @@ export default function WorkspaceSidebar({
       <div className="shrink-0 px-2">
         <button
           onClick={() => setBillingModalOpen(true)}
-          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all duration-200"
+          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50 transition-all duration-200"
         >
           <CreditCard size={14} className="shrink-0 text-neutral-400" />
           <span className="truncate">{t('planBilling')}</span>
@@ -1536,7 +1536,7 @@ export default function WorkspaceSidebar({
       <div className="shrink-0 px-2 pb-1">
         <button
           onClick={() => setUserSettingsOpen(true)}
-          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-all duration-200"
+          className="w-full flex items-center gap-1.5 min-w-0 px-2 py-1.5 rounded-md text-sm text-neutral-300 hover:bg-neutral-800 hover:text-neutral-50 transition-all duration-200"
         >
           <Settings size={14} className="shrink-0 text-neutral-400" />
           <span className="truncate">{t('settings')}</span>

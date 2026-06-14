@@ -462,7 +462,7 @@ export default function KanbanBoard({
                           if (c.type === 'select' && typeof val === 'string') {
                             const sc = getOptionColorByValue(c.options || [], val);
                             display = (
-                              <span className="text-xs px-1.5 py-0 rounded-sm" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
                                 {val}
                               </span>
                             );
@@ -472,7 +472,7 @@ export default function KanbanBoard({
                                 {val.map((optVal: string) => {
                                   const mc = getOptionColorByValue(c.options || [], optVal);
                                   return (
-                                    <span key={optVal} className="text-xs px-1.5 py-0 rounded-sm shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                    <span key={optVal} className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
                                       {optVal}
                                     </span>
                                   );

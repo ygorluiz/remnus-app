@@ -118,7 +118,7 @@ export default async function LocaleLayout({
   };
 
   const demoBanner = session.user.role === 'demo' ? (
-    <div className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20">
+    <div key="demo-banner" className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20">
       <div className="flex items-center gap-1.5 text-xs text-amber-400 min-w-0">
         <span className="font-semibold shrink-0">{t('demoMode')}</span>
         <span className="text-amber-500/70 shrink-0">—</span>
@@ -157,6 +157,7 @@ export default async function LocaleLayout({
           <AppShell
             sidebar={
               <WorkspaceSidebar
+                key="workspace-sidebar"
                 items={items}
                 workspaces={workspacesList}
                 activeWorkspace={activeWorkspace ?? { id: '', name: 'Workspace' }}
@@ -166,6 +167,7 @@ export default async function LocaleLayout({
             }
             mobileNav={
               <MobileNavWrapper
+                key="mobile-nav"
                 items={items}
                 workspaces={workspacesList}
                 activeWorkspace={activeWorkspace ?? { id: '', name: 'Workspace' }}

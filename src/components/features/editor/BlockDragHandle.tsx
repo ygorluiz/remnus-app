@@ -13,9 +13,14 @@ import { useZoom } from '@/components/providers/ZoomProvider';
 import { extractYouTubeId } from './YoutubeEmbedExtension';
 import { deleteWorkspaceItem, checkItemHasContent } from '@/lib/actions/workspace';
 
-// ── Drag source state: shared with BlockEditor's handleDrop for un-nesting ──
+// ── Drag source state: shared with BlockEditor's handleDrop ──
 let _activeDragSource: { pos: number; node: any } | null = null;
 export function getDragSource() { return _activeDragSource; }
+
+// ── Nest target state: shared with BlockEditor's handleDrop ──
+let _nestTarget: { pos: number; node: any } | null = null;
+export function getNestTarget() { return _nestTarget; }
+export function clearNestTarget() { _nestTarget = null; }
 
 type BlockType = 'paragraph' | 'h1' | 'h2' | 'h3' | 'bullet' | 'ordered' | 'quote' | 'code';
 
@@ -62,7 +67,6 @@ function fileNameFromUrl(u: string): string {
   } catch { return u; }
 }
 
-// The shared URL carried across when converting between link-type blocks.
 function mediaUrlOf(node: { type: { name: string }; attrs: Record<string, any> }): string {
   switch (node.type.name) {
     case 'bookmarkBlock':
@@ -101,11 +105,7 @@ function getNodeType(editor: Editor, pos: number): BlockType | null {
 // inside a single top-level list node.
 const ITEM_NODES = new Set(['listItem', 'taskItem']);
 
-
 // Resolve the most specific draggable block at vertical position clientY.
-// Iterates the editor's top-level children to find the row under the pointer,
-// then samples ProseMirror so that an individual list/task item is targeted
-// instead of the whole list. Returns the node's document position + DOM element.
 function blockAt(editor: Editor, clientY: number): { pos: number; dom: HTMLElement } | null {
   const view = editor.view;
   const er = view.dom.getBoundingClientRect();
@@ -117,16 +117,8 @@ function blockAt(editor: Editor, clientY: number): { pos: number; dom: HTMLEleme
     if (clientY < r.top - 2 || clientY > r.bottom + 2) continue;
 
     const sampleY = Math.min(Math.max(clientY, r.top + 2), r.bottom - 2);
-    // Always sample near the right edge so detection is purely Y-based.
-    // Using clientX fails for nested items: the mouse in the indentation gutter
-    // sits inside the outer <li>'s bounding box but before the inner <li>'s
-    // content, so posAtCoords resolves to the parent instead of the nested item.
-    // The right edge is always within every block regardless of nesting depth.
     const sampleX = Math.min(er.right - 16, r.right - 4);
 
-    // Right-edge sample first (purely Y-based, reliable for nested list items).
-    // Fall back to element left-center when the right side lands past the text
-    // (short/empty paragraph → inside = -1 from the right-edge probe).
     let coords = view.posAtCoords({ left: sampleX, top: sampleY });
     if (!coords || coords.inside < 0) {
       const fb = view.posAtCoords({ left: r.left + 6, top: r.top + r.height / 2 });
@@ -138,14 +130,10 @@ function blockAt(editor: Editor, clientY: number): { pos: number; dom: HTMLEleme
     if (coords.inside >= 0) {
       const $inside = view.state.doc.resolve(coords.inside);
       pos = $inside.depth > 0 ? $inside.before(1) : coords.inside;
-      // Prefer the innermost list/task item the pointer is inside, so each
-      // bullet/checkbox is its own draggable block (not the whole list).
       for (let d = $inside.depth; d >= 1; d--) {
         if (ITEM_NODES.has($inside.node(d).type.name)) { pos = $inside.before(d); break; }
       }
     } else {
-      // Both probes returned inside = -1 (atom node or edge of document).
-      // Resolve via coords.pos (nearest valid position) to find the depth-1 block.
       const clampedPos = Math.max(0, Math.min(coords.pos, view.state.doc.content.size - 1));
       const $near = view.state.doc.resolve(clampedPos);
       pos = $near.depth > 0 ? $near.before(1) : clampedPos;
@@ -161,27 +149,29 @@ function blockAt(editor: Editor, clientY: number): { pos: number; dom: HTMLEleme
 }
 
 type Handle = { pos: number; top: number; left: number };
+type DropIndicator = { top: number; left: number; width: number; height: number; zone: 'above' | 'inside' | 'below' };
 type Props = { editor: Editor };
 
 export default function BlockDragHandle({ editor }: Props) {
   const t = useTranslations('Editor');
   const zoom = useZoom();
-  // Keep zoom in a ref so the long-lived mousemove closure always reads the
-  // latest value without needing to be in the useEffect dependency array.
   const zoomRef = useRef(zoom);
+  // eslint-disable-next-line react-hooks/refs
   zoomRef.current = zoom;
   const [handle, setHandle] = useState<Handle | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [subOpen, setSubOpen] = useState(false);
   const [subPos, setSubPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  // Pending child-page delete awaiting confirmation (owned sub-page with content).
   const [confirmChild, setConfirmChild] = useState<{ pos: number; itemId: string } | null>(null);
+  // Custom drop indicator (replaces ProseMirror's dropcursor for all our drags)
+  const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafRef = useRef<number | null>(null);
-  // Latest handle position, readable inside event handlers without re-binding.
+  const dragRafRef = useRef<number | null>(null);
   const handleRef = useRef<Handle | null>(null);
+  // eslint-disable-next-line react-hooks/refs
   handleRef.current = handle;
 
   const BLOCK_LABELS: Record<BlockType, string> = {
@@ -196,14 +186,9 @@ export default function BlockDragHandle({ editor }: Props) {
   };
 
   // Track the hovered block and position the handle beside it.
-  // Listening on `document` (not just the editor DOM) with a hover zone that
-  // includes the left gutter means the pointer can travel from a block onto the
-  // handle button without crossing a dead area that would hide it.
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (menuOpen) return;
-      // Throttle to one update per animation frame to avoid running expensive
-      // DOM layout reads (posAtCoords, elementFromPoint) on every raw mouse event.
       if (rafRef.current) return;
       const { clientX: x, clientY: y } = e;
       rafRef.current = requestAnimationFrame(() => {
@@ -218,26 +203,16 @@ export default function BlockDragHandle({ editor }: Props) {
         if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; }
 
         const found = blockAt(editor, y);
-        if (!found) return; // keep the current handle rather than flicker
+        if (!found) return;
         const nodeType = editor.state.doc.nodeAt(found.pos)?.type.name;
         const rect = found.dom.getBoundingClientRect();
 
-        // Occlusion check: if a modal/overlay sits in front of the editor, the
-        // hovered block's own position is no longer the topmost element. Probe the
-        // block (not the pointer, so gutter travel still works) and bail if it's
-        // covered — keeps handles from floating over modals regardless of z-index.
         const px = Math.min(Math.max(rect.left + 8, 0), window.innerWidth - 1);
         const py = Math.min(Math.max(rect.top + 4, 0), window.innerHeight - 1);
         const probe = document.elementFromPoint(px, py);
         if (probe && !editor.view.dom.contains(probe)) { setHandle(null); return; }
-        // Headings render their own collapse chevron at left:-22px, so push the
-        // handle further left on those to avoid overlapping/blocking that button.
+
         const isHeading = nodeType === 'heading';
-        // ul { padding-left: 1.5rem = 24px } per level (globals.css).
-        // Count listItem/taskItem ancestors from the ProseMirror doc to determine
-        // the exact nesting level — DOM pixel measurements are unreliable because
-        // all <li> nodes at the same indent level have the same rect.left, and
-        // nested <li> boxes can report the outer list's left edge instead of their own.
         const LIST_INDENT = 24;
         let listLevel = 0;
         try {
@@ -247,11 +222,6 @@ export default function BlockDragHandle({ editor }: Props) {
           }
         } catch { /* out-of-range pos — treat as root */ }
 
-        // getBoundingClientRect() returns visual-viewport coordinates.
-        // When ZoomProvider applies transform:scale(z), position:fixed is
-        // relative to that scaled ancestor — divide by z to convert from
-        // visual coords to the fixed containing block's local coords.
-        // Read from ref (not closure) so we always use the current zoom value.
         const z = zoomRef.current;
         const newTop = (rect.top + 2) / z;
         let newLeft: number;
@@ -263,8 +233,7 @@ export default function BlockDragHandle({ editor }: Props) {
           newLeft = Math.max(2, er.left + (listLevel - 1) * LIST_INDENT - 20);
         }
         newLeft = newLeft / z;
-        // Skip setState if nothing changed — avoids re-renders when mouse drifts
-        // within the same block.
+
         const prev = handleRef.current;
         if (prev && prev.pos === found.pos && Math.abs(prev.top - newTop) < 1 && Math.abs(prev.left - newLeft) < 1) return;
         setHandle({ pos: found.pos, top: newTop, left: newLeft });
@@ -279,6 +248,57 @@ export default function BlockDragHandle({ editor }: Props) {
       if (subTimer.current) clearTimeout(subTimer.current);
     };
   }, [editor, menuOpen]);
+
+  // Track dragover: show our own indicator for all three zones.
+  // Only activates when our own drag handle initiated the drag (_activeDragSource set).
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => {
+      if (!_activeDragSource) return;
+      if (dragRafRef.current) return;
+      dragRafRef.current = requestAnimationFrame(() => {
+        dragRafRef.current = null;
+        const src = _activeDragSource;
+        if (!src) { _nestTarget = null; setDropIndicator(null); return; }
+
+        const y = e.clientY;
+        const found = blockAt(editor, y);
+        if (!found) { _nestTarget = null; setDropIndicator(null); return; }
+
+        const targetNode = editor.view.state.doc.nodeAt(found.pos);
+        if (!targetNode || found.pos === src.pos) { _nestTarget = null; setDropIndicator(null); return; }
+
+        const rect = found.dom.getBoundingClientRect();
+        const relY = (y - rect.top) / Math.max(rect.height, 1);
+        const z = zoomRef.current;
+        // Indent padding is applied inside the element (padding-left), so rect.left
+        // doesn't change. Manually offset the line to align with visible content.
+        const indent = (targetNode.attrs?.indent as number) ?? 0;
+        const indentPx = (indent * 24) / z; // 1.5rem = 24px per level
+        const base = {
+          top: rect.top / z,
+          left: rect.left / z + indentPx,
+          width: rect.width / z - indentPx,
+          height: rect.height / z,
+        };
+
+        const canNest = !ITEM_NODES.has(targetNode.type.name) && !ITEM_NODES.has(src.node.type.name);
+
+        if (canNest && relY >= 0.3 && relY <= 0.7) {
+          _nestTarget = { pos: found.pos, node: targetNode };
+          setDropIndicator({ ...base, zone: 'inside' });
+        } else {
+          _nestTarget = null;
+          setDropIndicator({ ...base, zone: relY < 0.5 ? 'above' : 'below' });
+        }
+      });
+    };
+
+    document.addEventListener('dragover', onDragOver);
+    return () => {
+      document.removeEventListener('dragover', onDragOver);
+      if (dragRafRef.current) { cancelAnimationFrame(dragRafRef.current); dragRafRef.current = null; }
+    };
+  }, [editor]);
 
   // Close menu on outside click.
   useEffect(() => {
@@ -300,7 +320,7 @@ export default function BlockDragHandle({ editor }: Props) {
     return () => { editor.off('blur', hide); };
   }, [editor, menuOpen]);
 
-  // Collapse the "Turn into" flyout whenever the menu closes.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (!menuOpen) setSubOpen(false); }, [menuOpen]);
 
   const removeBlockAt = (pos: number) => {
@@ -315,9 +335,6 @@ export default function BlockDragHandle({ editor }: Props) {
     setHandle(null);
   };
 
-  // Confirmation dialog for deleting an owned sub-page that has content. Rendered
-  // independently of `handle` so it survives the handle hiding when the pointer
-  // moves onto the modal.
   const confirmModal = confirmChild
     ? createPortal(
         <div
@@ -352,8 +369,6 @@ export default function BlockDragHandle({ editor }: Props) {
 
   if (!handle) return confirmModal;
 
-  // ── Drag-to-reorder: hand ProseMirror a NodeSelection slice so its native
-  // drop handler moves the block. Same mechanism as the official global handle. ──
   const onDragStart = (e: React.DragEvent) => {
     const view = editor.view;
     const pos = handleRef.current?.pos;
@@ -362,14 +377,12 @@ export default function BlockDragHandle({ editor }: Props) {
     if (!node) return;
 
     setMenuOpen(false);
-
-    // Record the drag source for ALL blocks so BlockEditor's handleDrop can
-    // intercept both listItem un-nesting and non-listItem drops into lists.
     _activeDragSource = { pos, node };
 
     const sel = NodeSelection.create(view.state.doc, pos);
     view.dispatch(view.state.tr.setSelection(sel));
     const slice = sel.content();
+    // eslint-disable-next-line react-hooks/immutability
     view.dragging = { slice, move: true };
 
     e.dataTransfer.effectAllowed = 'move';
@@ -380,13 +393,15 @@ export default function BlockDragHandle({ editor }: Props) {
 
   const onDragEnd = () => {
     _activeDragSource = null;
+    _nestTarget = null;
+    // eslint-disable-next-line react-hooks/immutability
     editor.view.dragging = null;
     setHandle(null);
+    setDropIndicator(null);
   };
 
   const focusBlock = (pos: number) => {
     const node = editor.state.doc.nodeAt(pos);
-    // Text blocks: put the cursor inside. Atom blocks: select the node.
     if (node && node.isTextblock) {
       editor.chain().focus().setTextSelection(pos + 1).run();
     } else {
@@ -394,9 +409,6 @@ export default function BlockDragHandle({ editor }: Props) {
     }
   };
 
-  // Child-page blocks need special delete handling: link-only blocks just drop
-  // the reference, owned sub-pages also delete the workspace item (with a confirm
-  // when they have content) — mirrors the old ChildBlockView × button.
   const deleteChild = async (pos: number, node: any) => {
     const { itemId, linkOnly } = node.attrs;
     setMenuOpen(false);
@@ -423,8 +435,6 @@ export default function BlockDragHandle({ editor }: Props) {
     const node = editor.state.doc.nodeAt(pos);
     if (node) {
       let json: any = node.toJSON();
-      // Duplicating an owned sub-page can't clone the page itself, so the copy
-      // is forced to a link-only reference to the same page.
       if (node.type.name === 'childBlock' && !node.attrs.linkOnly) {
         json = { ...json, attrs: { ...json.attrs, linkOnly: true } };
       }
@@ -441,7 +451,6 @@ export default function BlockDragHandle({ editor }: Props) {
     setHandle(null);
   };
 
-  // Convert one link-type atom into another, carrying the URL across.
   const mediaTurnInto = (target: MediaType) => {
     const pos = handle.pos;
     const node = editor.state.doc.nodeAt(pos);
@@ -456,7 +465,6 @@ export default function BlockDragHandle({ editor }: Props) {
     setHandle(null);
   };
 
-  // ── "Turn into" flyout (opens to the side, like a select) ──
   const SUB_W = 196;
   const openSub = (e: React.MouseEvent<HTMLElement>) => {
     if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; }
@@ -478,9 +486,6 @@ export default function BlockDragHandle({ editor }: Props) {
   };
   const cancelCloseSub = () => { if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; } };
 
-  // "Turn into" options: text/list blocks convert among text types; link-type
-  // atoms (bookmark/image/video/file) convert among themselves. Other atoms
-  // (e.g. callout) have no sensible conversion, so the section is hidden.
   const hovNode = editor.state.doc.nodeAt(handle.pos);
   const isMedia = !!hovNode && MEDIA_NODES.has(hovNode.type.name);
   const activeType = getNodeType(editor, handle.pos);
@@ -503,13 +508,16 @@ export default function BlockDragHandle({ editor }: Props) {
       }));
   const showTurnInto = isMedia || !hovNode?.isAtom;
   const currentTurnInto = turnOptions.find((o) => o.active)?.icon ?? <Pilcrow size={14} />;
+  // eslint-disable-next-line react-hooks/refs
   const menuTop = Math.min(handle.top + 26, window.innerHeight / zoomRef.current - 200);
 
   return (
     <>
       <button
         draggable
+        // eslint-disable-next-line react-hooks/immutability
         onDragStart={onDragStart}
+        // eslint-disable-next-line react-hooks/immutability
         onDragEnd={onDragEnd}
         onClick={(e) => { e.preventDefault(); setMenuOpen((v) => !v); }}
         onMouseEnter={() => { if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; } }}
@@ -519,6 +527,30 @@ export default function BlockDragHandle({ editor }: Props) {
       >
         <GripVertical size={16} />
       </button>
+
+      {/* Custom drop indicator — replaces ProseMirror dropcursor for all our drags */}
+      {dropIndicator && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: dropIndicator.zone === 'above'
+              ? dropIndicator.top
+              : dropIndicator.top + dropIndicator.height - 1,
+            left: dropIndicator.zone === 'inside'
+              ? dropIndicator.left + 24
+              : dropIndicator.left,
+            width: dropIndicator.zone === 'inside'
+              ? dropIndicator.width - 24
+              : dropIndicator.width,
+            height: 2,
+            background: '#445c95',
+            borderRadius: '1px',
+            pointerEvents: 'none',
+            zIndex: 99,
+          }}
+        />,
+        document.body,
+      )}
 
       {menuOpen && (
         <div
@@ -543,7 +575,6 @@ export default function BlockDragHandle({ editor }: Props) {
 
           {showTurnInto && <div className="my-1 h-px bg-neutral-800" />}
 
-          {/* Turn into — opens a flyout submenu to the side */}
           {showTurnInto && (
           <button
             onMouseEnter={openSub}

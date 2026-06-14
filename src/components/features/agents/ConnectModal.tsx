@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, Link2 } from 'lucide-react';
@@ -30,7 +30,7 @@ export default function ConnectModal({ mcpUrl, mintTargets = [], onClose }: Prop
       onClick={onClose}
     >
       <div
-        className="w-full max-w-full sm:max-w-2xl bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-scale-in"
+        className="w-full max-w-full sm:max-w-2xl bg-neutral-850 border border-neutral-800 rounded-lg modal-shadow flex flex-col overflow-hidden animate-scale-in"
         style={{ maxHeight: '90vh' }}
         onClick={e => e.stopPropagation()}
       >

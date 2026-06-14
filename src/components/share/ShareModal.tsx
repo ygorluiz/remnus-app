@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useEffect, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, Globe, Check, Copy, Trash2, Lock, PenLine, AlertCircle, ChevronDown } from 'lucide-react';
@@ -109,7 +109,7 @@ export default function ShareModal({ pageId, workspaceId, isAdmin, onClose }: Pr
   return (
     <div className="fixed inset-0 bg-black/60 z-300 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden animate-scale-in"
+        className="w-full max-w-md bg-neutral-850 border border-neutral-800 rounded-lg modal-shadow overflow-hidden animate-scale-in"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

@@ -634,7 +634,7 @@ export default function TableLayout({
                           val ? (() => {
                             const c = getOptionColorByValue(col.options || [], val);
                             return (
-                              <span className="text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
                                 {val}
                               </span>
                             );

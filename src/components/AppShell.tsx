@@ -31,7 +31,7 @@ export default function AppShell({
         </aside>
         {mobileNav}
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-850 pb-14 lg:pb-0">
-          <TauriTitlebar />
+          <TauriTitlebar key="tauri-titlebar" />
           {demoBanner}
           {children}
         </main>

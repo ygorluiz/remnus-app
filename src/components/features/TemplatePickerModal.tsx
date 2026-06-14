@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -142,7 +142,7 @@ export default function TemplatePickerModal({
     >
       {step === 'pick' ? (
         <div
-          className="w-full max-w-full sm:max-w-2xl bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-scale-in"
+          className="w-full max-w-full sm:max-w-2xl bg-neutral-850 border border-neutral-800 rounded-lg modal-shadow flex flex-col overflow-hidden animate-scale-in"
           style={{ maxHeight: '82vh' }}
           onClick={e => e.stopPropagation()}
         >
@@ -198,7 +198,7 @@ export default function TemplatePickerModal({
         </div>
       ) : (
         <div
-          className="w-full max-w-sm bg-neutral-850 border border-neutral-800 rounded-lg shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-scale-in"
+          className="w-full max-w-sm bg-neutral-850 border border-neutral-800 rounded-lg modal-shadow flex flex-col overflow-hidden animate-scale-in"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -1091,7 +1091,7 @@ export default function DatabaseView({
           {/* Center Peek Modal */}
           {(config.openBehavior ?? 'center') === 'center' && (
             <div className="fixed z-50 inset-x-0 bottom-14 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 md:p-10 sm:pointer-events-none">
-              <div className="w-full sm:max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-neutral-850 border-t sm:border border-neutral-800 flex flex-col sm:shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] overflow-hidden rounded-t-2xl sm:rounded-lg pointer-events-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+              <div className="w-full sm:max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-neutral-850 border-t sm:border border-neutral-800 flex flex-col sm:modal-shadow overflow-hidden rounded-t-2xl sm:rounded-lg pointer-events-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
                 {/* Peek Sticky Header */}
                 <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                   <div className="flex items-center gap-3">
@@ -1188,7 +1188,7 @@ export default function DatabaseView({
 
           {/* Side Peek Drawer */}
           {(config.openBehavior ?? 'center') === 'side' && (
-            <div className="fixed z-50 flex flex-col overflow-hidden bg-neutral-850 inset-x-0 bottom-14 max-h-[92vh] rounded-t-2xl border-t border-neutral-800 sm:left-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:w-full sm:max-w-2xl sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l sm:shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
+            <div className="fixed z-50 flex flex-col overflow-hidden bg-neutral-850 inset-x-0 bottom-14 max-h-[92vh] rounded-t-2xl border-t border-neutral-800 sm:left-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:w-full sm:max-w-2xl sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l sm:modal-shadow animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
               {/* Peek Sticky Header */}
               <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                 <div className="flex items-center gap-3">

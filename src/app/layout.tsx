@@ -1,22 +1,21 @@
 import type { Viewport } from 'next';
-import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
+import { Onest, JetBrains_Mono, Fraunces } from 'next/font/google';
 import './globals.css';
 import { cookies } from 'next/headers';
 import { routing } from '@/i18n/routing';
 
-const geist = Geist({
+const onest = Onest({
   subsets: ['latin'],
-  variable: '--font-geist-sans',
+  variable: '--font-onest',
 });
-const geistMono = Geist_Mono({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-geist-mono',
+  variable: '--font-jetbrains-mono',
 });
-const instrumentSerif = Instrument_Serif({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  weight: '400',
-  style: 'italic',
-  variable: '--font-instrument-serif',
+  style: ['normal', 'italic'],
+  variable: '--font-fraunces',
 });
 
 export const viewport: Viewport = {
@@ -24,6 +23,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
 };
+
+const VALID_THEMES = new Set(['remnus', 'dracula', 'tokyo-night', 'nord', 'catppuccin']);
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -33,15 +34,27 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     : 'en';
   const editorFontSize = cookieStore.get('remnus_editor_font_size')?.value ?? 'md';
   const defaultPageWidth = cookieStore.get('remnus_default_width')?.value ?? 'narrow';
+  const rawTheme = cookieStore.get('remnus_theme')?.value;
+  const theme = rawTheme && VALID_THEMES.has(rawTheme) ? rawTheme : undefined;
+
+  // Inline script: runs before first paint — sets data-theme from cookie or system preference.
+  // Only needed when no cookie is set yet (first visit).
+  const antiFlashScript = !theme ? `(function(){var m=document.cookie.match(/remnus_theme=([^;]+)/);if(m&&m[1]){document.documentElement.dataset.theme=m[1];}else if(window.matchMedia('(prefers-color-scheme:light)').matches){document.documentElement.dataset.theme='catppuccin';}})();` : undefined;
 
   return (
     <html
       lang={locale}
-      className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+      className={`${onest.variable} ${jetbrainsMono.variable} ${fraunces.variable}`}
       data-editor-size={editorFontSize}
       data-default-width={defaultPageWidth}
+      data-theme={theme ?? 'remnus'}
       suppressHydrationWarning
     >
+      <head>
+        {antiFlashScript && (
+          <script dangerouslySetInnerHTML={{ __html: antiFlashScript }} />
+        )}
+      </head>
       <body className="font-sans bg-neutral-950 text-neutral-50" suppressHydrationWarning>
         {children}
       </body>

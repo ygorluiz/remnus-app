@@ -7,16 +7,18 @@ export interface SelectOption {
   color?: SelectOptionColor;
 }
 
+// Dark-theme fallbacks: semi-transparent tinted bg + bright matching text (Linear/GitHub style).
+// Light themes override via --chip-*-* CSS vars (defined in Catppuccin theme block).
 export const SELECT_COLORS: Record<SelectOptionColor, { bg: string; text: string; dot: string; groupBg: string }> = {
-  default: { bg: 'rgba(56,59,65,0.95)',   text: '#9ca3af', dot: '#6b7280', groupBg: 'rgba(56,59,65,0.35)'   },
-  red:     { bg: 'rgba(127,29,29,0.95)',  text: '#fca5a5', dot: '#ef4444', groupBg: 'rgba(127,29,29,0.38)'  },
-  orange:  { bg: 'rgba(124,45,18,0.95)',  text: '#fdba74', dot: '#f97316', groupBg: 'rgba(124,45,18,0.38)'  },
-  yellow:  { bg: 'rgba(113,63,18,0.95)',  text: '#fef08a', dot: '#eab308', groupBg: 'rgba(113,63,18,0.38)'  },
-  green:   { bg: 'rgba(20,83,45,0.95)',   text: '#86efac', dot: '#22c55e', groupBg: 'rgba(20,83,45,0.38)'   },
-  teal:    { bg: 'rgba(19,78,74,0.95)',   text: '#5eead4', dot: '#14b8a6', groupBg: 'rgba(19,78,74,0.38)'   },
-  blue:    { bg: 'rgba(30,58,138,0.95)',  text: '#93c5fd', dot: '#3b82f6', groupBg: 'rgba(30,58,138,0.38)'  },
-  purple:  { bg: 'rgba(76,29,149,0.95)',  text: '#c4b5fd', dot: '#a855f7', groupBg: 'rgba(76,29,149,0.38)'  },
-  pink:    { bg: 'rgba(131,24,67,0.95)',  text: '#f9a8d4', dot: '#ec4899', groupBg: 'rgba(131,24,67,0.38)'  },
+  default: { bg: 'var(--chip-default-bg, rgba(148,163,184,0.14))', text: 'var(--chip-default-text, #94a3b8)', dot: 'var(--chip-default-dot, #64748b)', groupBg: 'var(--chip-default-group, rgba(148,163,184,0.06))' },
+  red:     { bg: 'var(--chip-red-bg, rgba(239,68,68,0.18))',       text: 'var(--chip-red-text, #f87171)',     dot: 'var(--chip-red-dot, #ef4444)',     groupBg: 'var(--chip-red-group, rgba(239,68,68,0.07))'      },
+  orange:  { bg: 'var(--chip-orange-bg, rgba(249,115,22,0.18))',   text: 'var(--chip-orange-text, #fb923c)',  dot: 'var(--chip-orange-dot, #f97316)',  groupBg: 'var(--chip-orange-group, rgba(249,115,22,0.07))'  },
+  yellow:  { bg: 'var(--chip-yellow-bg, rgba(234,179,8,0.18))',    text: 'var(--chip-yellow-text, #facc15)',  dot: 'var(--chip-yellow-dot, #eab308)',  groupBg: 'var(--chip-yellow-group, rgba(234,179,8,0.07))'   },
+  green:   { bg: 'var(--chip-green-bg, rgba(34,197,94,0.18))',     text: 'var(--chip-green-text, #4ade80)',   dot: 'var(--chip-green-dot, #22c55e)',   groupBg: 'var(--chip-green-group, rgba(34,197,94,0.07))'    },
+  teal:    { bg: 'var(--chip-teal-bg, rgba(20,184,166,0.18))',     text: 'var(--chip-teal-text, #2dd4bf)',    dot: 'var(--chip-teal-dot, #14b8a6)',    groupBg: 'var(--chip-teal-group, rgba(20,184,166,0.07))'    },
+  blue:    { bg: 'var(--chip-blue-bg, rgba(99,102,241,0.18))',     text: 'var(--chip-blue-text, #818cf8)',    dot: 'var(--chip-blue-dot, #6366f1)',    groupBg: 'var(--chip-blue-group, rgba(99,102,241,0.07))'    },
+  purple:  { bg: 'var(--chip-purple-bg, rgba(168,85,247,0.18))',   text: 'var(--chip-purple-text, #c084fc)',  dot: 'var(--chip-purple-dot, #a855f7)',  groupBg: 'var(--chip-purple-group, rgba(168,85,247,0.07))'  },
+  pink:    { bg: 'var(--chip-pink-bg, rgba(236,72,153,0.18))',     text: 'var(--chip-pink-text, #f472b6)',    dot: 'var(--chip-pink-dot, #ec4899)',    groupBg: 'var(--chip-pink-group, rgba(236,72,153,0.07))'    },
 };
 
 export const SELECT_COLOR_ORDER: SelectOptionColor[] = [

@@ -547,7 +547,7 @@ export default function CalendarView({
                             if (c.type === 'select' && typeof val === 'string') {
                               const sc = getOptionColorByValue(c.options || [], val);
                               display = (
-                                <span className="text-[9px] px-1 py-0 rounded-sm" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                <span className="text-[9px] px-1.5 py-px rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
                                   {val}
                                 </span>
                               );
@@ -557,7 +557,7 @@ export default function CalendarView({
                                   {val.map((optVal: string) => {
                                     const mc = getOptionColorByValue(c.options || [], optVal);
                                     return (
-                                      <span key={optVal} className="text-[9px] px-1 py-0 rounded-sm shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                      <span key={optVal} className="text-[9px] px-1.5 py-px rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
                                         {optVal}
                                       </span>
                                     );

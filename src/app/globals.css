@@ -6,8 +6,8 @@
 }
 
 @theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-onest);
+  --font-mono: var(--font-jetbrains-mono);
 
   /* Neutral scale — Carbon Black → Alabaster Grey */
   --color-neutral-50:  #d7dae0;   /* Alabaster Grey  — lightest text / muted labels  */
@@ -19,9 +19,9 @@
   --color-neutral-600: #5d6069;
   --color-neutral-700: #4a4d54;
   --color-neutral-800: #383b41;   /* Gunmetal        — borders / dividers            */
-  --color-neutral-850: #21252b;   /* content canvas                                  */
-  --color-neutral-900: #282c34;   /* sidebar / card backgrounds                      */
-  --color-neutral-950: #1d1f23;   /* Carbon Black     — main canvas background       */
+  --color-neutral-850: #171a1e;   /* content canvas                                  */
+  --color-neutral-900: #1d2025;   /* sidebar / card backgrounds                      */
+  --color-neutral-950: #111315;   /* Carbon Black     — main canvas background       */
 
   /* Blue → Dusk Blue (#445c95) */
   --color-blue-300: #7a94c5;
@@ -56,7 +56,7 @@
   --color-opt-pink:   #c66d99;
 
   /* Serif accent font — loaded by layout.tsx */
-  --font-serif: var(--font-instrument-serif);
+  --font-serif: var(--font-fraunces);
 
   --animate-slide-in-right: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   --animate-fade-in: fade-in 0.2s ease-out forwards;
@@ -88,6 +88,155 @@
   :root {
     --background: #1d1f23;
     --foreground: #d7dae0;
+  }
+}
+
+/* ── Dracula ──────────────────────────────────────────────────────────────── */
+[data-theme="dracula"] {
+  --background: #13141b;
+  --foreground: #f8f8f2;
+  --color-neutral-950: #13141b;
+  --color-neutral-900: #1a1b24;
+  --color-neutral-850: #171820;
+  --color-neutral-800: #44475a;
+  --color-neutral-700: #565869;
+  --color-neutral-600: #6272a4;
+  --color-neutral-500: #7a8cb8;
+  --color-neutral-400: #a0aac8;
+  --color-neutral-300: #b8c0d8;
+  --color-neutral-200: #d0d8e8;
+  --color-neutral-100: #e4e8f4;
+  --color-neutral-50:  #f8f8f2;
+  --color-blue-300: #c9a8fa;
+  --color-blue-400: #a77ef7;
+  --color-blue-500: #bd93f9;
+  --color-blue-600: #9d6df5;
+  --color-red-400:  #ff5555;
+  --color-red-500:  #e04444;
+  --color-green-400: #50fa7b;
+  --color-green-500: #3de668;
+  --color-amber-400: #ffb86c;
+  --color-amber-500: #f5a84c;
+  --color-dim:    #6272a4;
+  --color-dimmer: #44475a;
+}
+
+/* ── Tokyo Night ──────────────────────────────────────────────────────────── */
+[data-theme="tokyo-night"] {
+  --background: #0e0f18;
+  --foreground: #c0caf5;
+  --color-neutral-950: #0e0f18;
+  --color-neutral-900: #131420;
+  --color-neutral-850: #11121a;
+  --color-neutral-800: #292e42;
+  --color-neutral-700: #363b54;
+  --color-neutral-600: #565f89;
+  --color-neutral-500: #737aa2;
+  --color-neutral-400: #9098c4;
+  --color-neutral-300: #a9b1d6;
+  --color-neutral-200: #c0caf5;
+  --color-neutral-100: #cdd6f4;
+  --color-neutral-50:  #c0caf5;
+  --color-blue-300: #9ab7f7;
+  --color-blue-400: #8aabf5;
+  --color-blue-500: #7aa2f7;
+  --color-blue-600: #6a92e7;
+  --color-red-400:  #f7768e;
+  --color-red-500:  #e05a72;
+  --color-green-400: #9ece6a;
+  --color-green-500: #88ba52;
+  --color-amber-400: #ff9e64;
+  --color-amber-500: #e88a4e;
+  --color-dim:    #565f89;
+  --color-dimmer: #363b54;
+}
+
+/* ── Nord ─────────────────────────────────────────────────────────────────── */
+[data-theme="nord"] {
+  --background: #181c22;
+  --foreground: #eceff4;
+  --color-neutral-950: #181c22;
+  --color-neutral-900: #1e2229;
+  --color-neutral-850: #1b1f26;
+  --color-neutral-800: #3b4252;
+  --color-neutral-700: #434c5e;
+  --color-neutral-600: #4c566a;
+  --color-neutral-500: #7a8599;
+  --color-neutral-400: #929db1;
+  --color-neutral-300: #aab4c4;
+  --color-neutral-200: #c8cdd8;
+  --color-neutral-100: #d8dee9;
+  --color-neutral-50:  #eceff4;
+  --color-blue-300: #9dbfe0;
+  --color-blue-400: #82aecc;
+  --color-blue-500: #88c0d0;
+  --color-blue-600: #7ab2c4;
+  --color-red-400:  #bf616a;
+  --color-red-500:  #a8545c;
+  --color-green-400: #a3be8c;
+  --color-green-500: #8faa78;
+  --color-amber-400: #ebcb8b;
+  --color-amber-500: #d4b870;
+  --color-dim:    #4c566a;
+  --color-dimmer: #434c5e;
+}
+
+/* ── Catppuccin (clean light) ─────────────────────────────────────────────── */
+[data-theme="catppuccin"] {
+  --background: #ffffff;
+  --foreground: #111827;
+  --color-neutral-950: #edf2f7;   /* body frame       */
+  --color-neutral-900: #f7f8fa;   /* sidebar          */
+  --color-neutral-850: #ffffff;   /* content canvas   */
+  --color-neutral-800: #e2e8f0;   /* borders          */
+  --color-neutral-700: #d1d8e3;   /* hover bg         */
+  --color-neutral-600: #64748b;   /* muted text / icons — clearly readable */
+  --color-neutral-500: #94a3b8;   /* placeholder / very muted */
+  --color-neutral-400: #7b8fa6;   /* secondary muted  */
+  --color-neutral-300: #5a6a7e;   /* secondary text   */
+  --color-neutral-200: #374151;   /* body text        */
+  --color-neutral-100: #1f2937;   /* subheadings      */
+  --color-neutral-50:  #111827;   /* primary text     */
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #2563eb;
+  --color-blue-600: #1d4ed8;
+  --color-red-400:  #dc2626;
+  --color-red-500:  #b91c1c;
+  --color-green-400: #16a34a;
+  --color-green-500: #15803d;
+  --color-amber-400: #d97706;
+  --color-amber-500: #b45309;
+  --color-dim:    #64748b;
+  --color-dimmer: #94a3b8;
+  --color-border-soft:   #e2e8f0;
+  --color-accent-strong: #2563eb;
+
+  /* select/multi-select chip colors — soft tints for light bg */
+  --chip-default-bg:    #f1f5f9; --chip-default-text: #475569; --chip-default-dot: #94a3b8; --chip-default-group: rgba(148,163,184,0.12);
+  --chip-red-bg:        #fee2e2; --chip-red-text:     #991b1b; --chip-red-dot:     #dc2626; --chip-red-group:     rgba(220,38,38,0.08);
+  --chip-orange-bg:     #ffedd5; --chip-orange-text:  #9a3412; --chip-orange-dot:  #ea580c; --chip-orange-group:  rgba(234,88,12,0.08);
+  --chip-yellow-bg:     #fef9c3; --chip-yellow-text:  #854d0e; --chip-yellow-dot:  #ca8a04; --chip-yellow-group:  rgba(202,138,4,0.08);
+  --chip-green-bg:      #dcfce7; --chip-green-text:   #14532d; --chip-green-dot:   #16a34a; --chip-green-group:   rgba(22,163,74,0.08);
+  --chip-teal-bg:       #ccfbf1; --chip-teal-text:    #134e4a; --chip-teal-dot:    #0d9488; --chip-teal-group:    rgba(13,148,136,0.08);
+  --chip-blue-bg:       #dbeafe; --chip-blue-text:    #1e3a8a; --chip-blue-dot:    #2563eb; --chip-blue-group:    rgba(37,99,235,0.08);
+  --chip-purple-bg:     #ede9fe; --chip-purple-text:  #4c1d95; --chip-purple-dot:  #7c3aed; --chip-purple-group:  rgba(124,58,237,0.08);
+  --chip-pink-bg:       #fce7f3; --chip-pink-text:    #831843; --chip-pink-dot:    #db2777; --chip-pink-group:    rgba(219,39,119,0.08);
+}
+
+[data-theme="catppuccin"] ::-webkit-scrollbar-track { background: #edf2f7; }
+[data-theme="catppuccin"] ::-webkit-scrollbar-thumb { background: #c1cad6; border-radius: 4px; }
+[data-theme="catppuccin"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Modal shadow utility — theme-aware ───────────────────────────────────── */
+.modal-shadow { box-shadow: 0 0 50px -12px rgba(0,0,0,0.8); }
+[data-theme="catppuccin"] .modal-shadow {
+  box-shadow: 0 8px 32px -4px rgba(76, 79, 105, 0.14), 0 2px 8px -2px rgba(76, 79, 105, 0.08);
+}
+@media (min-width: 640px) {
+  .sm\:modal-shadow { box-shadow: 0 0 50px -12px rgba(0,0,0,0.8); }
+  [data-theme="catppuccin"] .sm\:modal-shadow {
+    box-shadow: 0 8px 32px -4px rgba(76, 79, 105, 0.14), 0 2px 8px -2px rgba(76, 79, 105, 0.08);
   }
 }
 
@@ -422,6 +571,14 @@ pre,
   margin: 1.5rem 0;
 }
 
+/* Block indentation — Tab/Shift-Tab nests blocks visually under the previous block */
+.prose-editor [data-indent='1'] { padding-left: 1.5rem; }
+.prose-editor [data-indent='2'] { padding-left: 3rem; }
+.prose-editor [data-indent='3'] { padding-left: 4.5rem; }
+.prose-editor [data-indent='4'] { padding-left: 6rem; }
+.prose-editor [data-indent='5'] { padding-left: 7.5rem; }
+.prose-editor [data-indent='6'] { padding-left: 9rem; }
+
 /* Placeholder text */
 .prose-editor p.is-editor-empty:first-child::before,
 .prose-editor .is-empty::before {
@@ -522,6 +679,24 @@ pre,
    suppress the rectangular outline entirely for all atom node views. */
 .prose-editor .ProseMirror-selectednode {
   outline: none;
+}
+
+/* Block selection — Notion-style multi-block highlight */
+.prose-editor .block-selected {
+  background-color: rgba(68, 92, 149, 0.18);
+  border-radius: 3px;
+}
+/* List items need a small negative margin to cover the bullet area */
+.prose-editor li.block-selected {
+  background-color: rgba(68, 92, 149, 0.18);
+  border-radius: 3px;
+  margin-left: -0.25rem;
+  padding-left: 0.25rem;
+}
+/* Prevent native text selection while dragging across blocks */
+.ProseMirror.block-selecting,
+.ProseMirror.block-selecting * {
+  user-select: none !important;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -719,3 +894,4 @@ pre,
   8%, 28%   { opacity: 0.9; transform: translateY(0); }
   31%, 100% { opacity: 0; transform: translateY(-2px); }
 }
+
