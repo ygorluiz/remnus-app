@@ -17,6 +17,7 @@ import DatabasePropertiesSidebar from './DatabasePropertiesSidebar';
 import PageEditor from './PageEditor';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
+import { MembersProvider, type WorkspaceMember } from './MembersContext';
 import type {
   DatabaseView,
   TableViewConfig,
@@ -39,7 +40,7 @@ function defaultTableView(name = 'Table'): DatabaseView {
 }
 
 function defaultKanbanView(schema: any[], name = 'Board'): DatabaseView {
-  const firstSelect = schema.find((c: any) => c.type === 'select');
+  const firstSelect = schema.find((c: any) => c.type === 'status') ?? schema.find((c: any) => c.type === 'select');
   return {
     id: uid(),
     name,
@@ -228,9 +229,11 @@ function getDefaultPropertiesFromFilters(filters: ViewFilter[], schema: any[]): 
 export default function DatabaseView({
   database,
   initialPages,
+  members = [],
 }: {
   database: any;
   initialPages: any[];
+  members?: WorkspaceMember[];
 }) {
   const t = useTranslations('Database');
   const tPage = useTranslations('Page');
@@ -716,7 +719,7 @@ export default function DatabaseView({
   const tableConfig = isTableView ? (config as TableViewConfig) : null;
   const kanbanConfig = config.type === 'kanban' ? (config as KanbanViewConfig) : null;
   const calendarConfig = config.type === 'calendar' ? (config as CalendarViewConfig) : null;
-  const selectColumns = schema.filter((c: any) => c.type === 'select');
+  const selectColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'status');
 
   const handleDateColChange = (dateCol: string) =>
     mutateConfig((cfg) => ({ ...cfg, dateCol }));
@@ -795,6 +798,7 @@ export default function DatabaseView({
   };
 
   return (
+    <MembersProvider members={members}>
     <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-full">
       <div className={`flex-1 flex flex-col w-full min-w-0 max-w-full overflow-hidden pt-6 sm:pt-8 ${widthMode === 'full' ? 'px-4 sm:px-8 lg:px-16' : 'px-4 sm:px-8'} ${widthMode === 'full' ? '' : widthMode === 'wide' ? 'max-w-screen-2xl mx-auto' : 'max-w-6xl mx-auto'}`}>
       {/* Back button for nested databases */}
@@ -1293,5 +1297,6 @@ export default function DatabaseView({
         />
       )}
     </div>
+    </MembersProvider>
   );
 }

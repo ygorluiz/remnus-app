@@ -3,8 +3,21 @@ import type { DatabaseView } from '@/lib/types/views';
 export interface SchemaColumn {
   id: string;
   name: string;
-  type: 'text' | 'number' | 'select' | 'multi_select' | 'date' | 'datetime';
-  options?: ({ value: string; color?: string } | string)[];
+  type:
+    | 'text'
+    | 'number'
+    | 'select'
+    | 'multi_select'
+    | 'status'
+    | 'user'
+    | 'multi_user'
+    | 'date'
+    | 'datetime'
+    | 'checkbox'
+    | 'url'
+    | 'email'
+    | 'phone';
+  options?: ({ value: string; color?: string; group?: 'todo' | 'in_progress' | 'complete' } | string)[];
   dateFormat?: 'default' | 'iso' | 'uk' | 'us' | 'relative';
 }
 
@@ -155,12 +168,12 @@ A next-generation analytics dashboard that helps teams track key metrics in real
       {
         id: 'status',
         name: 'Status',
-        type: 'select',
+        type: 'status',
         options: [
-          { value: 'Backlog', color: 'default' },
-          { value: 'In Progress', color: 'blue' },
-          { value: 'Review', color: 'yellow' },
-          { value: 'Done', color: 'green' },
+          { value: 'Backlog', color: 'default', group: 'todo' },
+          { value: 'In Progress', color: 'blue', group: 'in_progress' },
+          { value: 'Review', color: 'yellow', group: 'in_progress' },
+          { value: 'Done', color: 'green', group: 'complete' },
         ],
       },
       {

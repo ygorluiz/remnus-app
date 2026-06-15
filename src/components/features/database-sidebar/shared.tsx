@@ -1,13 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Type, List, Tags, Hash, Calendar, Clock, AlignLeft, CheckSquare, Link, Mail, Phone, ChevronDown } from 'lucide-react';
+import { Type, List, Tags, Hash, Calendar, Clock, AlignLeft, CheckSquare, CircleDashed, User, Users, Link, Mail, Phone, ChevronDown } from 'lucide-react';
 
 export function getPropertyIcon(type: string) {
   switch (type) {
     case 'text':         return <Type size={11} className="text-neutral-500 shrink-0" />;
     case 'select':       return <List size={11} className="text-neutral-500 shrink-0" />;
     case 'multi_select': return <Tags size={11} className="text-neutral-500 shrink-0" />;
+    case 'status':       return <CircleDashed size={11} className="text-neutral-500 shrink-0" />;
+    case 'user':         return <User size={11} className="text-neutral-500 shrink-0" />;
+    case 'multi_user':   return <Users size={11} className="text-neutral-500 shrink-0" />;
     case 'number':       return <Hash size={11} className="text-neutral-500 shrink-0" />;
     case 'date':         return <Calendar size={11} className="text-neutral-500 shrink-0" />;
     case 'datetime':     return <Clock size={11} className="text-neutral-500 shrink-0" />;

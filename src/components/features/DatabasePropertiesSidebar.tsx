@@ -118,7 +118,7 @@ export default function DatabasePropertiesSidebar({
   useEffect(() => { setSchema(database.schema || []); }, [database.schema]);
 
   const isSchemaDirty = JSON.stringify(schema) !== JSON.stringify(database.schema);
-  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select');
+  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select' || c.type === 'status');
 
   const addColumn = () =>
     setSchema([...schema, { id: `col_${crypto.randomUUID().slice(0, 8)}`, name: 'New Column', type: 'text', options: [] }]);

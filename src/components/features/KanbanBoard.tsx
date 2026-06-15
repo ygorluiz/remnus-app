@@ -7,6 +7,7 @@ import { normalizeOption, getOptionColorByValue, getCardBorderDots, getCardBgCol
 import { useTranslations } from 'next-intl';
 import type { SelectOption } from '@/lib/types/properties';
 import InlineCellEditor from './InlineCellEditor';
+import { StatusChip, UserChip, UserTags } from './PropertyTags';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import AgentEditBadge from './AgentEditBadge';
@@ -466,6 +467,12 @@ export default function KanbanBoard({
                                 {val}
                               </span>
                             );
+                          } else if (c.type === 'status' && typeof val === 'string') {
+                            display = <StatusChip value={val} options={c.options} />;
+                          } else if (c.type === 'user') {
+                            display = <UserChip userId={String(val)} />;
+                          } else if (c.type === 'multi_user' && Array.isArray(val)) {
+                            display = <UserTags value={val} wrap={propertyTextClamp === 'wrap'} />;
                           } else if (c.type === 'multi_select' && Array.isArray(val)) {
                             display = (
                               <span className={`flex gap-1 ${propertyTextClamp === 'wrap' ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>

@@ -31,11 +31,13 @@ function decodeCursor(cursor: string): { so: number; id: string } {
 
 const COLOR_CYCLE = ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'purple', 'pink'] as const;
 
-function autoColorOptions(options: any[]): { value: string; color: string }[] {
+function autoColorOptions(options: any[]): { value: string; color: string; group?: string }[] {
   return options.map((opt, i) => {
     const value = typeof opt === 'string' ? opt : opt.value ?? String(opt);
     const color = typeof opt === 'object' && opt.color ? opt.color : COLOR_CYCLE[i % COLOR_CYCLE.length];
-    return { value, color };
+    // Preserve the status group when present (status columns).
+    const group = typeof opt === 'object' && opt.group ? opt.group : undefined;
+    return group ? { value, color, group } : { value, color };
   });
 }
 
@@ -44,7 +46,7 @@ function normalizeSchemaColumns(
 ): any[] {
   return cols.map(col => ({
     ...col,
-    ...(col.options && (col.type === 'select' || col.type === 'multi_select')
+    ...(col.options && (col.type === 'select' || col.type === 'multi_select' || col.type === 'status')
       ? { options: autoColorOptions(col.options) }
       : {}),
   }));

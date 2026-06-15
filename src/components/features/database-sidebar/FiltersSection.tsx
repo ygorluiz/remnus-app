@@ -51,7 +51,7 @@ export default function FiltersSection({ filters, schema, onFiltersChange }: Fil
           {filters.map((filter) => {
             const opDef = OPERATORS.find((o) => o.value === filter.operator);
             const colSchema = schema.find((c) => c.id === filter.columnId);
-            const isSelectType = colSchema && (colSchema.type === 'select' || colSchema.type === 'multi_select');
+            const isSelectType = colSchema && (colSchema.type === 'select' || colSchema.type === 'multi_select' || colSchema.type === 'status');
 
             let selectedList: string[] = [];
             if (filter.value) {

@@ -172,8 +172,8 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         parentId: z.string().optional().describe('Parent workspace item ID (omit for root)'),
         schema: z.array(z.object({
           name: z.string().describe('Column name'),
-          type: z.string().describe('Column type: text | number | select | multi_select | date | datetime'),
-          options: z.array(z.any()).optional().describe('Select options for select/multi_select columns'),
+          type: z.string().describe('Column type: text | number | select | multi_select | status | user | multi_user | date | datetime | checkbox | url | email | phone'),
+          options: z.array(z.any()).optional().describe('Options for select/multi_select/status columns. For status, each option may include a group: "todo" | "in_progress" | "complete". user/multi_user store workspace member user ids and need no options.'),
         })).optional().describe('Column definitions. Omit to use default schema (Title + Status).'),
       },
     },
@@ -202,8 +202,8 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         databaseId: z.string().describe('Database ID (from list_workspace or search)'),
         addColumns: z.array(z.object({
           name: z.string().describe('Column name'),
-          type: z.string().describe('Column type: text | number | select | multi_select | date | datetime'),
-          options: z.array(z.any()).optional().describe('Select options for select/multi_select columns'),
+          type: z.string().describe('Column type: text | number | select | multi_select | status | user | multi_user | date | datetime | checkbox | url | email | phone'),
+          options: z.array(z.any()).optional().describe('Options for select/multi_select/status columns. For status, each option may include a group: "todo" | "in_progress" | "complete". user/multi_user store workspace member user ids and need no options.'),
         })).optional().describe('Columns to add'),
         removeColumnIds: z.array(z.string()).optional().describe('Column IDs to remove (use get_database_schema to find IDs). Cannot remove the title column.'),
         confirm: z.boolean().optional().default(false).describe('Required when removing columns. Set to true to confirm the destructive operation.'),

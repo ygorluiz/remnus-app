@@ -50,8 +50,8 @@ export default function KanbanLayoutSection({
 }: KanbanLayoutSectionProps) {
   const t = useTranslations('Database');
 
-  const selectColumns = schema.filter((c: any) => c.type === 'select');
-  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select');
+  const selectColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'status');
+  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select' || c.type === 'status');
   const groupColumn = schema.find((c: any) => c.id === groupByCol);
   const options = groupColumn?.options ? groupColumn.options.map((o: any) => normalizeOption(o).value) : [];
 

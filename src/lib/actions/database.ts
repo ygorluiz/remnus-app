@@ -89,7 +89,7 @@ export async function updateDatabaseSchema(id: string, newSchema: any[]) {
   // 2. Identify select/multi_select option renames
   const renames: { colId: string; type: string; oldVal: string; newVal: string }[] = [];
   for (const newCol of newSchema) {
-    if (newCol.type !== 'select' && newCol.type !== 'multi_select') continue;
+    if (newCol.type !== 'select' && newCol.type !== 'multi_select' && newCol.type !== 'status') continue;
     const oldCol = oldSchema.find((c: any) => c.id === newCol.id);
     if (!oldCol) continue;
 
@@ -127,7 +127,7 @@ export async function updateDatabaseSchema(id: string, newSchema: any[]) {
 
       for (const rename of renames) {
         const currentVal = properties[rename.colId];
-        if (rename.type === 'select') {
+        if (rename.type === 'select' || rename.type === 'status') {
           if (currentVal === rename.oldVal) {
             properties[rename.colId] = rename.newVal;
             changed = true;

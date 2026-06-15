@@ -50,7 +50,7 @@ export default function CalendarLayoutSection({
   const t = useTranslations('Database');
 
   const dateColumns = schema.filter((c: any) => c.type === 'date' || c.type === 'datetime');
-  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select');
+  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select' || c.type === 'status');
   const calAvailableCardProps = schema.filter((c: any) => c.id !== 'title' && c.id !== dateCol);
   const effectiveCalVisible: string[] =
     cardProperties !== undefined

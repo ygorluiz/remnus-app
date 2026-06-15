@@ -2,10 +2,36 @@ export type SelectOptionColor =
   | 'default' | 'red' | 'orange' | 'yellow'
   | 'green' | 'teal' | 'blue' | 'purple' | 'pink';
 
+// Status columns group their options into three work-tracking buckets.
+export type StatusGroup = 'todo' | 'in_progress' | 'complete';
+
 export interface SelectOption {
   value: string;
   color?: SelectOptionColor;
+  // Only meaningful for `status` columns — which bucket the option belongs to.
+  group?: StatusGroup;
 }
+
+export const STATUS_GROUP_ORDER: StatusGroup[] = ['todo', 'in_progress', 'complete'];
+
+// Default chip color applied to a freshly-created status option per group.
+export const STATUS_GROUP_DEFAULT_COLOR: Record<StatusGroup, SelectOptionColor> = {
+  todo: 'default',
+  in_progress: 'blue',
+  complete: 'green',
+};
+
+export function getStatusGroup(opt: string | SelectOption): StatusGroup {
+  const o = normalizeOption(opt);
+  return o.group && STATUS_GROUP_ORDER.includes(o.group) ? o.group : 'todo';
+}
+
+// The default option set a new `status` column is seeded with.
+export const DEFAULT_STATUS_OPTIONS: SelectOption[] = [
+  { value: 'Not started', color: 'default', group: 'todo' },
+  { value: 'In progress', color: 'blue', group: 'in_progress' },
+  { value: 'Done', color: 'green', group: 'complete' },
+];
 
 // Dark-theme fallbacks: semi-transparent tinted bg + bright matching text (Linear/GitHub style).
 // Light themes override via --chip-*-* CSS vars (defined in Catppuccin theme block).
@@ -59,7 +85,7 @@ export function getCardBorderDots(
   if (!colSchema) return [];
   const opts = colSchema.options ?? [];
 
-  if (colSchema.type === 'select') {
+  if (colSchema.type === 'select' || colSchema.type === 'status') {
     if (typeof value !== 'string' || !value) return [];
     return [getOptionColorByValue(opts, value).dot];
   }
@@ -83,7 +109,7 @@ export function getCardBgColor(
   if (!colSchema) return null;
   const opts = colSchema.options ?? [];
 
-  if (colSchema.type === 'select') {
+  if (colSchema.type === 'select' || colSchema.type === 'status') {
     if (typeof value !== 'string' || !value) return null;
     return getOptionColorByValue(opts, value).groupBg;
   }

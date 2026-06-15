@@ -5,10 +5,14 @@ import { X, Plus, GripVertical } from 'lucide-react';
 import {
   type SelectOption,
   type SelectOptionColor,
+  type StatusGroup,
   normalizeOption,
   getOptionColor,
+  getStatusGroup,
   SELECT_COLOR_ORDER,
   SELECT_COLORS,
+  STATUS_GROUP_DEFAULT_COLOR,
+  DEFAULT_STATUS_OPTIONS,
 } from '@/lib/types/properties';
 import { getPropertyIcon, selectCls } from './shared';
 
@@ -70,13 +74,21 @@ export default function PropertiesPanel({
               />
               <select
                 value={col.type}
-                onChange={(e) => onUpdateColumn(idx, { type: e.target.value, options: [] })}
+                onChange={(e) => {
+                  const nextType = e.target.value;
+                  // Seed sensible defaults so the new type is usable immediately.
+                  const options = nextType === 'status' ? DEFAULT_STATUS_OPTIONS : [];
+                  onUpdateColumn(idx, { type: nextType, options });
+                }}
                 disabled={isTitle}
                 className={`${selectCls} text-neutral-400 py-1 px-1.5 shrink-0 disabled:opacity-40 w-28 cursor-pointer truncate`}
               >
                 <option value="text">{t('typeText')}</option>
                 <option value="select">{t('typeSelect')}</option>
                 <option value="multi_select">{t('typeMultiSelect')}</option>
+                <option value="status">{t('typeStatus')}</option>
+                <option value="user">{t('typeUser')}</option>
+                <option value="multi_user">{t('typeMultiUser')}</option>
                 <option value="number">{t('typeNumber')}</option>
                 <option value="date">{t('typeDate')}</option>
                 <option value="datetime">{t('typeDateTime')}</option>
@@ -116,7 +128,7 @@ export default function PropertiesPanel({
               </div>
             )}
 
-            {(col.type === 'select' || col.type === 'multi_select') && (
+            {(col.type === 'select' || col.type === 'multi_select' || col.type === 'status') && (
               <div className="pl-10 pr-3 py-2 bg-neutral-900/30 border-b border-neutral-800/50">
                 <div className="flex flex-wrap gap-1 mb-1.5">
                   {(col.options || []).map((rawOpt: string | SelectOption, optIdx: number) => {
@@ -143,6 +155,26 @@ export default function PropertiesPanel({
                           className="bg-transparent border-none focus:outline-none focus:bg-white/10 px-0.5 rounded text-[10px] py-0 font-medium cursor-text"
                           style={{ color: c.text, width: `${Math.max(30, opt.value.length * 6 + 8)}px`, minWidth: '24px' }}
                         />
+                        {col.type === 'status' && (
+                          <select
+                            value={getStatusGroup(opt)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const group = e.target.value as StatusGroup;
+                              const newOpts = [...(col.options || [])].map((o: string | SelectOption, i: number) =>
+                                i === optIdx ? { ...normalizeOption(o), group } : o,
+                              );
+                              onUpdateColumn(idx, { options: newOpts });
+                            }}
+                            className="bg-black/20 border-none focus:outline-none rounded text-[9px] py-0 px-0.5 cursor-pointer ml-0.5"
+                            style={{ color: c.text }}
+                            title={t('statusGroup')}
+                          >
+                            <option value="todo">{t('statusGroupTodo')}</option>
+                            <option value="in_progress">{t('statusGroupInProgress')}</option>
+                            <option value="complete">{t('statusGroupComplete')}</option>
+                          </select>
+                        )}
                         <button
                           onClick={() => {
                             const newOpts = [...(col.options || [])];
@@ -196,7 +228,10 @@ export default function PropertiesPanel({
                       const val = e.currentTarget.value.trim();
                       const existing = (col.options || []).map((o: string | SelectOption) => normalizeOption(o).value);
                       if (val && !existing.includes(val)) {
-                        onUpdateColumn(idx, { options: [...(col.options || []), { value: val, color: 'default' }] });
+                        const newOpt: SelectOption = col.type === 'status'
+                          ? { value: val, color: STATUS_GROUP_DEFAULT_COLOR.todo, group: 'todo' }
+                          : { value: val, color: 'default' };
+                        onUpdateColumn(idx, { options: [...(col.options || []), newOpt] });
                         e.currentTarget.value = '';
                       }
                     }

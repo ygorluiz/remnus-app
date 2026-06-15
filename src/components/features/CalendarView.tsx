@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import AgentEditBadge from './AgentEditBadge';
+import { StatusChip, UserChip, UserTags } from './PropertyTags';
 import { updatePageIcon } from '@/lib/actions/page';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -551,6 +552,12 @@ export default function CalendarView({
                                   {val}
                                 </span>
                               );
+                            } else if (c.type === 'status' && typeof val === 'string') {
+                              display = <StatusChip value={val} options={c.options} iconSize={10} />;
+                            } else if (c.type === 'user') {
+                              display = <UserChip userId={String(val)} avatarSize={14} />;
+                            } else if (c.type === 'multi_user' && Array.isArray(val)) {
+                              display = <UserTags value={val} avatarSize={14} wrap={propertyTextClamp === 'wrap'} />;
                             } else if (c.type === 'multi_select' && Array.isArray(val)) {
                               display = (
                                 <span className={`flex gap-0.5 ${propertyTextClamp === 'wrap' ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>

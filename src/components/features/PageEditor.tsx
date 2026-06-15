@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { updatePageContent, updatePageProperties, duplicatePage, deletePage, updatePageIcon } from '@/lib/actions/page';
-import { ArrowLeft, X, ChevronDown, MoreHorizontal, Trash2, Copy, Smile, ArrowLeftRight, Globe, CheckSquare, Square, ExternalLink } from 'lucide-react';
+import { ArrowLeft, X, Check, ChevronDown, MoreHorizontal, Trash2, Copy, Smile, ArrowLeftRight, Globe, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -18,9 +18,13 @@ import {
   normalizeOption,
   getOptionColorByValue,
   getOptionColor,
+  getStatusGroup,
+  STATUS_GROUP_ORDER,
   formatDateValue,
 } from '@/lib/types/properties';
 import DateRangePicker from './DateRangePicker';
+import { useMembers } from './MembersContext';
+import { StatusChip, StatusIcon, UserAvatar, UserChip, UserTags } from './PropertyTags';
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timer: ReturnType<typeof setTimeout>;
@@ -51,6 +55,12 @@ export default function PageEditor({
   const tDb = useTranslations('Database');
   const tEditor = useTranslations('Editor');
   const tSharing = useTranslations('Sharing');
+  const members = useMembers();
+  const statusGroupLabel = {
+    todo: tDb('statusGroupTodo'),
+    in_progress: tDb('statusGroupInProgress'),
+    complete: tDb('statusGroupComplete'),
+  } as const;
   const [properties, setProperties] = useState<Record<string, any>>(initialPage.properties || {});
   const [icon, setIcon] = useState<string | null>(initialPage.icon);
   const [iconColor, setIconColor] = useState<string | null>(initialPage.iconColor);
@@ -432,6 +442,107 @@ export default function PageEditor({
                     </div>
                   )}
                 </div>
+              ) : col.type === 'status' ? (
+                <div className="relative flex-1 max-w-xs pt-0.5" ref={openSelectId === col.id ? selectDropdownRef : undefined}>
+                  <button
+                    onClick={() => setOpenSelectId(openSelectId === col.id ? null : col.id)}
+                    className="flex items-center gap-1.5 text-sm focus:outline-none cursor-pointer"
+                  >
+                    {val ? <StatusChip value={String(val)} options={col.options} /> : <span className="text-neutral-600 text-sm">{tDb('empty')}</span>}
+                    <ChevronDown size={12} className="text-neutral-600" />
+                  </button>
+                  {openSelectId === col.id && (
+                    <div className="absolute z-50 top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 py-1 rounded shadow-xl overflow-hidden max-h-72 overflow-y-auto" style={{ minWidth: 192 }}>
+                      <button
+                        onClick={() => { handlePropertyChange(col.id, ''); setOpenSelectId(null); }}
+                        className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer"
+                      >
+                        {tDb('empty')}
+                      </button>
+                      {STATUS_GROUP_ORDER.map((g) => {
+                        const groupOpts = (col.options || []).map(normalizeOption).filter((o: SelectOption) => getStatusGroup(o) === g);
+                        if (groupOpts.length === 0) return null;
+                        return (
+                          <div key={g}>
+                            <div className="px-3 pt-1.5 pb-0.5 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">{statusGroupLabel[g]}</div>
+                            {groupOpts.map((opt: SelectOption) => {
+                              const c = getOptionColor(opt);
+                              return (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => { handlePropertyChange(col.id, opt.value); setOpenSelectId(null); }}
+                                  className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-neutral-800 transition-colors cursor-pointer"
+                                >
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+                                    <StatusIcon group={g} color={c.dot} size={12} />
+                                    {opt.value}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (col.type === 'user' || col.type === 'multi_user') ? (
+                (() => {
+                  const isMulti = col.type === 'multi_user';
+                  const ids: string[] = isMulti ? (Array.isArray(val) ? val : []) : (val ? [String(val)] : []);
+                  const toggle = (id: string) => {
+                    if (isMulti) {
+                      handlePropertyChange(col.id, ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+                    } else {
+                      handlePropertyChange(col.id, ids[0] === id ? '' : id);
+                      setOpenSelectId(null);
+                    }
+                  };
+                  return (
+                    <div className="relative flex-1 max-w-xs pt-0.5" ref={openSelectId === col.id ? selectDropdownRef : undefined}>
+                      <button
+                        onClick={() => setOpenSelectId(openSelectId === col.id ? null : col.id)}
+                        className="flex items-center gap-1.5 text-sm focus:outline-none cursor-pointer min-h-6"
+                      >
+                        {ids.length > 0
+                          ? (isMulti ? <UserTags value={ids} /> : <UserChip userId={ids[0]} />)
+                          : <span className="text-neutral-600 text-sm">{tDb('unassigned')}</span>}
+                        <ChevronDown size={12} className="text-neutral-600 shrink-0" />
+                      </button>
+                      {openSelectId === col.id && (
+                        <div className="absolute z-50 top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 py-1 rounded shadow-xl overflow-hidden max-h-72 overflow-y-auto" style={{ minWidth: 208 }}>
+                          {!isMulti && (
+                            <button
+                              onClick={() => { handlePropertyChange(col.id, ''); setOpenSelectId(null); }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer"
+                            >
+                              {tDb('unassigned')}
+                            </button>
+                          )}
+                          {members.length === 0 && (
+                            <div className="px-3 py-2 text-xs text-neutral-600">{tDb('noMembers')}</div>
+                          )}
+                          {members.map((m) => {
+                            const sel = ids.includes(m.id);
+                            return (
+                              <button
+                                key={m.id}
+                                onClick={() => toggle(m.id)}
+                                className={`w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-neutral-800 transition-colors cursor-pointer ${sel ? 'bg-neutral-850' : ''}`}
+                              >
+                                <span className="inline-flex items-center gap-2 min-w-0">
+                                  <UserAvatar member={m} size={18} />
+                                  <span className="text-xs text-neutral-200 truncate">{m.name || m.email}</span>
+                                </span>
+                                {sel && <Check size={12} className="text-neutral-400 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
               ) : (col.type === 'date' || col.type === 'datetime') ? (
                 <div className="relative">
                   <button

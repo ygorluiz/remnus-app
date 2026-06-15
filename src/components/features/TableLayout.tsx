@@ -5,7 +5,8 @@ import { getOptionColorByValue, formatDateValue, normalizeOption, type SelectOpt
 import { useTranslations } from 'next-intl';
 import { useZoom } from '@/components/providers/ZoomProvider';
 import InlineCellEditor from './InlineCellEditor';
-import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, Plus, Copy, EyeOff, ArrowUp, ArrowDown, Filter, X, RotateCcw, CheckSquare, Square, ExternalLink } from 'lucide-react';
+import { StatusChip, UserChip, UserTags } from './PropertyTags';
+import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, CircleDashed, User, Users, Plus, Copy, EyeOff, ArrowUp, ArrowDown, Filter, X, RotateCcw, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import type { ViewFilter, ViewSort, FilterOperator } from '@/lib/types/views';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
@@ -18,6 +19,9 @@ function getPropertyIcon(type: string) {
     case 'text':         return <Type size={11} className="text-neutral-600" />;
     case 'select':       return <List size={11} className="text-neutral-600" />;
     case 'multi_select': return <Tags size={11} className="text-neutral-600" />;
+    case 'status':       return <CircleDashed size={11} className="text-neutral-600" />;
+    case 'user':         return <User size={11} className="text-neutral-600" />;
+    case 'multi_user':   return <Users size={11} className="text-neutral-600" />;
     case 'number':       return <Hash size={11} className="text-neutral-600" />;
     case 'date':         return <Calendar size={11} className="text-neutral-600" />;
     case 'datetime':     return <Clock size={11} className="text-neutral-600" />;
@@ -656,6 +660,12 @@ export default function TableLayout({
                               <span className="text-neutral-500">—</span>
                             )}
                           </span>
+                        ) : col.type === 'status' ? (
+                          val ? <StatusChip value={val} options={col.options} /> : <span className="text-neutral-500">—</span>
+                        ) : col.type === 'user' ? (
+                          val ? <UserChip userId={String(val)} /> : <span className="text-neutral-500">—</span>
+                        ) : col.type === 'multi_user' ? (
+                          Array.isArray(val) && val.length > 0 ? <UserTags value={val} /> : <span className="text-neutral-500">—</span>
                         ) : (col.type === 'date' || col.type === 'datetime') ? (
                           <span className="text-xs text-neutral-100">{val ? formatDateValue(val, col.type, col.dateFormat) : '—'}</span>
                         ) : col.type === 'checkbox' ? (
@@ -894,7 +904,7 @@ export default function TableLayout({
                       </div>
                       {opDef?.needsValue && (() => {
                         const colSchema = schema.find((c) => c.id === activeHeaderMenuColId);
-                        if (colSchema && (colSchema.type === 'select' || colSchema.type === 'multi_select')) {
+                        if (colSchema && (colSchema.type === 'select' || colSchema.type === 'multi_select' || colSchema.type === 'status')) {
                           let selectedList: string[] = [];
                           if (activeFilter.value) {
                             if (activeFilter.value.startsWith('[') && activeFilter.value.endsWith(']')) {
