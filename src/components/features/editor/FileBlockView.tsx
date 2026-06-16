@@ -80,9 +80,8 @@ export default function FileBlockView({
               {size > 0 && <div className="text-xs text-neutral-500">{formatSize(size)}</div>}
             </div>
             <a
-              href={downloadUrl || safeUrl || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={downloadUrl || '#'}
+              download={name || true}
               className="shrink-0 p-1.5 rounded text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 transition-colors"
               title={t('fileDownload')}
             >
