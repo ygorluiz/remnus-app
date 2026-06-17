@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getOptionColorByValue, getCardBorderDots, getCardBgColor, formatDateValue } from '@/lib/types/properties';
-import { ChevronLeft, ChevronRight, GripVertical, Settings, Trash2, Calendar as CalendarIcon, Clock, Plus, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical, Trash2, Calendar as CalendarIcon, Clock, Plus, Copy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
@@ -120,7 +120,6 @@ export default function CalendarView({
   cardProperties,
   showPropertyLabels = true,
   propertyTextClamp = 'truncate',
-  onUpdatePageProperties,
   onCreatePage,
   defaultPageIcon,
   defaultPageIconColor,
@@ -130,7 +129,10 @@ export default function CalendarView({
   const tPage = useTranslations('Page');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [activeIconPickerPageId, setActiveIconPickerPageId] = useState<string | null>(null);
-  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  // Anchor for the open icon picker — set from the button's click handler (an
+  // event handler, so no ref access during render) instead of reading a
+  // per-row ref map mid-render.
+  const activeAnchorRef = useRef<HTMLButtonElement | null>(null);
 
   const handleCalendarIconSelect = (pageId: string, newIcon: string | null, newColor: string | null) => {
     onPageIconChange?.(pageId, newIcon, newColor);
@@ -286,13 +288,19 @@ export default function CalendarView({
           </span>
         </div>
 
-        {/* Small badge of dateCol binding */}
-        <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 bg-neutral-900/30 border border-neutral-850 px-2 py-0.5 uppercase tracking-wider rounded">
+        {/* Small badge of dateCol binding — desktop only; on mobile it collides
+            with the nav row and is secondary info (set in Layout settings). */}
+        <div className="hidden lg:flex items-center gap-1.5 text-[10px] text-neutral-500 bg-neutral-900/30 border border-neutral-850 px-2 py-0.5 uppercase tracking-wider rounded">
           <Clock size={10} />
           <span>Mapped to: {dateProperty?.name || 'Unknown'}</span>
         </div>
       </div>
 
+      {/* Scrollable calendar body — on phones a 7-col month grid squeezes each
+          day to ~50px (unreadable). Give it a usable min-width and let the
+          weekday row + grid scroll horizontally together; desktop is unchanged. */}
+      <div className="overflow-x-auto">
+      <div className="min-w-170 lg:min-w-0">
       {/* Weekdays names row */}
       <div className="grid grid-cols-7 border-b border-neutral-800/80 bg-neutral-900/10 shrink-0 select-none">
         {(firstDayOfWeek === 'monday' ? WEEKDAYS_MON : WEEKDAYS_SUN).map((day) => (
@@ -343,7 +351,7 @@ export default function CalendarView({
                   setDraggedCardId(null);
                   setIsCardDragReady(false);
                 }}
-                className={`border-r border-b border-neutral-800/80 p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
+                className={`border-r border-b border-neutral-800/80 p-1 lg:p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
                   !isCurrentMonth && viewMode === 'month' ? 'bg-neutral-950/20' : 'bg-transparent'
                 } ${isDragOver ? 'bg-neutral-800/15' : ''}`}
               >
@@ -383,7 +391,6 @@ export default function CalendarView({
                     const borderDots = getCardBorderDots(colorColSchema, page.properties[cardColorCol ?? '']);
                     const bgColSchema = cardBgCol ? schema.find((c) => c.id === cardBgCol) : null;
                     const bgColor = getCardBgColor(bgColSchema, page.properties[cardBgCol ?? '']);
-                    const isHorizontalBorder = cardBorderSide === 'top' || cardBorderSide === 'bottom';
                     const borderLineClass = cardBorderSide === 'top'
                       ? 'absolute top-0 inset-x-0 h-0.75 flex flex-row'
                       : cardBorderSide === 'right'
@@ -406,7 +413,7 @@ export default function CalendarView({
                         setDraggedCardId(page.id);
                         setIsCardDragReady(false);
                       }}
-                      className={`relative py-2.5 px-2 cursor-pointer transition-colors group flex flex-col select-none overflow-hidden rounded ${
+                      className={`relative py-1 lg:py-2.5 px-1 lg:px-2 cursor-pointer transition-colors group flex flex-col select-none overflow-hidden rounded ${
                         draggedCardId === page.id ? 'opacity-25' : ''
                       }`}
                       style={{ backgroundColor: bgColor ?? 'rgba(64,68,75,0.55)' }}
@@ -418,9 +425,11 @@ export default function CalendarView({
                           ))}
                         </div>
                       )}
-                      {/* Hover Actions */}
+                      {/* Hover Actions — desktop only (drag-reschedule uses HTML5
+                          DnD which doesn't fire on touch; the invisible grip also
+                          stole taps meant to open the card on mobile). */}
                       <div
-                        className="absolute right-1 top-1.5 opacity-0 group-hover:opacity-100 flex items-center transition-opacity z-10"
+                        className="hidden lg:flex absolute right-1 top-1.5 opacity-0 group-hover:opacity-100 items-center transition-opacity z-10"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* Drag handle & Actions */}
@@ -493,13 +502,13 @@ export default function CalendarView({
                       )}
 
                       {/* Page Title */}
-                      <h4 className={`text-sm text-neutral-100 group-hover:text-neutral-50 font-medium leading-snug pr-8 mb-1 flex items-center gap-1 ${propertyTextClamp === 'truncate' ? 'overflow-hidden' : 'wrap-break-word whitespace-normal overflow-visible'}`}>
-                        <div className="relative shrink-0 select-none">
+                      <h4 className={`text-[11px] lg:text-sm text-neutral-100 group-hover:text-neutral-50 font-medium leading-snug pr-1 lg:pr-8 mb-0 lg:mb-1 flex items-center gap-1 ${propertyTextClamp === 'truncate' ? 'overflow-hidden' : 'wrap-break-word whitespace-normal overflow-visible'}`}>
+                        <div className="relative shrink-0 select-none hidden lg:block">
                           <button
-                            ref={(el) => { itemRefs.current[page.id] = el; }}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
+                              activeAnchorRef.current = e.currentTarget;
                               setActiveIconPickerPageId(activeIconPickerPageId === page.id ? null : page.id);
                             }}
                             className="hover:bg-neutral-800 p-0.5 rounded transition-colors flex items-center justify-center cursor-pointer"
@@ -519,7 +528,7 @@ export default function CalendarView({
                               currentIconColor={page.iconColor}
                               onSelect={(newIcon, newColor) => handleCalendarIconSelect(page.id, newIcon, newColor)}
                               onClose={() => setActiveIconPickerPageId(null)}
-                              anchorRef={{ current: itemRefs.current[page.id] }}
+                              anchorRef={activeAnchorRef}
                             />
                           )}
                         </div>
@@ -533,8 +542,9 @@ export default function CalendarView({
                         className="absolute bottom-0 right-0 rounded-tl-xl p-1.5 z-10 translate-x-0.5 translate-y-0.5"
                       />
 
-                      {/* Card properties */}
-                      <div className="mt-1.5 flex flex-col gap-1.5 select-none shrink-0">
+                      {/* Card properties — hidden on mobile for a compact,
+                          Google/iOS-calendar-style title-only card. */}
+                      <div className="mt-1.5 hidden lg:flex flex-col gap-1.5 select-none shrink-0">
                         {propsToShow.map((c) => {
                             const val = page.properties[c.id];
                             const isEmpty =
@@ -604,6 +614,8 @@ export default function CalendarView({
             );
           })}
         </div>
+      </div>
+      </div>
       </div>
       {confirmDeleteId && (
         <ConfirmDialog

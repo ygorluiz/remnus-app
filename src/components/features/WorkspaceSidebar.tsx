@@ -63,6 +63,7 @@ const TIER_BADGE: Record<PlanTier, { color: string; background: string; borderCo
   enterprise:   { color: 'var(--color-amber-500)',     background: 'rgba(204,125,69,0.12)',  borderColor: 'rgba(204,125,69,0.40)' },
 };
 import { useWorkspaceEvents } from '@/hooks/useWorkspaceEvents';
+import { useTabs } from '@/components/providers/TabsContext';
 
 function isDescendant(items: WorkspaceItemRow[], targetId: string, ancestorId: string): boolean {
   const target = items.find(i => i.id === targetId);
@@ -107,6 +108,7 @@ export default function WorkspaceSidebar({
   const tBilling = useTranslations('Billing');
   const router = useRouter();
   const pathname = usePathname();
+  const tabs = useTabs();
   const [isPending, startTransition] = useTransition();
   const [isSaving, startSaveTransition] = useTransition();
   const [avatarError, setAvatarError] = useState(false);
@@ -1102,6 +1104,28 @@ export default function WorkspaceSidebar({
                               <Link
                                 href={hrefFor(item)}
                                 className="truncate flex-1 min-w-0 block py-0.5"
+                                onClick={(e) => {
+                                  // Tauri tabs: Ctrl/Cmd+click opens in a new tab.
+                                  if (tabs && (e.metaKey || e.ctrlKey)) {
+                                    e.preventDefault();
+                                    tabs.openInNewTab(hrefFor(item), {
+                                      title: item.title,
+                                      icon: item.icon,
+                                      iconColor: item.iconColor,
+                                    });
+                                  }
+                                }}
+                                onAuxClick={(e) => {
+                                  // Tauri tabs: middle-click opens in a new tab.
+                                  if (tabs && e.button === 1) {
+                                    e.preventDefault();
+                                    tabs.openInNewTab(hrefFor(item), {
+                                      title: item.title,
+                                      icon: item.icon,
+                                      iconColor: item.iconColor,
+                                    });
+                                  }
+                                }}
                               >
                                 {item.title}
                               </Link>

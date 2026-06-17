@@ -2,7 +2,12 @@
   "Layout": {
     "demoMode": "Demo-Modus",
     "demoChangesNote": "Änderungen sind vorübergehend und werden für jeden Besucher zurückgesetzt.",
-    "createFreeAccount": "Kostenloses Konto erstellen →"
+    "createFreeAccount": "Kostenloses Konto erstellen →",
+    "tabNewTooltip": "Neuer Tab",
+    "tabClose": "Schließen",
+    "tabCloseOthers": "Andere schließen",
+    "tabCloseAll": "Alle schließen",
+    "tabUntitled": "Ohne Titel"
   },
   "Home": {
     "welcomeTitle": "Willkommen bei Remnus",
@@ -553,7 +558,11 @@
     "blockHandleTooltip": "Ziehen zum Verschieben, klicken für Aktionen",
     "blockNestInside": "Darin einbetten",
     "blockDuplicate": "Duplizieren",
+    "blockCopy": "Kopieren",
     "blockDelete": "Löschen",
+    "blockMoveUp": "Nach oben",
+    "blockMoveDown": "Nach unten",
+    "blockToggleCollapse": "Ein-/ausklappen",
     "codeShowMore": "Mehr anzeigen",
     "codeShowLess": "Weniger anzeigen",
     "codeCopy": "Kopieren",

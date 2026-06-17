@@ -1,12 +1,13 @@
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import type { EditorView } from '@tiptap/pm/view';
 import type { Node as PmNode } from '@tiptap/pm/model';
 
 export interface BlockSelectionState {
   /** Sorted positions of selected visual blocks (top-level or listItem/taskItem). */
   selected: number[];
-  /** The anchor block position where drag/shift-click started. */
+  /** The anchor block position where the selection started (for shift+click / arrows). */
   anchor: number | null;
 }
 
@@ -65,7 +66,7 @@ export function allVisualBlocks(doc: PmNode): number[] {
 
 /**
  * Return positions of all visual blocks between anchor and head (inclusive),
- * preserving document order regardless of drag direction.
+ * preserving document order regardless of direction.
  */
 function blocksBetween(doc: PmNode, anchorPos: number, headPos: number): number[] {
   const all = allVisualBlocks(doc);
@@ -85,17 +86,41 @@ function makeDecorations(doc: PmNode, selected: number[]): DecorationSet {
   return DecorationSet.create(doc, decos);
 }
 
+/** Standard AABB intersection between two viewport-space rectangles. */
+function rectsIntersect(
+  a: { left: number; top: number; right: number; bottom: number },
+  b: { left: number; top: number; right: number; bottom: number },
+): boolean {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+
+/** Walk up from `el` to find the nearest scrollable ancestor (fallback: documentElement). */
+function findScrollParent(el: HTMLElement): HTMLElement {
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const style = getComputedStyle(node);
+    const oy = style.overflowY;
+    if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return document.documentElement;
+}
+
+/** True if the event target is (or sits inside) an interactive element we must not hijack. */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || typeof el.closest !== 'function') return false;
+  return !!el.closest('button, a, input, textarea, select, [data-drag-handle], [contenteditable="true"] [contenteditable="false"]');
+}
+
 // ── Extension ─────────────────────────────────────────────────────────────────
 
 export const BlockSelection = Extension.create({
   name: 'blockSelection',
 
   addProseMirrorPlugins() {
-    let dragAnchorPos: number | null = null;
-    let inBlockMode = false;
-    let rafId: number | null = null;
-    let cleanupDrag: (() => void) | null = null;
-
     return [
       new Plugin({
         key: blockSelectionKey,
@@ -105,7 +130,7 @@ export const BlockSelection = Extension.create({
           apply(tr, prev) {
             const meta = tr.getMeta(blockSelectionKey);
             if (meta !== undefined) return meta as BlockSelectionState;
-            // Clear on any document changes (typing, formatting) that aren't from this plugin
+            // Clear on any document change (typing/formatting) not driven by this plugin.
             if (prev.selected.length && tr.docChanged) return EMPTY;
             return prev;
           },
@@ -119,132 +144,39 @@ export const BlockSelection = Extension.create({
           },
 
           handleDOMEvents: {
-            // When in block-drag mode, intercept PM's own mousemove so it doesn't
-            // extend its text selection. PM checks the return value of dispatchEvent
-            // and skips updateSelection when a plugin returns true.
-            mousemove(_view, _event) {
-              return inBlockMode;
-            },
-
+            // Shift+click on a block extends an existing block selection; a plain
+            // click inside the editor clears any block selection (and falls through
+            // so ProseMirror still places the cursor normally).
             mousedown(view, event) {
               if (event.button !== 0) return false;
 
-              // Clean up any previous drag listeners
-              cleanupDrag?.();
-              cleanupDrag = null;
-              if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-              inBlockMode = false;
-              dragAnchorPos = null;
-
-              const coords = { left: event.clientX, top: event.clientY };
-              const posInfo = view.posAtCoords(coords);
-              if (!posInfo) return false;
-
-              const blockPos = resolveVisualBlockPos(view.state.doc, posInfo.pos);
-
-              // ── Shift+click anywhere: extend existing block selection ────────
               if (event.shiftKey) {
                 const cur = getBlockSelection(view.state);
-                if (cur.selected.length && cur.anchor != null && blockPos != null) {
-                  event.preventDefault();
-                  const selected = blocksBetween(view.state.doc, cur.anchor, blockPos);
-                  view.dispatch(
-                    view.state.tr.setMeta(blockSelectionKey, { selected, anchor: cur.anchor })
-                  );
-                  return true;
+                if (cur.selected.length && cur.anchor != null) {
+                  const posInfo = view.posAtCoords({ left: event.clientX, top: event.clientY });
+                  const blockPos = posInfo ? resolveVisualBlockPos(view.state.doc, posInfo.pos) : null;
+                  if (blockPos != null) {
+                    event.preventDefault();
+                    const selected = blocksBetween(view.state.doc, cur.anchor, blockPos);
+                    view.dispatch(view.state.tr.setMeta(blockSelectionKey, { selected, anchor: cur.anchor }));
+                    return true;
+                  }
                 }
               }
 
-              // ── Regular click: clear any existing block selection ────────────
+              // Plain click inside the text → drop any block selection.
               const cur = getBlockSelection(view.state);
               if (cur.selected.length) {
                 view.dispatch(view.state.tr.setMeta(blockSelectionKey, EMPTY));
               }
-
-              if (blockPos == null) return false;
-
-              // Record anchor for potential cross-block drag (any click in the editor).
-              // We return false here so ProseMirror handles cursor placement normally.
-              // Block mode only activates in the mousemove handler when the pointer
-              // crosses into a different block.
-              dragAnchorPos = blockPos;
-
-              const onMouseMove = (e: MouseEvent) => {
-                if (dragAnchorPos == null) return;
-
-                const coords = { left: e.clientX, top: e.clientY };
-                const posInfo = view.posAtCoords(coords);
-                if (!posInfo) return;
-
-                const headPos = resolveVisualBlockPos(view.state.doc, posInfo.pos);
-                if (headPos == null) return;
-
-                if (!inBlockMode) {
-                  // Only enter block mode when the pointer crosses into a different block
-                  if (headPos === dragAnchorPos) return;
-                  inBlockMode = true;
-                  view.dom.classList.add('block-selecting');
-                  document.getSelection()?.removeAllRanges();
-                  // Collapse PM's text selection in the same transaction so PM's
-                  // selectionToDOM doesn't keep re-applying the text selection highlight,
-                  // and BubbleMenuBar sees hasBlockSelection=true immediately.
-                  const collapseAt = Math.min(dragAnchorPos! + 1, view.state.doc.content.size - 1);
-                  try {
-                    const collapsed = TextSelection.near(view.state.doc.resolve(collapseAt));
-                    view.dispatch(
-                      view.state.tr
-                        .setSelection(collapsed)
-                        .setMeta(blockSelectionKey, { selected: [dragAnchorPos!], anchor: dragAnchorPos! })
-                    );
-                    // PM's selectionToDOM may re-add a selection range; clear it again
-                    document.getSelection()?.removeAllRanges();
-                  } catch { /* ignore if position invalid */ }
-                }
-
-                const selected = blocksBetween(view.state.doc, dragAnchorPos!, headPos);
-                const curSel = getBlockSelection(view.state);
-
-                if (
-                  curSel.anchor === dragAnchorPos &&
-                  curSel.selected.length === selected.length &&
-                  curSel.selected.every((p, i) => p === selected[i])
-                ) return;
-
-                if (rafId) cancelAnimationFrame(rafId);
-                const capturedAnchor = dragAnchorPos;
-                rafId = requestAnimationFrame(() => {
-                  view.dispatch(
-                    view.state.tr.setMeta(blockSelectionKey, { selected, anchor: capturedAnchor })
-                  );
-                  rafId = null;
-                });
-              };
-
-              const onMouseUp = () => {
-                view.dom.classList.remove('block-selecting');
-                cleanupDrag?.();
-                cleanupDrag = null;
-                inBlockMode = false;
-                dragAnchorPos = null;
-              };
-
-              document.addEventListener('mousemove', onMouseMove);
-              document.addEventListener('mouseup', onMouseUp, { once: true });
-              cleanupDrag = () => {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-              };
-
-              return false; // Let ProseMirror place cursor normally; block mode starts on cross-block drag
+              return false;
             },
           },
 
           handleKeyDown(view, event) {
             const s = getBlockSelection(view.state);
 
-            // Escape — two modes:
-            // 1. Blocks already selected → clear the selection
-            // 2. No blocks selected (normal editing) → select the current block (Notion-style)
+            // Escape — select the current block (no selection) / clear it (selection).
             if (event.key === 'Escape') {
               if (s.selected.length) {
                 view.dispatch(view.state.tr.setMeta(blockSelectionKey, EMPTY));
@@ -252,9 +184,7 @@ export const BlockSelection = Extension.create({
               } else {
                 const pos = resolveVisualBlockPos(view.state.doc, view.state.selection.from);
                 if (pos != null) {
-                  view.dispatch(
-                    view.state.tr.setMeta(blockSelectionKey, { selected: [pos], anchor: pos })
-                  );
+                  view.dispatch(view.state.tr.setMeta(blockSelectionKey, { selected: [pos], anchor: pos }));
                 }
               }
               return true;
@@ -262,10 +192,10 @@ export const BlockSelection = Extension.create({
 
             if (!s.selected.length) return false;
 
-            // Delete / Backspace → delete all selected blocks
+            // Delete / Backspace → remove all selected blocks (high → low).
             if (event.key === 'Delete' || event.key === 'Backspace') {
               event.preventDefault();
-              const sorted = [...s.selected].sort((a, b) => b - a); // high → low
+              const sorted = [...s.selected].sort((a, b) => b - a);
               let tr = view.state.tr;
               for (const pos of sorted) {
                 const mappedPos = tr.mapping.map(pos);
@@ -278,7 +208,7 @@ export const BlockSelection = Extension.create({
               return true;
             }
 
-            // ArrowUp / ArrowDown → extend / shrink selection
+            // ArrowUp / ArrowDown → grow/shrink the selection from the anchor.
             if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
               event.preventDefault();
               const allBlocks = allVisualBlocks(view.state.doc);
@@ -294,16 +224,173 @@ export const BlockSelection = Extension.create({
               const nextIdx = isDown ? headIdx + 1 : headIdx - 1;
               if (nextIdx < 0 || nextIdx >= allBlocks.length) return true;
 
-              const newHead = allBlocks[nextIdx];
-              const newSelected = blocksBetween(view.state.doc, anchor, newHead);
-              view.dispatch(
-                view.state.tr.setMeta(blockSelectionKey, { selected: newSelected, anchor })
-              );
+              const newSelected = blocksBetween(view.state.doc, anchor, allBlocks[nextIdx]);
+              view.dispatch(view.state.tr.setMeta(blockSelectionKey, { selected: newSelected, anchor }));
               return true;
             }
 
             return false;
           },
+        },
+
+        // Marquee (rubber-band) selection: drag from the empty margin/gutter area
+        // around the content to select blocks by rectangle intersection — like a
+        // desktop file-area selection. Lives in the plugin's view() so it can attach
+        // document-level listeners that catch mousedowns in the page padding (which
+        // never reach ProseMirror's own DOM).
+        view(editorView: EditorView) {
+          let marqueeEl: HTMLDivElement | null = null;
+          let startX = 0;
+          let startY = 0;
+          let active = false;
+          let rafId: number | null = null;
+
+          // The padded content column (ancestor wider than the editor, providing the
+          // left/right margins the user drags from). Falls back to the editor itself.
+          const findColumn = (): HTMLElement => {
+            const pmRect = editorView.dom.getBoundingClientRect();
+            let node: HTMLElement | null = editorView.dom.parentElement;
+            while (node) {
+              const r = node.getBoundingClientRect();
+              if (r.left < pmRect.left - 4 || r.right > pmRect.right + 4) return node;
+              node = node.parentElement;
+            }
+            return editorView.dom;
+          };
+
+          const lastBlockBottom = (): number => {
+            const blocks = allVisualBlocks(editorView.state.doc);
+            let bottom = editorView.dom.getBoundingClientRect().top;
+            for (const pos of blocks) {
+              const dom = editorView.nodeDOM(pos) as HTMLElement | null;
+              if (dom && typeof dom.getBoundingClientRect === 'function') {
+                bottom = Math.max(bottom, dom.getBoundingClientRect().bottom);
+              }
+            }
+            return bottom;
+          };
+
+          const computeSelected = (rect: { left: number; top: number; right: number; bottom: number }): number[] => {
+            const blocks = allVisualBlocks(editorView.state.doc);
+            const out: number[] = [];
+            for (const pos of blocks) {
+              const dom = editorView.nodeDOM(pos) as HTMLElement | null;
+              if (!dom || typeof dom.getBoundingClientRect !== 'function') continue;
+              if (rectsIntersect(rect, dom.getBoundingClientRect())) out.push(pos);
+            }
+            return out;
+          };
+
+          const onMouseMove = (e: MouseEvent) => {
+            if (!active) return;
+            e.preventDefault();
+
+            const left = Math.min(startX, e.clientX);
+            const top = Math.min(startY, e.clientY);
+            const right = Math.max(startX, e.clientX);
+            const bottom = Math.max(startY, e.clientY);
+
+            if (marqueeEl) {
+              marqueeEl.style.left = `${left}px`;
+              marqueeEl.style.top = `${top}px`;
+              marqueeEl.style.width = `${right - left}px`;
+              marqueeEl.style.height = `${bottom - top}px`;
+            }
+
+            const selected = computeSelected({ left, top, right, bottom });
+            const cur = getBlockSelection(editorView.state);
+            if (
+              cur.selected.length === selected.length &&
+              cur.selected.every((p, i) => p === selected[i])
+            ) return;
+
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+              const anchor = selected.length ? selected[0] : null;
+              editorView.dispatch(editorView.state.tr.setMeta(blockSelectionKey, { selected, anchor }));
+              rafId = null;
+            });
+          };
+
+          const teardown = () => {
+            active = false;
+            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.classList.remove('block-marquee-active');
+            if (marqueeEl) { marqueeEl.remove(); marqueeEl = null; }
+          };
+
+          const onMouseUp = () => {
+            teardown();
+          };
+
+          const onMouseDown = (event: MouseEvent) => {
+            if (event.button !== 0 || event.shiftKey) return;
+            if (isInteractiveTarget(event.target)) return;
+
+            const pmRect = editorView.dom.getBoundingClientRect();
+            const colRect = findColumn().getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const x = event.clientX;
+            const y = event.clientY;
+            const bottomEdge = lastBlockBottom();
+
+            // Must be within the content column horizontally and within the editor's
+            // vertical span. The lower bound extends to the scroll container's bottom
+            // so the whole empty area under the last block (the blank space when the
+            // page ends short) can start a marquee — Notion-style.
+            const inColumnX = x >= colRect.left && x <= colRect.right;
+            const inVerticalSpan = y >= pmRect.top - 4 && y <= containerRect.bottom;
+
+            // Empty-area zones (NOT over text): left margin, right margin, or below
+            // the last block. Clicking directly on text falls through to ProseMirror.
+            const inLeftMargin = x < pmRect.left;
+            const inRightMargin = x > pmRect.right;
+            const belowContent = y > bottomEdge;
+            const isEmptyZone = inLeftMargin || inRightMargin || belowContent;
+
+            if (!inColumnX || !inVerticalSpan || !isEmptyZone) {
+              // Clicking empty space (not text) with an active selection clears it.
+              const cur = getBlockSelection(editorView.state);
+              if (cur.selected.length && (inLeftMargin || inRightMargin || belowContent)) {
+                editorView.dispatch(editorView.state.tr.setMeta(blockSelectionKey, EMPTY));
+              }
+              return;
+            }
+
+            event.preventDefault();
+            // Drop any text selection / block selection before starting fresh.
+            document.getSelection()?.removeAllRanges();
+            editorView.dispatch(editorView.state.tr.setMeta(blockSelectionKey, EMPTY));
+
+            startX = x;
+            startY = y;
+            active = true;
+            document.body.classList.add('block-marquee-active');
+
+            marqueeEl = document.createElement('div');
+            marqueeEl.className = 'block-marquee';
+            marqueeEl.style.left = `${x}px`;
+            marqueeEl.style.top = `${y}px`;
+            marqueeEl.style.width = '0px';
+            marqueeEl.style.height = '0px';
+            document.body.appendChild(marqueeEl);
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp, { once: true });
+          };
+
+          // Listen on the editor's scroll container so margin mousedowns are caught.
+          const container = findScrollParent(editorView.dom);
+          container.addEventListener('mousedown', onMouseDown);
+
+          return {
+            destroy() {
+              teardown();
+              container.removeEventListener('mousedown', onMouseDown);
+            },
+          };
         },
       }),
     ];

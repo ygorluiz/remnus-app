@@ -223,25 +223,27 @@ export default function PageEditor({
               </button>
               {openMenu && (
                 <div className="absolute right-0 top-full mt-1.5 z-50 bg-neutral-850 border border-neutral-800 shadow-xl py-1.5 w-44 rounded overflow-hidden text-left animate-fade-in animate-duration-100">
-                  {/* Width */}
-                  <p className="px-3 pt-0.5 pb-1 text-[9px] font-semibold text-neutral-600 uppercase tracking-widest">
-                    {widthLabels[widthMode]}
-                  </p>
-                  {(['narrow', 'wide', 'full'] as WidthMode[]).map(w => (
-                    <button
-                      key={w}
-                      onClick={() => { setWidthMode(w); localStorage.setItem(`page-width-${initialPage.id}`, w); setOpenMenu(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors cursor-pointer ${
-                        widthMode === w ? 'text-blue-400 bg-blue-500/8' : 'text-neutral-300 hover:bg-neutral-800'
-                      }`}
-                    >
-                      <ArrowLeftRight size={12} className={widthMode === w ? 'text-blue-400' : 'text-neutral-600'} />
-                      {widthLabels[w]}
-                      {widthMode === w && <span className="ml-auto text-[9px] text-blue-400">✓</span>}
-                    </button>
-                  ))}
+                  {/* Width — desktop only; mobile rows are always full-bleed. */}
+                  <div className="hidden lg:block">
+                    <p className="px-3 pt-0.5 pb-1 text-[9px] font-semibold text-neutral-600 uppercase tracking-widest">
+                      {widthLabels[widthMode]}
+                    </p>
+                    {(['narrow', 'wide', 'full'] as WidthMode[]).map(w => (
+                      <button
+                        key={w}
+                        onClick={() => { setWidthMode(w); localStorage.setItem(`page-width-${initialPage.id}`, w); setOpenMenu(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors cursor-pointer ${
+                          widthMode === w ? 'text-blue-400 bg-blue-500/8' : 'text-neutral-300 hover:bg-neutral-800'
+                        }`}
+                      >
+                        <ArrowLeftRight size={12} className={widthMode === w ? 'text-blue-400' : 'text-neutral-600'} />
+                        {widthLabels[w]}
+                        {widthMode === w && <span className="ml-auto text-[9px] text-blue-400">✓</span>}
+                      </button>
+                    ))}
 
-                  <div className="border-t border-neutral-800 my-1" />
+                    <div className="border-t border-neutral-800 my-1" />
+                  </div>
 
                   {/* Share */}
                   <button

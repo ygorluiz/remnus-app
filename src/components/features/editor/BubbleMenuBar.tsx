@@ -60,15 +60,20 @@ const TEXT_COLORS: Array<{ label: string; value: string | null }> = [
   { label: 'Gray',   value: '#9ca3af' },
 ];
 
+// Semi-transparent so the highlight blends with whatever theme background sits
+// behind it — soft/pastel on both dark and light themes (a fixed opaque hex
+// looked garish on dark and far too dark on light). The color is baked into the
+// content (inline style), so it can't be theme-swapped; rgba keeps it tasteful
+// everywhere. `null` = remove highlight.
 const HIGHLIGHT_COLORS: Array<{ label: string; value: string | null }> = [
   { label: 'None',   value: null },
-  { label: 'Red',    value: '#5c1a1a' },
-  { label: 'Orange', value: '#5c3010' },
-  { label: 'Yellow', value: '#4d3d00' },
-  { label: 'Green',  value: '#0f3d1f' },
-  { label: 'Blue',   value: '#0a2a4a' },
-  { label: 'Purple', value: '#2d1050' },
-  { label: 'Pink',   value: '#4a0d2b' },
+  { label: 'Red',    value: 'rgba(248, 113, 113, 0.25)' },
+  { label: 'Orange', value: 'rgba(251, 146, 60, 0.25)' },
+  { label: 'Yellow', value: 'rgba(250, 204, 21, 0.28)' },
+  { label: 'Green',  value: 'rgba(74, 222, 128, 0.25)' },
+  { label: 'Blue',   value: 'rgba(96, 165, 250, 0.25)' },
+  { label: 'Purple', value: 'rgba(192, 132, 252, 0.25)' },
+  { label: 'Pink',   value: 'rgba(244, 114, 182, 0.25)' },
 ];
 
 type Bounds = { minTop: number; maxBottom: number; minLeft: number; maxRight: number };

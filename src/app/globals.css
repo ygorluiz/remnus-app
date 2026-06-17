@@ -385,6 +385,22 @@ pre,
   background: var(--color-neutral-800);
 }
 
+/* Touch / no-hover devices (phones, tablets): there is no hover and HTML5 drag
+   doesn't fire, so block actions move into a tap-driven "⋮" menu anchored to the
+   focused block (BlockDragHandle, coarse-pointer mode) — including collapse, so
+   the always-on heading chevron is dropped here. Give the editor a small left
+   gutter lane so the "⋮" button sits clear of the text. */
+@media (hover: none) {
+  .prose-editor {
+    padding-left: 1.5rem;
+  }
+  /* Collapse lives in the "⋮" menu on touch — hide the gutter chevron entirely
+     (even on hybrid hover+touch devices) so it can't show or steal taps. */
+  .heading-collapse-btn {
+    display: none;
+  }
+}
+
 /* Content nodes below a collapsed heading are hidden via ProseMirror decoration */
 .heading-collapsed-child {
   display: none;
@@ -397,9 +413,10 @@ pre,
   margin-top: 0;
 }
 
-.prose-editor strong { color: var(--color-neutral-100); font-weight: 600; }
-.prose-editor em { color: var(--color-neutral-200); font-style: italic; }
-.prose-editor s { color: var(--color-neutral-500); }
+/* Marks inherit color so an explicit text color survives bold/italic/strike. */
+.prose-editor strong { color: inherit; font-weight: 600; }
+.prose-editor em { color: inherit; font-style: italic; }
+.prose-editor s { color: inherit; }
 .prose-editor a {
   color: #8aa6ee;
   text-decoration: underline;
@@ -704,19 +721,29 @@ pre,
 /* Block selection — Notion-style multi-block highlight */
 .prose-editor .block-selected {
   background-color: rgba(68, 92, 149, 0.18);
-  border-radius: 3px;
+  border-radius: 8px;
 }
 /* List items need a small negative margin to cover the bullet area */
 .prose-editor li.block-selected {
   background-color: rgba(68, 92, 149, 0.18);
-  border-radius: 3px;
+  border-radius: 8px;
   margin-left: -0.25rem;
   padding-left: 0.25rem;
 }
-/* Prevent native text selection while dragging across blocks */
-.ProseMirror.block-selecting,
-.ProseMirror.block-selecting * {
+/* Rubber-band (marquee) area selector — drawn on <body> in viewport coords */
+.block-marquee {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  background-color: rgba(68, 92, 149, 0.18);
+  border: 1px solid rgba(68, 92, 149, 0.55);
+  border-radius: 7px;
+}
+/* Suppress native text selection while the marquee is active */
+body.block-marquee-active,
+body.block-marquee-active * {
   user-select: none !important;
+  cursor: default !important;
 }
 
 /* ─────────────────────────────────────────────────────────

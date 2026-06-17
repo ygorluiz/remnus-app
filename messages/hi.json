@@ -2,7 +2,12 @@
   "Layout": {
     "demoMode": "डेमो मोड",
     "demoChangesNote": "परिवर्तन अस्थायी हैं और प्रत्येक विज़िटर के लिए रीसेट होते हैं।",
-    "createFreeAccount": "निःशुल्क खाता बनाएं →"
+    "createFreeAccount": "निःशुल्क खाता बनाएं →",
+    "tabNewTooltip": "नया टैब",
+    "tabClose": "बंद करें",
+    "tabCloseOthers": "अन्य बंद करें",
+    "tabCloseAll": "सभी बंद करें",
+    "tabUntitled": "शीर्षकहीन"
   },
   "Home": {
     "welcomeTitle": "Remnus में आपका स्वागत है",
@@ -553,7 +558,11 @@
     "blockHandleTooltip": "ले जाने के लिए खींचें, क्रियाओं के लिए क्लिक करें",
     "blockNestInside": "अंदर रखें",
     "blockDuplicate": "डुप्लिकेट करें",
+    "blockCopy": "कॉपी करें",
     "blockDelete": "हटाएं",
+    "blockMoveUp": "ऊपर ले जाएं",
+    "blockMoveDown": "नीचे ले जाएं",
+    "blockToggleCollapse": "संक्षिप्त / विस्तृत करें",
     "codeShowMore": "और दिखाएँ",
     "codeShowLess": "कम दिखाएँ",
     "codeCopy": "कॉपी करें",

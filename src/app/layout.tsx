@@ -3,6 +3,7 @@ import { Onest, JetBrains_Mono, Fraunces } from 'next/font/google';
 import './globals.css';
 import { cookies } from 'next/headers';
 import { routing } from '@/i18n/routing';
+import DebugConsole from '@/components/providers/DebugConsole';
 
 const onest = Onest({
   subsets: ['latin'],
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         )}
       </head>
       <body className="font-sans bg-neutral-950 text-neutral-50" suppressHydrationWarning>
+        <DebugConsole />
         {children}
       </body>
     </html>

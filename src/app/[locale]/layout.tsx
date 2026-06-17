@@ -155,6 +155,8 @@ export default async function LocaleLayout({
         <UpdateBanner />
         <QueryProvider>
           <AppShell
+            items={items}
+            activeWorkspaceId={activeWorkspace?.id ?? ''}
             sidebar={
               <WorkspaceSidebar
                 key="workspace-sidebar"

@@ -19,7 +19,16 @@ export default function HeadingView({ node, getPos, editor, decorations }: Props
     e.stopPropagation();
     const pos = getPos();
     if (pos === undefined) return;
-    editor.commands.toggleHeadingCollapse(pos);
+    // Guard: on documents whose content is invalid per the schema (e.g. an inline
+    // node that ended up at the top level during markdown parsing), the dispatched
+    // transaction makes the trailing-node plugin try to insert at doc end and
+    // ProseMirror throws "contentMatchAt on a node with invalid content". Swallow
+    // it so the whole app doesn't white-screen on a single bad page.
+    try {
+      editor.commands.toggleHeadingCollapse(pos);
+    } catch (err) {
+      console.error('Heading collapse toggle failed (likely invalid document content):', err);
+    }
   };
 
   return (
@@ -33,7 +42,7 @@ export default function HeadingView({ node, getPos, editor, decorations }: Props
       >
         {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
       </button>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      { }
       <NodeViewContent as={'span' as any} />
     </NodeViewWrapper>
   );

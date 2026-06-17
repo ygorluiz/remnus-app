@@ -21,6 +21,6 @@ Run these after any coding task:
    npx drizzle-kit generate
    npx tsx src/db/migrate.ts
    ```
-   Ensure new migration `when` value > `1780100000000`
+   Ensure new migration `when` value is greater than all existing (next: > `1781500000000`). NOTE: libsql `batch()` no-ops DDL, so recent migrations use manual `src/db/apply-00xx-*.ts` scripts — apply to BOTH local + Turso (see mem:conventions)
 
 5. **AGENTS.md update** — if structural changes were made (new routes, tables, components, server actions, architectural patterns): update `AGENTS.md` before finishing

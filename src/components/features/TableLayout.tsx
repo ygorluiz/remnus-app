@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useSyncExternalStore } from 'react';
 import { getOptionColorByValue, formatDateValue, normalizeOption, type SelectOption } from '@/lib/types/properties';
 import { useTranslations } from 'next-intl';
 import { useZoom } from '@/components/providers/ZoomProvider';
@@ -13,6 +13,21 @@ import IconPicker from './IconPicker';
 import AgentEditBadge from './AgentEditBadge';
 import { updatePageIcon } from '@/lib/actions/page';
 import { ConfirmDialog } from './ConfirmDialog';
+
+// ── Coarse-pointer (touch) detection via useSyncExternalStore ───────────────────
+const COARSE_POINTER_QUERY = '(hover: none)';
+function subscribeCoarsePointer(onChange: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mql = window.matchMedia(COARSE_POINTER_QUERY);
+  mql.addEventListener('change', onChange);
+  return () => mql.removeEventListener('change', onChange);
+}
+function getCoarsePointerSnapshot() {
+  return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(COARSE_POINTER_QUERY).matches;
+}
+function getCoarsePointerServerSnapshot() {
+  return false;
+}
 
 function getPropertyIcon(type: string) {
   switch (type) {
@@ -164,6 +179,14 @@ export default function TableLayout({
   const [editingCell, setEditingCell] = useState<{ pageId: string; colId: string } | null>(null);
   const [activeIconPickerPageId, setActiveIconPickerPageId] = useState<string | null>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // On touch / no-hover devices a cell tap should open the row (peek modal)
+  // instead of starting inline editing — editing happens inside the page there.
+  const isCoarsePointer = useSyncExternalStore(
+    subscribeCoarsePointer,
+    getCoarsePointerSnapshot,
+    getCoarsePointerServerSnapshot,
+  );
 
   const handleTableIconSelect = (pageId: string, newIcon: string | null, newColor: string | null) => {
     onPageIconChange?.(pageId, newIcon, newColor);
@@ -565,7 +588,8 @@ export default function TableLayout({
                     const isLast = idx === visibleCols.length - 1;
                     const isEditing = editingCell?.pageId === page.id && editingCell?.colId === col.id;
                     const handleCellClick = (e: React.MouseEvent) => {
-                      if (col.id === 'title') return;
+                      // Touch: let the click bubble to the row → opens the peek modal.
+                      if (col.id === 'title' || isCoarsePointer) return;
                       e.stopPropagation();
                       setEditingCell({ pageId: page.id, colId: col.id });
                     };
@@ -618,6 +642,8 @@ export default function TableLayout({
                             </div>
                             <span
                               onClick={(e) => {
+                                // Touch: don't rename — let it bubble to the row → peek modal.
+                                if (isCoarsePointer) return;
                                 e.stopPropagation();
                                 setEditingCell({ pageId: page.id, colId: col.id });
                               }}

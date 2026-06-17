@@ -22,6 +22,40 @@ import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import { YoutubeEmbed } from './YoutubeEmbedExtension';
+
+// Markdown has no native syntax for text/highlight colors, so the default
+// serializer drops them (a colored run reverts on reload). These extends emit
+// inline HTML carrying the color, which tiptap's own parseHTML rules
+// (span[style] → textStyle, mark[data-color] → highlight) read back on parse.
+//
+// The color attr can originate from pasted/imported HTML (parseHTML reads the
+// style/data-color attributes), so it is NOT trusted: a value like
+// `red"><img src=x onerror=…>` would break out of the attribute and inject HTML.
+// `safeColor` whitelists hex / rgb(a) / hsl(a) / named colors and rejects
+// anything else (no quotes, angle brackets, or `;` can survive) → the wrapper is
+// emitted only for a sanitized value, otherwise the run serializes uncolored.
+const SAFE_COLOR_RE = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^(?:rgb|rgba|hsl|hsla)\(\s*[0-9.,%\s/]+\)$|^[a-zA-Z]{1,32}$/;
+function safeColor(value: unknown): string | null {
+  return typeof value === 'string' && SAFE_COLOR_RE.test(value.trim()) ? value.trim() : null;
+}
+
+const ColorTextStyle = TextStyle.extend({
+  renderMarkdown(node: any, helpers: any) {
+    const color = safeColor(node?.attrs?.color);
+    const inner = helpers.renderChildren();
+    return color ? `<span style="color: ${color}">${inner}</span>` : inner;
+  },
+});
+
+const ColorHighlight = Highlight.extend({
+  renderMarkdown(node: any, helpers: any) {
+    const color = safeColor(node?.attrs?.color);
+    const inner = helpers.renderChildren();
+    return color
+      ? `<mark data-color="${color}" style="background-color: ${color}; color: inherit">${inner}</mark>`
+      : `==${inner}==`;
+  },
+});
 import { ImageBlock } from './ImageBlockExtension';
 import { CalloutBlock } from './CalloutBlockExtension';
 import { BookmarkBlock } from './BookmarkBlockExtension';
@@ -209,9 +243,9 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       PageLink,
       PageMention,
       FencedCodeBlock,
-      TextStyle,
+      ColorTextStyle,
       Color,
-      Highlight.configure({ multicolor: true }),
+      ColorHighlight.configure({ multicolor: true }),
       BlockSelection,
     ],
     content: computedInitial,

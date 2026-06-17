@@ -1105,7 +1105,7 @@ export default function DatabaseView({
                     >
                       <X size={16} />
                     </button>
-                    <span className="text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded">
+                    <span className="hidden sm:inline-block text-[11px] bg-neutral-800 text-neutral-400 font-medium py-0.5 px-2 border border-neutral-700/40 uppercase tracking-wider rounded">
                       {t('openCenter')}
                     </span>
                   </div>
@@ -1116,7 +1116,7 @@ export default function DatabaseView({
                         router.push(`/db/${database.id}/${peekPageId}`);
                         setPeekPageId(null);
                       }}
-                      className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded"
+                      className="hidden sm:flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1 px-2.5 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded"
                     >
                       <Maximize2 size={12} />
                       <span>{t('openInFullPage')}</span>

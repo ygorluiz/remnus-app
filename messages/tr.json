@@ -2,7 +2,12 @@
   "Layout": {
     "demoMode": "Demo Modu",
     "demoChangesNote": "Değişiklikler geçicidir ve her ziyaretçi için sıfırlanır.",
-    "createFreeAccount": "Ücretsiz hesap oluştur →"
+    "createFreeAccount": "Ücretsiz hesap oluştur →",
+    "tabNewTooltip": "Yeni sekme",
+    "tabClose": "Kapat",
+    "tabCloseOthers": "Diğerlerini kapat",
+    "tabCloseAll": "Tümünü kapat",
+    "tabUntitled": "Adsız"
   },
   "Home": {
     "welcomeTitle": "Remnus'a Hoş Geldiniz",
@@ -553,7 +558,11 @@
     "blockHandleTooltip": "Taşımak için sürükle, işlemler için tıkla",
     "blockNestInside": "İçine taşı",
     "blockDuplicate": "Çoğalt",
+    "blockCopy": "Kopyala",
     "blockDelete": "Sil",
+    "blockMoveUp": "Yukarı taşı",
+    "blockMoveDown": "Aşağı taşı",
+    "blockToggleCollapse": "Katla / aç",
     "codeShowMore": "Daha fazla göster",
     "codeShowLess": "Daha az göster",
     "codeCopy": "Kopyala",

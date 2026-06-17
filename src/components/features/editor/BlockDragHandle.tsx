@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { Editor } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import {
-  GripVertical, Trash2, Copy, Check, ChevronRight,
+  GripVertical, MoreVertical, ArrowUp, ArrowDown, ChevronsDownUp, Trash2, Copy, Check, ChevronRight,
   Pilcrow, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code2,
   Link2, Image as ImageIcon, SquarePlay, File as FileIcon,
 } from 'lucide-react';
@@ -12,6 +12,23 @@ import { useTranslations } from 'next-intl';
 import { useZoom } from '@/components/providers/ZoomProvider';
 import { extractYouTubeId } from './YoutubeEmbedExtension';
 import { deleteWorkspaceItem, checkItemHasContent } from '@/lib/actions/workspace';
+
+// ── Coarse-pointer (touch) detection via useSyncExternalStore ───────────────────
+// On touch there is no hover and HTML5 drag-and-drop doesn't fire, so the handle
+// switches to a tap-driven "⋮" menu anchored to the focused block instead.
+const COARSE_POINTER_QUERY = '(hover: none)';
+function subscribeCoarsePointer(onChange: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mql = window.matchMedia(COARSE_POINTER_QUERY);
+  mql.addEventListener('change', onChange);
+  return () => mql.removeEventListener('change', onChange);
+}
+function getCoarsePointerSnapshot() {
+  return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(COARSE_POINTER_QUERY).matches;
+}
+function getCoarsePointerServerSnapshot() {
+  return false;
+}
 
 // ── Drag source state: shared with BlockEditor's handleDrop ──
 let _activeDragSource: { pos: number; node: any } | null = null;
@@ -154,6 +171,11 @@ type Props = { editor: Editor };
 
 export default function BlockDragHandle({ editor }: Props) {
   const t = useTranslations('Editor');
+  const isCoarse = useSyncExternalStore(
+    subscribeCoarsePointer,
+    getCoarsePointerSnapshot,
+    getCoarsePointerServerSnapshot,
+  );
   const zoom = useZoom();
   const zoomRef = useRef(zoom);
   // eslint-disable-next-line react-hooks/refs
@@ -185,8 +207,9 @@ export default function BlockDragHandle({ editor }: Props) {
     code: t('slashCodeBlock'),
   };
 
-  // Track the hovered block and position the handle beside it.
+  // Track the hovered block and position the handle beside it (fine pointer only).
   useEffect(() => {
+    if (isCoarse) return;
     const onMove = (e: MouseEvent) => {
       if (menuOpen) return;
       if (rafRef.current) return;
@@ -223,7 +246,11 @@ export default function BlockDragHandle({ editor }: Props) {
         } catch { /* out-of-range pos — treat as root */ }
 
         const z = zoomRef.current;
-        const newTop = (rect.top + 2) / z;
+        // Headings are tall; the collapse chevron sits at the heading's vertical
+        // center (CSS top:50%), so center the grip too — otherwise the grip (top
+        // aligned) and chevron land on different lines next to each other.
+        const GRIP_HALF = 12; // p-1 (4) + 16px icon ≈ 24px tall
+        const newTop = (isHeading ? rect.top + rect.height / 2 - GRIP_HALF : rect.top + 2) / z;
         let newLeft: number;
         if (isHeading) {
           newLeft = Math.max(2, er.left - 48);
@@ -247,7 +274,41 @@ export default function BlockDragHandle({ editor }: Props) {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       if (subTimer.current) clearTimeout(subTimer.current);
     };
-  }, [editor, menuOpen]);
+  }, [editor, menuOpen, isCoarse]);
+
+  // Touch: anchor the "⋮" handle to the block holding the caret (no hover to
+  // track). Re-runs on every selection/focus change; the menuOpen guard keeps it
+  // pinned while the action menu is open.
+  useEffect(() => {
+    if (!isCoarse) return;
+    const place = () => {
+      if (menuOpen) return;
+      const { selection } = editor.state;
+      if (!editor.isFocused && selection.empty) { setHandle(null); return; }
+      const $from = selection.$from;
+      let pos = $from.depth > 0 ? $from.before(1) : $from.pos;
+      for (let d = $from.depth; d >= 1; d--) {
+        if (ITEM_NODES.has($from.node(d).type.name)) { pos = $from.before(d); break; }
+      }
+      const dom = editor.view.nodeDOM(pos);
+      if (!(dom instanceof HTMLElement)) { setHandle(null); return; }
+      const rect = dom.getBoundingClientRect();
+      const z = zoomRef.current;
+      // Sit just left of the block's own left edge (which already includes the
+      // touch gutter + any list indent), so the ⋮ never lands on the text.
+      setHandle({ pos, top: (rect.top + 4) / z, left: Math.max(2, rect.left - 22) / z });
+    };
+    editor.on('selectionUpdate', place);
+    editor.on('focus', place);
+    // Reposition on scroll so the fixed-position "⋮" follows its block.
+    window.addEventListener('scroll', place, true);
+    place();
+    return () => {
+      editor.off('selectionUpdate', place);
+      editor.off('focus', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [editor, isCoarse, menuOpen]);
 
   // Track dragover: show our own indicator for all three zones.
   // Only activates when our own drag handle initiated the drag (_activeDragSource set).
@@ -313,12 +374,15 @@ export default function BlockDragHandle({ editor }: Props) {
     return () => document.removeEventListener('mousedown', onDown);
   }, [menuOpen]);
 
-  // Hide the handle while the user is typing/selecting.
+  // Hide the handle while the user is typing/selecting (fine pointer only — on
+  // touch the handle is selection-anchored and tapping it blurs the editor, which
+  // would otherwise dismiss it before the menu opens).
   useEffect(() => {
+    if (isCoarse) return;
     const hide = () => { if (!menuOpen) setHandle(null); };
     editor.on('blur', hide);
     return () => { editor.off('blur', hide); };
-  }, [editor, menuOpen]);
+  }, [editor, menuOpen, isCoarse]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (!menuOpen) setSubOpen(false); }, [menuOpen]);
@@ -444,6 +508,40 @@ export default function BlockDragHandle({ editor }: Props) {
     setHandle(null);
   };
 
+  // Touch reorder: swap the block with its previous/next sibling (HTML5 DnD
+  // doesn't fire on touch, so the menu provides Move up / Move down instead).
+  const moveBlock = (dir: -1 | 1) => {
+    const pos = handle.pos;
+    const { state } = editor.view;
+    const $pos = state.doc.resolve(pos);
+    const node = $pos.nodeAfter;
+    const parent = $pos.parent;
+    const index = $pos.index();
+    const target = index + dir;
+    if (!node || target < 0 || target >= parent.childCount) {
+      setMenuOpen(false); setHandle(null); return;
+    }
+    const nodeSize = node.nodeSize;
+    let tr = state.tr;
+    if (dir === -1) {
+      const prevStart = pos - parent.child(index - 1).nodeSize;
+      tr = tr.delete(pos, pos + nodeSize).insert(prevStart, node);
+    } else {
+      const nextEnd = pos + nodeSize + parent.child(index + 1).nodeSize;
+      tr = tr.delete(pos, pos + nodeSize).insert(nextEnd - nodeSize, node);
+    }
+    editor.view.dispatch(tr.scrollIntoView());
+    setMenuOpen(false);
+    setHandle(null);
+  };
+
+  const toggleCollapse = () => {
+    try { editor.commands.toggleHeadingCollapse(handle.pos); }
+    catch (err) { console.error('Heading collapse toggle failed:', err); }
+    setMenuOpen(false);
+    setHandle(null);
+  };
+
   const turnInto = (type: BlockType) => {
     focusBlock(handle.pos);
     BLOCK_APPLIES[type](editor);
@@ -514,18 +612,21 @@ export default function BlockDragHandle({ editor }: Props) {
   return (
     <>
       <button
-        draggable
+        draggable={!isCoarse}
         // eslint-disable-next-line react-hooks/immutability
         onDragStart={onDragStart}
         // eslint-disable-next-line react-hooks/immutability
         onDragEnd={onDragEnd}
+        // Touch: keep the editor focused so the selection-anchored handle survives
+        // the tap (a blur would otherwise dismiss it before the menu opens).
+        onMouseDown={isCoarse ? (e) => e.preventDefault() : undefined}
         onClick={(e) => { e.preventDefault(); setMenuOpen((v) => !v); }}
         onMouseEnter={() => { if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; } }}
         style={{ position: 'fixed', top: handle.top, left: handle.left, zIndex: 100 }}
-        className="flex items-center justify-center p-1 text-neutral-600 hover:text-neutral-200 hover:bg-neutral-800/60 rounded cursor-grab active:cursor-grabbing transition-colors"
+        className={`block-drag-handle flex items-center justify-center p-1 text-neutral-600 hover:text-neutral-200 hover:bg-neutral-800/60 rounded transition-colors ${isCoarse ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}`}
         title={t('blockHandleTooltip')}
       >
-        <GripVertical size={16} />
+        {isCoarse ? <MoreVertical size={16} /> : <GripVertical size={16} />}
       </button>
 
       {/* Custom drop indicator — replaces ProseMirror dropcursor for all our drags */}
@@ -558,6 +659,34 @@ export default function BlockDragHandle({ editor }: Props) {
           style={{ position: 'fixed', top: menuTop, left: Math.max(4, handle.left), zIndex: 9998 }}
           className="min-w-50 bg-neutral-850 border border-neutral-800 shadow-xl py-1 rounded-md overflow-hidden"
         >
+          {isCoarse && hovNode?.type.name === 'heading' && (
+            <button
+              onClick={toggleCollapse}
+              className="w-full flex items-center gap-3 px-3 py-2 text-left text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 transition-colors"
+            >
+              <ChevronsDownUp size={14} className="text-neutral-600" />
+              <span className="text-sm">{t('blockToggleCollapse')}</span>
+            </button>
+          )}
+          {isCoarse && (
+            <>
+              <button
+                onClick={() => moveBlock(-1)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 transition-colors"
+              >
+                <ArrowUp size={14} className="text-neutral-600" />
+                <span className="text-sm">{t('blockMoveUp')}</span>
+              </button>
+              <button
+                onClick={() => moveBlock(1)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60 transition-colors"
+              >
+                <ArrowDown size={14} className="text-neutral-600" />
+                <span className="text-sm">{t('blockMoveDown')}</span>
+              </button>
+              <div className="my-1 h-px bg-neutral-800" />
+            </>
+          )}
           <button
             onClick={doDelete}
             className="w-full flex items-center gap-3 px-3 py-2 text-left text-neutral-400 hover:text-red-400 hover:bg-neutral-800/60 transition-colors"

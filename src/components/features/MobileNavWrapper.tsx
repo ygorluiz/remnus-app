@@ -6,10 +6,13 @@ import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 import { logout } from '@/lib/actions/auth';
 import { createPage } from '@/lib/actions/page';
 import { setLocale } from '@/lib/actions/locale';
-import { X, Plus, Layers, LogOut, Shield, User } from 'lucide-react';
+import { X, Plus, Layers, LogOut, Shield, User, Settings, Bot, CreditCard } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import TemplatePickerModal from './TemplatePickerModal';
 import FlagIcon from './FlagIcon';
+import UserSettingsModal from './UserSettingsModal';
+import AgentsModal from './AgentsModal';
+import BillingModal from './BillingModal';
 
 type WorkspaceType = { id: string; name: string };
 type CurrentUser = {
@@ -46,7 +49,7 @@ function BottomSheet({
 }) {
   return (
     <div
-      className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${
+      className={`fixed inset-0 z-200 lg:hidden transition-all duration-300 ${
         isOpen ? 'pointer-events-auto' : 'pointer-events-none'
       }`}
     >
@@ -83,6 +86,7 @@ export default function MobileNavWrapper({
   currentUser: CurrentUser;
 }) {
   const t = useTranslations('MobileNav');
+  const tw = useTranslations('Workspace');
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -90,6 +94,9 @@ export default function MobileNavWrapper({
   const [templatePickerParentId, setTemplatePickerParentId] = useState<string | undefined>();
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [userSettingsOpen, setUserSettingsOpen] = useState(false);
+  const [agentsModalOpen, setAgentsModalOpen] = useState(false);
+  const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [, startLangTransition] = useTransition();
 
   // Close sheets on route change
@@ -189,6 +196,31 @@ export default function MobileNavWrapper({
             </div>
           </div>
 
+          {/* Account actions */}
+          <div className="border-t border-neutral-800 pt-3 flex flex-col gap-1">
+            <button
+              onClick={() => { setOpenSheet(null); setUserSettingsOpen(true); }}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Settings size={16} className="shrink-0 text-neutral-400" />
+              <span>{tw('settings')}</span>
+            </button>
+            <button
+              onClick={() => { setOpenSheet(null); setAgentsModalOpen(true); }}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors text-sm font-medium"
+            >
+              <Bot size={16} className="shrink-0 text-amber-400" />
+              <span>{tw('myAgents')}</span>
+            </button>
+            <button
+              onClick={() => { setOpenSheet(null); setBillingModalOpen(true); }}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors text-sm font-medium"
+            >
+              <CreditCard size={16} className="shrink-0 text-neutral-400" />
+              <span>{tw('planBilling')}</span>
+            </button>
+          </div>
+
           {/* Language grid */}
           <div className="border-t border-neutral-800 pt-4">
             <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest mb-3">Language</p>
@@ -220,6 +252,17 @@ export default function MobileNavWrapper({
           </button>
         </div>
       </BottomSheet>
+
+      {/* Account modals */}
+      {userSettingsOpen && (
+        <UserSettingsModal currentUser={currentUser} onClose={() => setUserSettingsOpen(false)} />
+      )}
+      {agentsModalOpen && (
+        <AgentsModal onClose={() => setAgentsModalOpen(false)} />
+      )}
+      {billingModalOpen && (
+        <BillingModal onClose={() => setBillingModalOpen(false)} />
+      )}
 
       {/* Template picker */}
       {isTemplatePickerOpen && activeWorkspace.id && (

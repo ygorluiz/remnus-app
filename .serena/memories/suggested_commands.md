@@ -16,8 +16,9 @@ npm run db:migrate                # Alias for above
 ```
 
 ## Migration Notes
-- New migration `when` value MUST be > `1780100000000` (see existing journal)
-- Never use `drizzle-kit push` interactively — use the custom migrate script
+- New migration `when` value MUST be greater than all existing — next: > `1781500000000` (check AGENTS.md "Migration Notes" for the current ceiling)
+- Recent migrations (0017–0029) are applied MANUALLY via `src/db/apply-00xx-*.ts` (libsql `batch()` no-ops DDL). Run each against BOTH local + Turso (see mem:conventions)
+- Never use `drizzle-kit push` interactively — use the custom migrate script / apply scripts
 
 ## Windows-specific
 - Shell is PowerShell; use `;` not `&&` for chaining (pipeline `&&` is PS7+ only)
