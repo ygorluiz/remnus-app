@@ -52,15 +52,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: 'client-token',
       credentials: { token: { type: 'text' } },
       async authorize({ token }) {
+        // Dev-only logging — never reach a production log sink (where secret-
+        // adjacent metadata or user ids could be archived/indexed).
+        const devLog = process.env.NODE_ENV !== 'production'
+          ? (...args: unknown[]) => console.log(...args)
+          : () => {};
+
         if (!token || typeof token !== 'string') {
-          console.log('[client-token] reject: token missing/non-string');
+          devLog('[client-token] reject: token missing/non-string');
           return null;
         }
         try {
           const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
           const { payload } = await jwtVerify(token, secret, { audience: 'client-auth' });
           if (!payload.sub) {
-            console.log('[client-token] reject: jwt payload missing sub');
+            devLog('[client-token] reject: jwt payload missing sub');
             return null;
           }
           const [user] = await db
@@ -69,16 +75,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .where(eq(users.id, payload.sub))
             .limit(1);
           if (!user) {
-            console.log('[client-token] reject: user not found', { sub: payload.sub });
+            devLog('[client-token] reject: user not found in db');
             return null;
           }
-          console.log('[client-token] accept', { userId: user.id });
+          devLog('[client-token] accept');
           return { id: user.id, name: user.name, email: user.email, image: user.image, role: user.role };
         } catch (err) {
-          console.log('[client-token] reject: verify threw', {
-            name: (err as Error)?.name,
-            message: (err as Error)?.message,
-          });
+          // Only the error name — never `message` or `cause` (jose may include
+          // bytes from the token / secret in those fields).
+          devLog('[client-token] reject: verify threw', { name: (err as Error)?.name });
           return null;
         }
       },
