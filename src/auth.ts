@@ -52,59 +52,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: 'client-token',
       credentials: { token: { type: 'text' } },
       async authorize({ token }) {
-        // Dev-only logging — never reach a production log sink.
-        const devLog = process.env.NODE_ENV !== 'production'
-          ? (...args: unknown[]) => console.log(...args)
-          : () => {};
-
-        if (!token || typeof token !== 'string') {
-          devLog('[client-token] reject: token missing/non-string');
-          return null;
-        }
-
-        // Step 1 — JWT verify (isolated try so a verify failure doesn't
-        // masquerade as a DB failure or vice versa).
-        let sub: string | undefined;
+        if (!token || typeof token !== 'string') return null;
         try {
           const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
           const { payload } = await jwtVerify(token, secret, { audience: 'client-auth' });
-          sub = typeof payload.sub === 'string' ? payload.sub : undefined;
-        } catch (err) {
-          devLog('[client-token] reject: jwtVerify threw', { name: (err as Error)?.name });
-          return null;
-        }
-        if (!sub) {
-          devLog('[client-token] reject: jwt payload missing sub');
-          return null;
-        }
-
-        // Step 2 — DB lookup, separately.
-        try {
+          if (!payload.sub) return null;
           const [user] = await db
             .select()
             .from(users)
-            .where(eq(users.id, sub))
+            .where(eq(users.id, payload.sub))
             .limit(1);
-          if (!user) {
-            devLog('[client-token] reject: user not found in db');
-            return null;
-          }
-          devLog('[client-token] accept');
+          if (!user) return null;
           return { id: user.id, name: user.name, email: user.email, image: user.image, role: user.role };
-        } catch (err) {
-          // Dev-only: log just enough to distinguish "no such table" from
-          // connection errors / schema mismatch. NEVER the raw DATABASE_URL
-          // (it can carry an authToken when pointing at Turso) — only its
-          // scheme. libsql error messages don't include parameter values, so
-          // `message` is safe to keep behind the dev gate.
-          const dbUrl = process.env.DATABASE_URL ?? '';
-          const dbScheme = dbUrl ? dbUrl.split(':')[0] + ':' : '(unset)';
-          devLog('[client-token] reject: db lookup threw', {
-            name: (err as Error)?.name,
-            message: (err as Error)?.message,
-            sub,
-            dbScheme,
-          });
+        } catch {
           return null;
         }
       },
