@@ -25,7 +25,7 @@ const GB = 1024 * 1024 * 1024;
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   free: {
     seats: 2,
-    agents: 1,
+    agents: 2,
     storageBytes: 512 * MB,
     auditDays: 7,
     workspaces: 2,

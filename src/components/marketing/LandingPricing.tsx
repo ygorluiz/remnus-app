@@ -157,7 +157,7 @@ export default async function LandingPricing({ showComparison = false }: { showC
     { label: t('bridgePricingTblMembers'), desc: t('bridgePricingTblMembersDesc'), icon: Users, cells: ['2', '5', '15', tU] },
     { label: t('bridgePricingTblWorkspaces'), desc: t('bridgePricingTblWorkspacesDesc'), icon: FolderTree, cells: ['2', tU, tU, tU] },
     { label: t('bridgePricingTblPages'), desc: t('bridgePricingTblPagesDesc'), icon: Table2, cells: [true, true, true, true] },
-    { label: t('bridgePricingTblAgents'), desc: t('bridgePricingTblAgentsDesc'), icon: Bot, cells: ['1', '5', tU, tU] },
+    { label: t('bridgePricingTblAgents'), desc: t('bridgePricingTblAgentsDesc'), icon: Bot, cells: ['2', '5', tU, tU] },
     { label: t('bridgePricingTblMcp'), desc: t('bridgePricingTblMcpDesc'), icon: Plug, cells: [true, true, true, true] },
     { label: t('bridgePricingTblStorage'), desc: t('bridgePricingTblStorageDesc'), icon: HardDrive, cells: ['512 MB', '5 GB', '20 GB', tCustom] },
     { label: t('bridgePricingTblAudit'), desc: t('bridgePricingTblAuditDesc'), icon: ScrollText, cells: [t('bridgePricingTblAudit7'), t('bridgePricingTblAudit30'), t('bridgePricingTblAudit90'), tCustom] },
