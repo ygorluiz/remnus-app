@@ -425,46 +425,14 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
     return dt;
   };
 
-  // ── Single workspace ────────────────────────────────────────────────────────
+  // ── Ids — declared up front so the single batched write at the end can reference them ──
 
   const ws1 = crypto.randomUUID();
-  await db.insert(workspaces).values({ id: ws1, name: workspaceName, sortOrder: 0, billingOwnerId: userId, createdAt: new Date() });
-  await db.insert(workspaceMembers).values({ id: crypto.randomUUID(), workspaceId: ws1, userId, role: 'owner', createdAt: new Date() });
-
-  // ── Demo agent token — used to stamp selected rows with an "agent edited" badge ──
-
-  const demoTokenId = crypto.randomUUID();
-  await db.insert(agentTokens).values({
-    id: demoTokenId,
-    workspaceId: ws1,
-    name: 'Claude AI Agent',
-    agentName: 'claude-code',
-    tokenPrefix: 'rmns-demo',
-    tokenHash: 'demo-seed-not-valid',
-    scope: 'write',
-    createdBy: userId,
-    createdAt: h(-48),
-    lastUsedAt: h(-1),
-  });
-
-  // ── Start Here page ─────────────────────────────────────────────────────────
-
+  const demoTokenId = crypto.randomUUID();            // stamps selected rows with an "agent edited" badge
   const startHereItem = crypto.randomUUID();
-  const howBuiltItem = crypto.randomUUID();   // child page of Start Here; id needed for the inline link below
-  const howBuiltCb = `<div data-cb-id="${howBuiltItem}" data-cb-dbid="" data-cb-type="page" data-cb-title="How This Was Built" data-cb-icon="🛠️" data-cb-iconcolor="" data-cb-link=""></div>`;
-  await db.insert(workspaceItems).values({ id: startHereItem, workspaceId: ws1, type: 'page', title: 'Start Here', sortOrder: 0, icon: '⭐', iconColor: 'default' });
-  await db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: startHereItem, content: START_HERE_CONTENT.replace('{{HOW_BUILT_CB}}', howBuiltCb) });
-
-  // ── Product Spec page ───────────────────────────────────────────────────────
-
+  const howBuiltItem = crypto.randomUUID();           // child page of Start Here; id needed for the inline link below
   const productSpecItem = crypto.randomUUID();
-  await db.insert(workspaceItems).values({ id: productSpecItem, workspaceId: ws1, type: 'page', title: 'Product Spec', sortOrder: 1, icon: '🎨', iconColor: 'default' });
-  await db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: productSpecItem, content: PRODUCT_SPEC_CONTENT });
-
-  // ── How This Was Built page — nested under Start Here ────────────────────────
-
-  await db.insert(workspaceItems).values({ id: howBuiltItem, workspaceId: ws1, type: 'page', title: 'How This Was Built', parentId: startHereItem, sortOrder: 0, icon: '🛠️', iconColor: 'default' });
-  await db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: howBuiltItem, content: HOW_THIS_WAS_BUILT_CONTENT });
+  const howBuiltCb = `<div data-cb-id="${howBuiltItem}" data-cb-dbid="" data-cb-type="page" data-cb-title="How This Was Built" data-cb-icon="🛠️" data-cb-iconcolor="" data-cb-link=""></div>`;
 
   // ── Sprint Board database ───────────────────────────────────────────────────
 
@@ -530,8 +498,6 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
 
   const sprintDbItem = crypto.randomUUID();
   const sprintDb = crypto.randomUUID();
-  await db.insert(workspaceItems).values({ id: sprintDbItem, workspaceId: ws1, type: 'database', title: 'Sprint Board', sortOrder: 2, icon: '📋', iconColor: 'default' });
-  await db.insert(databases).values({ id: sprintDb, name: 'Sprint Board', itemId: sprintDbItem, schema: sprintSchema, views: sprintViews });
 
   const sprintTasks = [
     { title: 'Set up project scaffold', status: 'Done', priority: 'High', category: 'Canvas', content: TASK_SCAFFOLD, agentAt: h(-30) },
@@ -552,28 +518,26 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
     { title: 'Implement keyboard shortcuts', status: 'Backlog', priority: 'Low', category: 'UI', content: TASK_SHORTCUTS },
   ];
 
-  const taskRowIds: string[] = [];
-  for (let i = 0; i < sprintTasks.length; i++) {
-    const t = sprintTasks[i] as typeof sprintTasks[0] & { agentAt?: Date };
-    const rowId = crypto.randomUUID();
-    taskRowIds.push(rowId);
-    await db.insert(pages).values({
-      id: rowId,
+  const taskRowIds = sprintTasks.map(() => crypto.randomUUID());
+  const taskRows = sprintTasks.map((task, i) => {
+    const t = task as typeof sprintTasks[0] & { agentAt?: Date };
+    return {
+      id: taskRowIds[i],
       databaseId: sprintDb,
       title: t.title,
       content: t.content,
       properties: { title: t.title, status: t.status, priority: t.priority, category: t.category },
       sortOrder: i,
       ...(t.agentAt ? { agentEditedAt: t.agentAt, agentTokenId: demoTokenId } : {}),
-    });
-  }
+    };
+  });
 
   // ── Agent audit log ─────────────────────────────────────────────────────────
   // Mirrors the real Claude Code session that built this workspace (from Remnus's
   // own MCP audit log). Powers the live activity feed in the "AI Agents" panel.
 
   const at = (hoursAgo: number) => new Date(Date.now() - hoursAgo * 3_600_000);
-  const activity: { tool: string; targetType: string | null; targetId: string | null; at: Date }[] = [
+  const activityRows = ([
     { tool: 'list_workspace', targetType: null, targetId: null, at: at(32) },
     { tool: 'create_page', targetType: 'page', targetId: productSpecItem, at: at(31.7) },
     { tool: 'create_database', targetType: 'database', targetId: sprintDb, at: at(31.5) },
@@ -587,19 +551,38 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
     { tool: 'query_database', targetType: 'database', targetId: sprintDb, at: at(6) },
     { tool: 'update_page', targetType: 'db-row', targetId: taskRowIds[8], at: at(2) },   // line tool → In Progress
     { tool: 'get_page', targetType: 'page', targetId: productSpecItem, at: at(1) },
-  ];
-  for (const a of activity) {
-    await db.insert(agentActivity).values({
-      id: crypto.randomUUID(),
-      tokenId: demoTokenId,
-      workspaceId: ws1,
-      tool: a.tool,
-      targetType: a.targetType,
-      targetId: a.targetId,
-      status: 'success',
-      createdAt: a.at,
-    });
-  }
+  ] as { tool: string; targetType: string | null; targetId: string | null; at: Date }[]).map((a) => ({
+    id: crypto.randomUUID(),
+    tokenId: demoTokenId,
+    workspaceId: ws1,
+    tool: a.tool,
+    targetType: a.targetType,
+    targetId: a.targetId,
+    status: 'success' as const,
+    createdAt: a.at,
+  }));
+
+  // ── Single batched write ────────────────────────────────────────────────────
+  // Production DB is remote (Turso) — every INSERT is a network round-trip, so the
+  // old seed (~55 sequential inserts) made "Try the demo" feel slow. Sending every
+  // row in ONE batch (with multi-row inserts for the 16 tasks + the audit log)
+  // collapses it to a single round-trip. Order is FK-safe: parents precede children.
+
+  await db.batch([
+    db.insert(workspaces).values({ id: ws1, name: workspaceName, sortOrder: 0, billingOwnerId: userId, createdAt: new Date() }),
+    db.insert(workspaceMembers).values({ id: crypto.randomUUID(), workspaceId: ws1, userId, role: 'owner', createdAt: new Date() }),
+    db.insert(agentTokens).values({ id: demoTokenId, workspaceId: ws1, name: 'Claude AI Agent', agentName: 'claude-code', tokenPrefix: 'rmns-demo', tokenHash: 'demo-seed-not-valid', scope: 'write', createdBy: userId, createdAt: h(-48), lastUsedAt: h(-1) }),
+    db.insert(workspaceItems).values({ id: startHereItem, workspaceId: ws1, type: 'page', title: 'Start Here', sortOrder: 0, icon: '⭐', iconColor: 'default' }),
+    db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: startHereItem, content: START_HERE_CONTENT.replace('{{HOW_BUILT_CB}}', howBuiltCb) }),
+    db.insert(workspaceItems).values({ id: productSpecItem, workspaceId: ws1, type: 'page', title: 'Product Spec', sortOrder: 1, icon: '🎨', iconColor: 'default' }),
+    db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: productSpecItem, content: PRODUCT_SPEC_CONTENT }),
+    db.insert(workspaceItems).values({ id: howBuiltItem, workspaceId: ws1, type: 'page', title: 'How This Was Built', parentId: startHereItem, sortOrder: 0, icon: '🛠️', iconColor: 'default' }),
+    db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: howBuiltItem, content: HOW_THIS_WAS_BUILT_CONTENT }),
+    db.insert(workspaceItems).values({ id: sprintDbItem, workspaceId: ws1, type: 'database', title: 'Sprint Board', sortOrder: 2, icon: '📋', iconColor: 'default' }),
+    db.insert(databases).values({ id: sprintDb, name: 'Sprint Board', itemId: sprintDbItem, schema: sprintSchema, views: sprintViews }),
+    db.insert(pages).values(taskRows),
+    db.insert(agentActivity).values(activityRows),
+  ]);
 }
 
 export async function createDemoSeedData(userId: string, userName?: string | null) {
