@@ -10,22 +10,22 @@ const YEAR = 60 * 60 * 24 * 365;
 
 export async function setEditorFontSize(size: EditorFontSize) {
   const store = await cookies();
-  store.set('remnus_editor_font_size', size, { path: '/', maxAge: YEAR });
+  store.set('remnus_editor_font_size', size, { path: '/', maxAge: YEAR, secure: true, sameSite: 'lax' });
 }
 
 export async function setSidebarDensity(density: SidebarDensity) {
   const store = await cookies();
-  store.set('remnus_sidebar_density', density, { path: '/', maxAge: YEAR });
+  store.set('remnus_sidebar_density', density, { path: '/', maxAge: YEAR, secure: true, sameSite: 'lax' });
 }
 
 export async function setDefaultPageWidth(width: DefaultPageWidth) {
   const store = await cookies();
-  store.set('remnus_default_width', width, { path: '/', maxAge: YEAR });
+  store.set('remnus_default_width', width, { path: '/', maxAge: YEAR, secure: true, sameSite: 'lax' });
 }
 
 export async function setTheme(theme: AppTheme) {
   const store = await cookies();
-  store.set('remnus_theme', theme, { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  store.set('remnus_theme', theme, { path: '/', maxAge: YEAR, sameSite: 'lax', secure: true });
 }
 
 export async function getPreferences(): Promise<{

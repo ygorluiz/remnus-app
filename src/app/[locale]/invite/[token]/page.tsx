@@ -44,7 +44,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   async function signInToAccept() {
     'use server';
     const c = await cookies();
-    c.set('pending_invite', token, { path: '/', maxAge: 600, httpOnly: true, sameSite: 'lax' });
+    c.set('pending_invite', token, { path: '/', maxAge: 600, httpOnly: true, sameSite: 'lax', secure: true });
     redirect('/login');
   }
 

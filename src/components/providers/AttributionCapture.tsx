@@ -26,7 +26,7 @@ export default function AttributionCapture() {
     if (!data.utm_source && !data.utm_medium && !data.utm_campaign && !data.referrer) return;
 
     const val = encodeURIComponent(JSON.stringify(data));
-    document.cookie = `remnus_first_touch=${val}; path=/; max-age=${60 * 60 * 24 * 90}; samesite=lax`;
+    document.cookie = `remnus_first_touch=${val}; path=/; max-age=${60 * 60 * 24 * 90}; samesite=lax; secure`;
   }, []);
 
   return null;

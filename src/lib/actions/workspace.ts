@@ -147,7 +147,7 @@ export async function createWorkspace(name: string) {
   });
 
   const cookieStore = await cookies();
-  cookieStore.set('remnus_workspace_id', id, { path: '/' });
+  cookieStore.set('remnus_workspace_id', id, { path: '/', secure: true, sameSite: 'lax' });
   revalidatePath('/', 'layout');
   return { id };
 }
@@ -180,7 +180,7 @@ export async function deleteWorkspace(id: string) {
   if (cookieStore.get('remnus_workspace_id')?.value === id) {
     const remaining = accessible.find((w) => w.id !== id);
     if (remaining) {
-      cookieStore.set('remnus_workspace_id', remaining.id, { path: '/' });
+      cookieStore.set('remnus_workspace_id', remaining.id, { path: '/', secure: true, sameSite: 'lax' });
     } else {
       cookieStore.delete('remnus_workspace_id');
     }
@@ -233,7 +233,7 @@ export async function setWorkspaceHidden(id: string, hidden: boolean) {
 export async function switchWorkspace(workspaceId: string) {
   await assertWorkspaceAccess(workspaceId);
   const cookieStore = await cookies();
-  cookieStore.set('remnus_workspace_id', workspaceId, { path: '/' });
+  cookieStore.set('remnus_workspace_id', workspaceId, { path: '/', secure: true, sameSite: 'lax' });
   revalidatePath('/', 'layout');
   return { success: true };
 }

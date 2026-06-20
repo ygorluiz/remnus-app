@@ -44,6 +44,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: update } = Next
     verificationTokensTable: verificationTokens,
   }),
   session: { strategy: 'jwt' },
+  useSecureCookies: process.env.NODE_ENV === 'production',
   providers: [
     ...authConfig.providers,
     // Desktop OAuth flow: system browser authenticates, server issues a short-lived JWT,

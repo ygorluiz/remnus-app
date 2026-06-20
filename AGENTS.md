@@ -41,14 +41,15 @@ Remnus is fully internationalized using **next-intl v4** (App Router native). Al
 
 ### Supported Languages
 
-| Code | Language          |
-| ---- | ----------------- |
-| `en` | English (default) |
-| `tr` | Türkçe            |
-| `hi` | हिन्दी            |
-| `es` | Español           |
-| `fr` | Français          |
-| `de` | Deutsch           |
+| Code    | Language               |
+| ------- | ---------------------- |
+| `en`    | English (default)      |
+| `tr`    | Türkçe                 |
+| `hi`    | हिन्दी                 |
+| `es`    | Español                |
+| `fr`    | Français               |
+| `de`    | Deutsch                |
+| `pt-BR` | Português (Brasil)     |
 
 ### Locale Resolution (priority order)
 
@@ -60,6 +61,8 @@ Remnus is fully internationalized using **next-intl v4** (App Router native). Al
 
 **Translation files:** `messages/{locale}.json` — `en.json` is the source of truth. **26 namespaces:** `Layout`, `Home`, `Auth`, `Workspace`, `WorkspaceSettings`, `Templates`, `Database`, `Editor`, `Page`, `IconPicker`, `Admin`, `Errors`, `LanguageSwitcher`, `MobileNav`, `Landing`, `Billing`, `Pricing`, `Contact`, `Download`, `Privacy`, `Updater`, `Sharing`, `UserSettings`, `OAuthAuthorize`, `Security`, `Consent`.
 
+**Locale prefix:** Since `localePrefix: 'never'`, the pt-BR locale is identified via the `NEXT_LOCALE` cookie or `Accept-Language` header, never by URL path (no `/pt-BR/` prefix).
+
 ### Rules for All Future Development
 
 **Every new component or server action that surfaces user-facing text MUST follow these rules:**
@@ -67,7 +70,7 @@ Remnus is fully internationalized using **next-intl v4** (App Router native). Al
 1. **Client components** — `import { useTranslations } from 'next-intl'` and call `useTranslations('Namespace')` inside the component body.
 2. **Server components / layouts** — `import { getTranslations } from 'next-intl/server'` and `await getTranslations('Namespace')`.
 3. **Server actions** — same as above; use `getTranslations('Errors')` for error messages returned to the client.
-4. **Add all new keys to ALL 6 files** before committing. Missing keys fall back to the key name.
+4. **Add all new keys to ALL 7 files** before committing (`en`, `tr`, `hi`, `es`, `fr`, `de`, `pt-BR`). Missing keys fall back to the key name.
 5. **No hardcoded display strings** — not even English fallbacks like `|| 'Untitled'`. Always use `t('key')`.
 6. **Date formatting** — use `useLocale()` (client) or locale from `getRequestConfig` (server) instead of `'en-US'`.
 7. **Namespace selection** — pick the closest existing namespace. Create a new one only for a clearly standalone domain (add to all 6 files and document here).

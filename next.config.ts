@@ -11,6 +11,35 @@ const nextConfig: NextConfig = {
   experimental: {
     proxyClientMaxBodySize: '30mb',
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://res.cloudinary.com https://*.posthog.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://*.stripe.com; connect-src 'self' https://*.posthog.com https://*.stripe.com https://api.cloudinary.com; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 const intlConfig = withNextIntl(nextConfig);

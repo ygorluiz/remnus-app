@@ -1,11 +1,11 @@
-# Conventions
+﻿# Conventions
 
 ## i18n (CRITICAL)
 - All user-facing strings via next-intl — NO hardcoded strings, not even `|| 'Untitled'`
 - Client components: `useTranslations('Namespace')`
 - Server components/layouts: `await getTranslations('Namespace')`
 - Server actions: `getTranslations('Errors')` for error messages
-- Add keys to ALL 6 files (en/tr/hi/es/fr/de) — missing keys cause runtime warnings
+- Add keys to ALL 7 files (en/tr/hi/es/fr/de/pt-BR) - missing keys cause runtime warnings
 - 26 namespaces: Layout, Home, Auth, Workspace, WorkspaceSettings, Templates, Database, Editor, Page, IconPicker, Admin, Errors, LanguageSwitcher, MobileNav, Landing, Billing, Pricing, Contact, Download, Privacy, Updater, Sharing, UserSettings, OAuthAuthorize, Security, Consent
 - `Layout` namespace also has browser-tab strings (Tauri-only TabBar): `tabNewTooltip`, `tabClose`, `tabCloseOthers`, `tabCloseAll`, `tabUntitled` (besides demoMode/demoChangesNote/createFreeAccount)
 - `Consent` namespace: drives `CookieConsentBanner` (geo-aware cookie consent) — title/descriptionRequired/descriptionInformational/learnMore/accept/reject/gotIt keys

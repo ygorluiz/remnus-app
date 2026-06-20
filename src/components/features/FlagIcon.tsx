@@ -9,7 +9,7 @@
  * identically on every platform.
  */
 
-type FlagCode = 'en' | 'tr' | 'hi' | 'es' | 'fr' | 'de';
+type FlagCode = 'en' | 'tr' | 'hi' | 'es' | 'fr' | 'de' | 'br';
 
 const flags: Record<FlagCode, React.ReactNode> = {
   // United Kingdom — Union Jack
@@ -89,6 +89,15 @@ const flags: Record<FlagCode, React.ReactNode> = {
       <path fill="#ffce00" d="M0 320h640v160H0z" />
     </>
   ),
+  // Brazil
+  br: (
+    <>
+      <path fill="#009739" d="M0 0h640v480H0z" />
+      <path fill="#fedf00" d="M127.7 240 320 86.2 512.4 240 320 393.8z" />
+      <circle cx="320" cy="240" r="80" fill="#002776" />
+      <path fill="#fff" d="M294 220l-2 4 4 4-2 4-2 8 2 4 2 8v8l-2 4-2 4v4l2 4 2 4 2-4v-4l2-4 2-8v-8l-2-8 2-4 4-4-2-4-2-4z" transform="rotate(-15 320 240)" />
+    </>
+  ),
 };
 
 export default function FlagIcon({
@@ -100,7 +109,8 @@ export default function FlagIcon({
   size?: number;
   className?: string;
 }) {
-  const flag = flags[code as FlagCode];
+  const normalized: FlagCode = code === 'pt-BR' ? 'br' : code as FlagCode;
+  const flag = flags[normalized];
   if (!flag) return null;
   return (
     <svg

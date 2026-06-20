@@ -14,6 +14,7 @@ const LANGUAGES = [
   { code: 'es', label: 'Español' },
   { code: 'fr', label: 'Français' },
   { code: 'de', label: 'Deutsch' },
+  { code: 'pt-BR', label: 'Português (Brasil)' },
 ] as const;
 
 type Variant = 'sidebar' | 'compact' | 'header';

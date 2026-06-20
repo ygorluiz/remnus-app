@@ -1,3 +1,3 @@
-ALTER TABLE `pages` ADD COLUMN IF NOT EXISTS `agent_edited_at` integer;
+ALTER TABLE `pages` ADD COLUMN `agent_edited_at` integer;
 --> statement-breakpoint
-ALTER TABLE `pages` ADD COLUMN IF NOT EXISTS `agent_token_id` text;
+ALTER TABLE `pages` ADD COLUMN `agent_token_id` text;

@@ -1,4 +1,4 @@
-# Remnus — Core Memory
+﻿# Remnus — Core Memory
 
 Notion-like workspace app. Pages (title + markdown) and databases (dynamic columns, table/kanban/calendar views) in a unified sidebar. Each database row is also a page.
 
@@ -61,7 +61,7 @@ src/
     types/views.ts          # DatabaseView, ViewFilter, ViewSort types
     templates.ts            # TEMPLATES array for TemplatePickerModal
     seed.ts                 # createSeedWorkspace + createDemoSeedData
-messages/                   # i18n JSON (en, tr, hi, es, fr, de)
+messages/                   # i18n JSON (en, tr, hi, es, fr, de, pt-BR)
 ```
 
 ## DB Tables
