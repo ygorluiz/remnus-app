@@ -35,7 +35,7 @@ declare module '@auth/core/jwt' {
 
 // ── Auth config ───────────────────────────────────────────────────────────────
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update: update } = NextAuth({
   ...authConfig,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
@@ -108,7 +108,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user?.id) {
         // Fetch fresh from DB so we get the role set by createUser event
         const [dbUser] = await db
@@ -117,6 +117,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .where(eq(users.id, user.id));
         token.id = user.id;
         token.role = dbUser?.role ?? 'user';
+      }
+      // Profile self-edit (updateMyProfile → update({ user })): reflect the new
+      // display name / avatar in the session without forcing a re-login.
+      if (trigger === 'update' && session) {
+        const next = ((session as { user?: Record<string, unknown> }).user ?? session) as {
+          name?: string | null; image?: string | null; picture?: string | null;
+        };
+        if (next.name !== undefined) token.name = next.name;
+        const nextImage = next.image !== undefined ? next.image : next.picture;
+        if (nextImage !== undefined) token.picture = nextImage;
       }
       return token;
     },

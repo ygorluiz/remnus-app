@@ -1,10 +1,11 @@
 ﻿'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { X, User, Download, HardDrive, Crown, SlidersHorizontal } from 'lucide-react';
+import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2 } from 'lucide-react';
 import ImportTab from './workspace-settings/ImportTab';
 import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
+import { updateMyProfile } from '@/lib/actions/auth';
 import {
   setEditorFontSize, setSidebarDensity, setDefaultPageWidth, setTheme,
   type EditorFontSize, type SidebarDensity, type DefaultPageWidth,
@@ -130,6 +131,168 @@ interface UserSettingsModalProps {
 
 type Tab = 'account' | 'preferences' | 'import';
 
+// ── Editable profile (avatar + display name) ────────────────────────────────────
+
+function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
+  const t = useTranslations('UserSettings');
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [image, setImage] = useState<string | null>(currentUser.image ?? null);
+  const [name, setName] = useState(currentUser.name ?? '');
+  const [uploading, setUploading] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [err, setErr] = useState('');
+
+  const initials = (name || currentUser.email || 'U').trim().charAt(0).toUpperCase();
+  const nameTrim = name.trim();
+  const nameChanged = nameTrim.length > 0 && nameTrim !== (currentUser.name ?? '').trim();
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setErr('');
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('kind', 'icon');
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || t('profileUploadError'));
+      await updateMyProfile({ image: data.url });
+      setImage(data.url);
+      setAvatarError(false);
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t('profileUploadError'));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function onRemove() {
+    setErr('');
+    setUploading(true);
+    try {
+      await updateMyProfile({ image: null });
+      setImage(null);
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t('profileUploadError'));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function onSaveName() {
+    if (!nameChanged || savingName) return;
+    setErr('');
+    setSavingName(true);
+    try {
+      await updateMyProfile({ name: nameTrim });
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t('profileSaveError'));
+    } finally {
+      setSavingName(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Avatar + actions */}
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0 group">
+          {image && !avatarError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={image}
+              alt={name || 'User'}
+              className="w-16 h-16 rounded-full object-cover"
+              onError={() => setAvatarError(true)}
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-neutral-700 flex items-center justify-center text-2xl font-semibold text-neutral-200">
+              {initials}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            aria-label={t('profileUpload')}
+            className="absolute inset-0 rounded-full bg-black/55 opacity-0 group-hover:opacity-100 disabled:opacity-100 transition-opacity flex items-center justify-center text-white cursor-pointer"
+          >
+            {uploading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPick} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="text-xs font-medium px-3 py-1.5 border border-neutral-700 text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {t('profileUpload')}
+            </button>
+            {image && (
+              <button
+                onClick={onRemove}
+                disabled={uploading}
+                className="text-xs font-medium px-3 py-1.5 border border-neutral-800 text-neutral-400 hover:text-red-400 hover:border-red-400/40 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {t('profileRemove')}
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-neutral-500 mt-1.5">{t('profilePhotoHint')}</p>
+        </div>
+      </div>
+
+      {/* Display name */}
+      <div>
+        <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">
+          {t('profileName')}
+        </label>
+        <div className="flex gap-2">
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') onSaveName(); }}
+            maxLength={80}
+            placeholder={t('profileNamePlaceholder')}
+            className="flex-1 min-w-0 bg-neutral-950 border border-neutral-700 rounded-md text-neutral-100 px-3 py-2 text-sm outline-none focus:border-blue-500/60 transition-colors"
+          />
+          <button
+            onClick={onSaveName}
+            disabled={!nameChanged || savingName}
+            className="shrink-0 text-xs font-semibold px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-40 disabled:hover:bg-blue-500 transition-colors cursor-pointer"
+          >
+            {savingName ? t('profileSaving') : t('profileSave')}
+          </button>
+        </div>
+      </div>
+
+      {/* Email (read-only) */}
+      {currentUser.email && (
+        <div>
+          <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">
+            {t('profileEmail')}
+          </label>
+          <p className="text-sm text-neutral-400 truncate">{currentUser.email}</p>
+        </div>
+      )}
+
+      {err && <p className="text-[11px] text-red-400">{err}</p>}
+    </div>
+  );
+}
+
 export default function UserSettingsModal({ currentUser, onClose }: UserSettingsModalProps) {
   const t = useTranslations('UserSettings');
   const router = useRouter();
@@ -137,7 +300,6 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
 
   const [activeTab, setActiveTab] = useState<Tab>('account');
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
-  const [avatarError, setAvatarError] = useState(false);
 
   // Preference states — read from cookie-derived data attributes on <html>
   const [locale, setLocaleState] = useState(currentLocale);
@@ -189,8 +351,6 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
     document.documentElement.dataset.theme = v;
     await setTheme(v);
   }
-
-  const initials = (currentUser.name || currentUser.email || 'U').trim().charAt(0).toUpperCase();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'account', label: t('tabAccount'), icon: <User size={13} /> },
@@ -266,32 +426,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
           {/* Account */}
           {activeTab === 'account' && (
               <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="shrink-0">
-                    {currentUser.image && !avatarError ? (
-                      <img
-                        src={currentUser.image}
-                        alt={currentUser.name ?? 'User'}
-                        className="w-14 h-14 rounded-full object-cover"
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-neutral-700 flex items-center justify-center text-xl font-semibold text-neutral-200">
-                        {initials}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-neutral-100 truncate">
-                      {currentUser.name ?? currentUser.email ?? 'User'}
-                    </p>
-                    {currentUser.name && currentUser.email && (
-                      <p className="text-xs text-neutral-500 truncate mt-0.5">{currentUser.email}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="border-t border-neutral-800" />
+                <ProfileSection currentUser={currentUser} />
 
                 <div className="border-t border-neutral-800 pt-5 space-y-4">
                   <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">{t('planTitle')}</p>

@@ -1,5 +1,5 @@
 'use server';
-import { signOut } from '@/auth';
+import { signOut, update } from '@/auth';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { users, workspaces, workspaceMembers, workspaceInvites, accounts, sessions, userSessions, agentTokens } from '@/db/schema';
@@ -9,7 +9,61 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
+import { getCurrentUser } from '@/lib/auth/session';
+import { deleteAssetByUrl } from '@/lib/services/assets';
 import { checkCanAddSeatForEmail } from '@/lib/services/billing';
+
+/**
+ * Update the signed-in user's own display name and/or avatar.
+ * - `image: string` sets a new avatar URL (uploaded via /api/upload, kind=icon)
+ * - `image: null` clears it (UI falls back to initials)
+ * Refreshes the JWT so the change shows up everywhere without a re-login.
+ */
+export async function updateMyProfile(input: { name?: string; image?: string | null }): Promise<void> {
+  const user = await getCurrentUser();
+  const t = await getTranslations('Errors');
+
+  const patch: { name?: string; image?: string | null } = {};
+
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (name.length === 0) throw new Error(t('nameRequired'));
+    if (name.length > 80) throw new Error(t('nameTooLong'));
+    patch.name = name;
+  }
+
+  // Capture the previous avatar so we can clean it up if it was one of our uploads.
+  let previousImage: string | null = null;
+  if (input.image !== undefined) {
+    patch.image = input.image;
+    const [row] = await db.select({ image: users.image }).from(users).where(eq(users.id, user.id)).limit(1);
+    previousImage = row?.image ?? null;
+  }
+
+  if (Object.keys(patch).length === 0) return;
+
+  await db.update(users).set(patch).where(eq(users.id, user.id));
+
+  // Reflect name/avatar in the session token immediately (no re-login needed).
+  await update({
+    user: {
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.image !== undefined ? { image: patch.image } : {}),
+    },
+  });
+
+  // Best-effort: drop the old avatar from Cloudinary when it was our upload and changed.
+  if (
+    input.image !== undefined &&
+    previousImage &&
+    previousImage !== patch.image &&
+    previousImage.includes('res.cloudinary.com')
+  ) {
+    try { await deleteAssetByUrl(previousImage, user.id); } catch { /* ignore cleanup failure */ }
+  }
+
+  revalidatePath('/');
+}
 
 export async function logout() {
   // Clear the persisted workspace selection so the next account doesn't inherit it
