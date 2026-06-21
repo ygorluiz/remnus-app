@@ -334,7 +334,11 @@ export default function CalendarView({
         <div
           className="grid grid-cols-7 border-l border-t border-neutral-800/80 bg-neutral-850 h-auto"
           style={{
-            gridTemplateRows: viewMode === 'month' ? 'repeat(6, minmax(6rem, 1fr))' : 'minmax(22rem, 1fr)'
+            // `auto` (not `1fr`) so each week row grows to fit its busiest day
+            // independently — a week packed with cards expands without dragging
+            // every other row to the same height. The min (~2 default cards tall)
+            // keeps sparse weeks from collapsing too short.
+            gridTemplateRows: viewMode === 'month' ? 'repeat(6, minmax(11rem, auto))' : 'minmax(22rem, auto)'
           }}
         >
           {days.map(({ date, isCurrentMonth }, idx) => {
@@ -367,9 +371,15 @@ export default function CalendarView({
                   setDraggedCardId(null);
                   setIsCardDragReady(false);
                 }}
-                className={`border-r border-b border-neutral-800/80 p-1 lg:p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
-                  !isCurrentMonth && viewMode === 'month' ? 'bg-neutral-950/20' : 'bg-transparent'
-                } ${isDragOver ? 'bg-neutral-800/15' : ''}`}
+                className={`relative border-r border-b border-neutral-800/80 p-1 lg:p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
+                  isDragOver
+                    ? 'bg-neutral-800/15'
+                    : isToday
+                    ? 'bg-blue-500/5'
+                    : !isCurrentMonth && viewMode === 'month'
+                    ? 'bg-neutral-950/20'
+                    : 'bg-transparent'
+                } ${isToday ? 'ring-1 ring-inset ring-blue-500/40 z-10' : ''}`}
               >
                 {/* Day Number / Indicator */}
                 <div className="flex items-center justify-between mb-1.5 shrink-0 select-none">
