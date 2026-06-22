@@ -38,7 +38,7 @@ const TABLES = [
   { name: 'user',                      pgTable: pgSchema.users },
   { name: 'account',                   pgTable: pgSchema.accounts },
   { name: 'session',                   pgTable: pgSchema.sessions },
-  { name: 'verificationToken',         pgTable: pgSchema.verificationTokens },
+  { name: 'verification',              pgTable: pgSchema.verification },
   { name: 'workspace_members',         pgTable: pgSchema.workspaceMembers },
   { name: 'workspace_invites',         pgTable: pgSchema.workspaceInvites },
   { name: 'agent_tokens',              pgTable: pgSchema.agentTokens },
