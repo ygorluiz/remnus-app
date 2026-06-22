@@ -69,17 +69,14 @@ function readBlog(file: string): string {
   return readFileSync(join('docs', 'blog', file), 'utf8');
 }
 
-async function findAdminUser(): Promise<string> {
+async function findAdminUser(): Promise<string | null> {
   const [user] = await db
     .select({ id: schema.users.id })
     .from(schema.users)
     .where(eq(schema.users.role, 'admin'))
     .limit(1);
 
-  if (!user) {
-    throw new Error('No admin user found. Create an admin account first.');
-  }
-  return user.id;
+  return user?.id ?? null;
 }
 
 async function findOrCreateBlogWorkspace(adminUserId: string): Promise<string> {
@@ -119,6 +116,10 @@ async function main() {
   console.log('Seeding blog pages...\n');
 
   const adminUserId = await findAdminUser();
+  if (!adminUserId) {
+    console.log('No admin user found — skipping blog seed. Seed after the first admin signs in.');
+    return;
+  }
   console.log(`Admin user: ${adminUserId}`);
 
   const workspaceId = await findOrCreateBlogWorkspace(adminUserId);
