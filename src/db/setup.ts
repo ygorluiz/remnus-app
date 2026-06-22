@@ -1,36 +1,29 @@
 /**
- * Runs all migrations (Drizzle + every apply-*.ts script) in order.
- * New apply scripts are picked up automatically — no need to edit this file.
- *
- * DATABASE_URL defaults to "file:local.db" for local dev convenience.
+ * Sets up the database by pushing the schema.
  *
  * Usage:
  *   npm run db:setup
- *   DATABASE_URL=libsql://... DATABASE_AUTH_TOKEN=... npm run db:setup  (Turso)
+ *   DATABASE_URL="postgresql://..." npm run db:setup
  */
 import { spawnSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-const root = path.resolve(__dirname, '..', '..');
-const dbDir = path.resolve(__dirname);
-const dbUrl = process.env.DATABASE_URL ?? 'file:local.db';
-const env = { ...process.env, DATABASE_URL: dbUrl };
-
-const applyScripts = fs
-  .readdirSync(dbDir)
-  .filter(f => /^apply-\d+.*\.ts$/.test(f))
-  .sort()
-  .map(f => path.join('src', 'db', f));
-
-const scripts = ['src/db/migrate.ts', ...applyScripts];
-
-console.log(`\nSetting up database: ${dbUrl}\n`);
-
-for (const script of scripts) {
-  console.log(`▶ ${script}`);
-  const result = spawnSync('npx', ['tsx', script], { env, cwd: root, stdio: 'inherit' });
-  if (result.status !== 0) process.exit(result.status ?? 1);
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error('DATABASE_URL is required');
+  process.exit(1);
 }
 
-console.log('\n✓ All migrations applied.\n');
+console.log(`\nSetting up database: ${dbUrl.replace(/:.*@/, ':***@')}\n`);
+
+// Push schema to database
+console.log('▶ Pushing schema...');
+const result = spawnSync('npx', ['drizzle-kit', 'push'], {
+  env: { ...process.env, DATABASE_URL: dbUrl },
+  cwd: process.cwd(),
+  stdio: 'inherit',
+});
+if (result.status !== 0) process.exit(result.status ?? 1);
+
+console.log('\n✓ Database setup complete.\n');

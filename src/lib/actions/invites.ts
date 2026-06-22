@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { workspaceInvites, workspaceMembers, workspaces } from '@/db/schema';
 import { eq, and, isNull, or, gt, desc } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
+import { headers } from 'next/headers';
 import { auth } from '@/auth';
 import { getTranslations } from 'next-intl/server';
 import { revalidatePath } from 'next/cache';
@@ -78,7 +79,7 @@ export async function getInviteByToken(token: string) {
 
 // Accept an invite for the logged-in user (bearer token — email match not required).
 export async function acceptInvite(token: string): Promise<{ ok?: boolean; workspaceId?: string; error?: string }> {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) return { error: 'not_authenticated' };
   const t = await getTranslations('Errors');
 

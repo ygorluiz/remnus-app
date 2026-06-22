@@ -10,6 +10,7 @@ import { getAnyPageById } from '@/lib/services/workspace';
 import { db } from '@/db';
 import { workspaceItems, databases, pages } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
+import { headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/auth';
 import SharedPageView from '@/components/share/SharedPageView';
@@ -155,7 +156,7 @@ export default async function SharedPageRoute({ params }: Props) {
   if (!result) notFound();
 
   const { share, page } = result;
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   const t = await getTranslations('Sharing');
 
   // Workspace members get redirected to the real page instead of the shared view

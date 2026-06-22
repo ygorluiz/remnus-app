@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,7 +10,7 @@ import InviteAcceptClient from '@/components/features/InviteAcceptClient';
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const t = await getTranslations('Billing');
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   const invite = await getInviteByToken(token);
 
   const Shell = ({ children }: { children: React.ReactNode }) => (

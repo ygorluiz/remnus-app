@@ -1,9 +1,11 @@
 'use client';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { createAuthClient } from 'better-auth/client';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
+
+const authClient = createAuthClient();
 
 export default function ClientLoginPage() {
   return (
@@ -41,7 +43,7 @@ function ClientLoginForm() {
           {/* Google */}
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: bridgeUrl })}
+            onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: bridgeUrl })}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-100 text-neutral-900 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GoogleIcon />
@@ -51,7 +53,7 @@ function ClientLoginForm() {
           {/* GitHub */}
           <button
             type="button"
-            onClick={() => signIn('github', { callbackUrl: bridgeUrl })}
+            onClick={() => authClient.signIn.social({ provider: 'github', callbackURL: bridgeUrl })}
             className="w-full flex items-center justify-center gap-3 bg-[#24292e] hover:bg-[#2f363d] text-white border border-neutral-800 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GithubIcon />

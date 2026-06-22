@@ -1,9 +1,9 @@
 'use server';
 import { db } from '@/db';
-import { users, workspaces, workspaceMembers } from '@/db/schema';
+import { users, workspaces, workspaceMembers, sessions } from '@/db/schema';
 import { eq, ne, and, lt } from 'drizzle-orm';
-import { encode } from '@auth/core/jwt';
-import { cookies } from 'next/headers';
+import { SignJWT } from 'jose';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { createDemoSeedData } from '@/lib/seed';
@@ -59,7 +59,7 @@ export async function loginAsDemo(_prevState: unknown, _formData: FormData): Pro
   // If the visitor already holds a live demo session with a workspace, just send
   // them back into it — don't mint a new account or reseed on every click/refresh.
   // (Raw auth() instead of getCurrentUser() so an absent session doesn't redirect.)
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (session?.user?.id && session.user.role === 'demo') {
     const existing = await db
       .select({ id: workspaceMembers.workspaceId })
@@ -97,32 +97,35 @@ export async function loginAsDemo(_prevState: unknown, _formData: FormData): Pro
   // Seed this visitor's own workspace (pages + databases).
   await createDemoSeedData(demoUserId, demoName);
 
-  // Create a session JWT directly — bypasses Auth.js HTTP route and its CSRF check.
-  // Calling signIn() from a server action makes an internal POST to /api/auth/signin
-  // which requires a CSRF token that isn't present in server-side contexts.
+  // Create a Better Auth session — encode a JWT and store the session in the DB.
   const isProd = process.env.NODE_ENV === 'production';
-  const cookieName = isProd ? '__Secure-authjs.session-token' : 'authjs.session-token';
-  const secret = process.env.AUTH_SECRET!;
+  const secret = new TextEncoder().encode(process.env.AUTH_SECRET!);
+  const sessionToken = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-  const sessionToken = await encode({
-    token: {
-      sub: demoUserId,
-      name: demoName,
-      email: `demo+${demoUserId}@${DEMO_EMAIL_DOMAIN}`,
-      id: demoUserId,
-      role: 'demo',
-    },
-    secret,
-    salt: cookieName,
+  // Store session record in DB (matching the existing Auth.js-compatible schema)
+  await db.insert(sessions).values({
+    sessionToken,
+    userId: demoUserId,
+    expires: expiresAt,
   });
 
+  // Encode a JWT for the session cookie (matching Better Auth's jwt() plugin format)
+  const jwt = await new SignJWT({
+    sub: demoUserId,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(expiresAt.getTime() / 1000),
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .sign(secret);
+
   const cookieStore = await cookies();
-  cookieStore.set(cookieName, sessionToken, {
+  cookieStore.set('better-auth.session_token', jwt, {
     httpOnly: true,
     secure: isProd,
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 30 * 24 * 60 * 60,
   });
 
   redirect('/app');

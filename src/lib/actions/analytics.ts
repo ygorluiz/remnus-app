@@ -59,10 +59,10 @@ function toEpochMs(val: unknown): number | null {
 export async function getEngagementOverview(): Promise<EngagementOverview> {
   await assertAdmin();
 
-  const nowSec = Math.floor(Date.now() / 1000);
-  const dayCut = nowSec - DAY;
-  const weekCut = nowSec - 7 * DAY;
-  const monthCut = nowSec - 30 * DAY;
+  const now = new Date();
+  const dayCut = new Date(now.getTime() - DAY * 1000);
+  const weekCut = new Date(now.getTime() - 7 * DAY * 1000);
+  const monthCut = new Date(now.getTime() - 30 * DAY * 1000);
 
   const [signups] = await db
     .select({
@@ -131,13 +131,13 @@ export async function getEngagementOverview(): Promise<EngagementOverview> {
 
   // Acquisition trend: signups per day over the last 30 days, bucketed in JS.
   const signupRows = await db
-    .select({ createdAt: sql<number>`${users.createdAt}` })
+    .select({ createdAt: sql`${users.createdAt}` })
     .from(users)
     .where(and(sql`${users.createdAt} >= ${monthCut}`, ne(users.role, 'demo')));
 
   const buckets = new Map<string, number>();
   for (let i = 29; i >= 0; i--) {
-    const d = new Date((nowSec - i * DAY) * 1000);
+    const d = new Date(now.getTime() - i * DAY * 1000);
     buckets.set(d.toISOString().slice(0, 10), 0);
   }
   for (const row of signupRows) {
@@ -149,7 +149,7 @@ export async function getEngagementOverview(): Promise<EngagementOverview> {
   const signupTrend = [...buckets.entries()].map(([date, count]) => ({ date, count }));
 
   // Demo activity — deliberately kept OUT of every metric above; reported on its own.
-  const demoActiveCut = nowSec - 15 * 60; // "active" = a heartbeat in the last 15 min
+  const demoActiveCut = new Date(now.getTime() - 15 * 60 * 1000); // "active" = a heartbeat in the last 15 min
   const [demoActive] = await db
     .select({ count: sql<number>`count(distinct ${userSessions.userId})` })
     .from(userSessions)

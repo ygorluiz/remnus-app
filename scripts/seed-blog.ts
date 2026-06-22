@@ -2,14 +2,11 @@
 // Idempotent script: seeds docs/blog/ markdown files as public shared pages
 // with custom admin slugs and in_sitemap=true.
 //
-// Turso:  npx tsx scripts/seed-blog.ts
-// Local:  DATABASE_URL="file:local.db" npx tsx scripts/seed-blog.ts
-//
 // Run once after initial deployment, or again whenever blog content changes.
 // Existing pages are updated in-place; missing pages are created from scratch.
 
-import { createClient } from '@libsql/client';
-import { drizzle } from 'drizzle-orm/libsql';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -19,11 +16,8 @@ dotenv.config();
 
 import * as schema from '../src/db/schema';
 
-const client = createClient({
-  url: process.env.DATABASE_URL || 'file:local.db',
-  authToken: process.env.DATABASE_AUTH_TOKEN,
-});
-const db = drizzle(client, { schema });
+const sql = neon(process.env.DATABASE_URL!);
+const db = drizzle(sql, { schema });
 
 // ── Blog page definitions — order matters: parents must come before children ──
 

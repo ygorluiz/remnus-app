@@ -1,5 +1,4 @@
 'use server';
-import { signOut, update } from '@/auth';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { users, workspaces, workspaceMembers, workspaceInvites, accounts, sessions, userSessions, agentTokens } from '@/db/schema';
@@ -7,7 +6,7 @@ import { eq, ne, and, sql, isNull } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { deleteAssetByUrl } from '@/lib/services/assets';
@@ -45,11 +44,12 @@ export async function updateMyProfile(input: { name?: string; image?: string | n
   await db.update(users).set(patch).where(eq(users.id, user.id));
 
   // Reflect name/avatar in the session token immediately (no re-login needed).
-  await update({
-    user: {
+  await auth.api.updateUser({
+    body: {
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.image !== undefined ? { image: patch.image } : {}),
     },
+    headers: await headers(),
   });
 
   // Best-effort: drop the old avatar from Cloudinary when it was our upload and changed.
@@ -69,7 +69,8 @@ export async function logout() {
   // Clear the persisted workspace selection so the next account doesn't inherit it
   const cookieStore = await cookies();
   cookieStore.delete('remnus_workspace_id');
-  await signOut({ redirectTo: '/login' });
+  await auth.api.signOut({ headers: await headers() });
+  redirect('/login');
 }
 
 export async function inviteToWorkspace(
@@ -77,7 +78,7 @@ export async function inviteToWorkspace(
   email: string,
   role: 'member' | 'viewer' = 'member',
 ) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect('/login');
 
   const t = await getTranslations('Errors');
@@ -163,7 +164,7 @@ export async function inviteToWorkspace(
 }
 
 export async function removeFromWorkspace(workspaceId: string, userId: string) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect('/login');
   const t = await getTranslations('Errors');
 
@@ -198,7 +199,7 @@ export async function removeFromWorkspace(workspaceId: string, userId: string) {
 }
 
 export async function getWorkspaceMembers(workspaceId: string) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect('/login');
 
   return db
@@ -215,7 +216,7 @@ export async function getWorkspaceMembers(workspaceId: string) {
 }
 
 export async function getAllUsers() {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id || session.user.role !== 'admin') {
     const t = await getTranslations('Errors');
     return { error: t('adminRequired') };
@@ -256,7 +257,7 @@ export async function getAllUsers() {
 }
 
 export async function adminDeleteUser(userId: string) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   const t = await getTranslations('Errors');
   if (!session?.user?.id || session.user.role !== 'admin') {
     return { error: t('adminRequired') };
@@ -287,7 +288,7 @@ export async function adminDeleteUser(userId: string) {
 }
 
 export async function setUserRole(userId: string, role: 'user' | 'admin') {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id || session.user.role !== 'admin') {
     const t = await getTranslations('Errors');
     return { error: t('adminRequired') };
@@ -302,7 +303,7 @@ export async function updateWorkspaceMemberRole(
   userId: string,
   role: 'member' | 'viewer',
 ) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect('/login');
   const t = await getTranslations('Errors');
 
@@ -356,7 +357,7 @@ export async function transferWorkspaceOwnership(
   workspaceId: string,
   newOwnerUserId: string,
 ) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect('/login');
   const t = await getTranslations('Errors');
 

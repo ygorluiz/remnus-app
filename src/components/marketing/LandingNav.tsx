@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/auth';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
@@ -7,7 +8,7 @@ import LandingThemeToggle from './LandingThemeToggle';
 
 export default async function LandingNav() {
   const t = await getTranslations('Landing');
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   const isAuthed = !!session?.user;
 
   return (

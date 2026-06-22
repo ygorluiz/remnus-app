@@ -562,13 +562,10 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
     createdAt: a.at,
   }));
 
-  // ── Single batched write ────────────────────────────────────────────────────
-  // Production DB is remote (Turso) — every INSERT is a network round-trip, so the
-  // old seed (~55 sequential inserts) made "Try the demo" feel slow. Sending every
-  // row in ONE batch (with multi-row inserts for the 16 tasks + the audit log)
-  // collapses it to a single round-trip. Order is FK-safe: parents precede children.
+  // ── Batched write ────────────────────────────────────────────────────────
+  // Use Promise.all for parallel inserts (works with any database driver).
 
-  await db.batch([
+  await Promise.all([
     db.insert(workspaces).values({ id: ws1, name: workspaceName, sortOrder: 0, billingOwnerId: userId, createdAt: new Date() }),
     db.insert(workspaceMembers).values({ id: crypto.randomUUID(), workspaceId: ws1, userId, role: 'owner', createdAt: new Date() }),
     db.insert(agentTokens).values({ id: demoTokenId, workspaceId: ws1, name: 'Claude AI Agent', agentName: 'claude-code', tokenPrefix: 'rmns-demo', tokenHash: 'demo-seed-not-valid', scope: 'write', createdBy: userId, createdAt: h(-48), lastUsedAt: h(-1) }),

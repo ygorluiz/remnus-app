@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/next';
-import { auth, signOut } from '@/auth';
+import { auth } from '@/auth';
 import { cookies, headers } from 'next/headers';
 import { getAllWorkspaceItems, getWorkspaces } from '@/lib/actions/workspace';
 import WorkspaceSidebar from '@/components/features/WorkspaceSidebar';
@@ -9,7 +9,7 @@ import QueryProvider from '@/components/providers/QueryProvider';
 import AppShell from '@/components/AppShell';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { getTranslations } from 'next-intl/server';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
@@ -72,7 +72,7 @@ export default async function LocaleLayout({
   }
 
   const messages = await getMessages();
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
 
   // Geo-aware cookie consent (server-resolved so the banner renders flash-free).
   const [headerStore, consentCookieStore] = await Promise.all([headers(), cookies()]);
@@ -114,10 +114,10 @@ export default async function LocaleLayout({
     name: session.user.name ?? null,
     email: session.user.email ?? null,
     image: session.user.image ?? null,
-    role: session.user.role,
+    role: (session.user as Record<string, unknown>).role as string ?? 'user',
   };
 
-  const demoBanner = session.user.role === 'demo' ? (
+  const demoBanner = (session.user as Record<string, unknown>).role === 'demo' ? (
     <div key="demo-banner" className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20">
       <div className="flex items-center gap-1.5 text-xs text-amber-400 min-w-0">
         <span className="font-semibold shrink-0">{t('demoMode')}</span>
@@ -127,7 +127,8 @@ export default async function LocaleLayout({
       <form
         action={async () => {
           'use server';
-          await signOut({ redirectTo: '/login' });
+          await auth.api.signOut({ headers: await headers() });
+          redirect('/login');
         }}
       >
         <button

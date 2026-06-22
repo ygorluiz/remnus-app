@@ -3,6 +3,7 @@
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { headers } from 'next/headers';
 import { auth } from '@/auth';
 
 /**
@@ -15,7 +16,7 @@ import { auth } from '@/auth';
  */
 export async function setAnalyticsConsent(granted: boolean): Promise<void> {
   try {
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: await headers() });
     const userId = session?.user?.id;
     if (!userId) return;
     await db

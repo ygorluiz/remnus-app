@@ -1,11 +1,13 @@
 'use client';
 import { useActionState, useEffect, useRef, useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { createAuthClient } from 'better-auth/client';
 import { loginAsDemo } from '@/lib/actions/demo';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+
+const authClient = createAuthClient();
 
 type TauriState = 'idle' | 'waiting' | 'activating' | 'error';
 
@@ -189,7 +191,7 @@ export default function LoginPage() {
           {/* Google */}
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: '/app' })}
+            onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: '/app' })}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-100 text-neutral-900 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GoogleIcon />
@@ -199,7 +201,7 @@ export default function LoginPage() {
           {/* GitHub */}
           <button
             type="button"
-            onClick={() => signIn('github', { callbackUrl: '/app' })}
+            onClick={() => authClient.signIn.social({ provider: 'github', callbackURL: '/app' })}
             className="w-full flex items-center justify-center gap-3 bg-[#24292e] hover:bg-[#2f363d] text-white border border-neutral-800 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GithubIcon />

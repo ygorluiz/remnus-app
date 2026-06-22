@@ -1,27 +1,78 @@
 import createMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
-import NextAuth from 'next-auth';
-import { authConfig } from './auth.config';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSessionCookie } from 'better-auth/cookies';
 
 const intlMiddleware = createMiddleware(routing);
-const { auth: authMiddleware } = NextAuth(authConfig);
 
-// Auth.js proxy wraps the intl middleware:
-// 1. Auth checks run on the original (un-rewritten) request path
-// 2. API routes bypass intl middleware — next-intl must not rewrite /api/* paths
-// 3. If authorized page request, intl middleware handles locale detection and internal rewrite
-export default authMiddleware(function proxy(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith('/api/') || req.nextUrl.pathname.startsWith('/.well-known/')) {
+// Routes that are always public (no auth required)
+const PUBLIC_ROUTES = [
+  '/login',
+  '/client-login',
+  '/tauri-app',
+  '/api/auth',
+  '/api/mcp',
+  '/.well-known',
+  '/api/webhooks',
+  '/invite',
+  '/share',
+  '/',
+  '/pricing',
+  '/contact',
+  '/download',
+  '/privacy',
+  '/security',
+];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(route + '/'));
+}
+
+export default function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // API routes and well-known routes bypass intl middleware
+  if (pathname.startsWith('/api/') || pathname.startsWith('/.well-known/')) {
     return NextResponse.next();
   }
+
+  // Check for session cookie
+  const sessionCookie = getSessionCookie(req);
+  const isLoggedIn = !!sessionCookie;
+
+  // Redirect logged-in users away from login pages
+  if (isLoggedIn && (pathname === '/login' || pathname === '/client-login')) {
+    const deviceParam = req.nextUrl.searchParams.get('device_id');
+    if (pathname === '/client-login' && deviceParam) {
+      // Desktop flow: redirect to bridge with device_id
+      return NextResponse.redirect(new URL(`/api/auth/client-bridge?device_id=${deviceParam}`, req.url));
+    }
+    return NextResponse.redirect(new URL('/app', req.url));
+  }
+
+  // Allow public routes without auth
+  if (isPublicRoute(pathname)) {
+    const response = intlMiddleware(req);
+    if (response instanceof NextResponse) {
+      response.headers.set('x-pathname', pathname);
+    }
+    return response;
+  }
+
+  // Protected routes: require auth
+  if (!isLoggedIn) {
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Authenticated: run intl middleware
   const response = intlMiddleware(req);
-  // Expose the clean external pathname to server layouts via header
   if (response instanceof NextResponse) {
-    response.headers.set('x-pathname', req.nextUrl.pathname);
+    response.headers.set('x-pathname', pathname);
   }
   return response;
-}) as (req: NextRequest) => Response | Promise<Response>;
+}
 
 export const config = {
   matcher: [

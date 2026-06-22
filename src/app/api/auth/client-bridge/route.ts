@@ -1,14 +1,14 @@
 import { auth } from '@/auth';
 import { SignJWT } from 'jose';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { setPendingClientToken } from '@/lib/client-auth-store';
 
 // Called after browser-side login (via callbackUrl).
 // Creates a short-lived JWT keyed by device_id so the desktop client can poll for it.
 export async function GET(request: Request) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) redirect('/login');
 
   const { searchParams } = new URL(request.url);

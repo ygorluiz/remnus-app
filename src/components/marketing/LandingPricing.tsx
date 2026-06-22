@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { auth } from '@/auth';
 import PricingCtaButton from './PricingCtaButton';
 import type { PlanTier } from '@/lib/billing/plans';
@@ -48,7 +49,7 @@ const ACCENTS: Record<Accent, { color: string; tintFrom: string; divider: string
 
 export default async function LandingPricing({ showComparison = false }: { showComparison?: boolean }) {
   const t = await getTranslations('Landing');
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   const isAuthed = !!session?.user;
 
   const tU = t('bridgePricingTblValUnlimited');

@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { getActiveWorkspaceId, getWorkspaceItems } from '@/lib/actions/workspace';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import Image from 'next/image';
 
@@ -10,7 +10,7 @@ export default async function AppRedirectPage({
 }: {
   searchParams: Promise<{ billing?: string }>;
 }) {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session?.user) {
     redirect('/login');

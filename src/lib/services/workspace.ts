@@ -339,16 +339,16 @@ export async function queryDatabaseRows(
 
   if (!dbRecord) throw new Error('Database not found');
 
-  // Push property filters into SQL using json_extract so limit is applied after filtering.
+  // Push property filters into SQL using PG JSONB operators so limit is applied after filtering.
   // Handles both scalar fields (select, text, number) and array fields (multi_select)
-  // by checking both direct equality and json_each membership in one condition.
+  // by checking both direct equality and jsonb_array_elements_text membership.
   const filterConditions = filters
     ? Object.entries(filters).map(([key, value]) =>
         sql`(
-          json_extract(${pages.properties}, ${'$.' + key}) = ${value}
+          (${pages.properties} ->> ${key}) = ${String(value)}
           OR EXISTS (
-            SELECT 1 FROM json_each(json_extract(${pages.properties}, ${'$.' + key}))
-            WHERE value = ${value}
+            SELECT 1 FROM jsonb_array_elements_text(${pages.properties} -> ${key}) AS elem
+            WHERE elem = ${String(value)}
           )
         )`,
       )

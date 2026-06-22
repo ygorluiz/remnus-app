@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
@@ -64,7 +65,7 @@ async function computeChangeVersion(userId: string): Promise<number> {
 }
 
 export async function POST() {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ ok: false }, { status: 401 });
 
