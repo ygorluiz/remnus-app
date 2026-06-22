@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { jwt, nextCookies } from 'better-auth/plugins';
+import { jwt } from 'better-auth/plugins';
 import { db } from '@/db';
 import * as schema from '@/db/schema';
 import { createSeedWorkspace } from '@/lib/seed';
@@ -56,7 +56,6 @@ export const auth = betterAuth({
   },
   plugins: [
     jwt(),
-    nextCookies(),
   ],
   databaseHooks: {
     user: {
