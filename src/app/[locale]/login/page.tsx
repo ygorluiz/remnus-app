@@ -189,7 +189,19 @@ export default function LoginPage() {
           {/* Google */}
           <button
             type="button"
-            onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: '/app' })}
+            onClick={async () => {
+              try {
+                const result = await authClient.signIn.social({ provider: 'google', callbackURL: '/app' });
+                console.log('[Auth] Google sign-in result:', result);
+                if (result?.data?.url) {
+                  window.location.href = result.data.url;
+                } else if (result?.error) {
+                  console.error('[Auth] Google sign-in error:', result.error);
+                }
+              } catch (err) {
+                console.error('[Auth] Google sign-in failed:', err);
+              }
+            }}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-neutral-100 text-neutral-900 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GoogleIcon />
@@ -199,7 +211,19 @@ export default function LoginPage() {
           {/* GitHub */}
           <button
             type="button"
-            onClick={() => authClient.signIn.social({ provider: 'github', callbackURL: '/app' })}
+            onClick={async () => {
+              try {
+                const result = await authClient.signIn.social({ provider: 'github', callbackURL: '/app' });
+                console.log('[Auth] GitHub sign-in result:', result);
+                if (result?.data?.url) {
+                  window.location.href = result.data.url;
+                } else if (result?.error) {
+                  console.error('[Auth] GitHub sign-in error:', result.error);
+                }
+              } catch (err) {
+                console.error('[Auth] GitHub sign-in failed:', err);
+              }
+            }}
             className="w-full flex items-center justify-center gap-3 bg-[#24292e] hover:bg-[#2f363d] text-white border border-neutral-800 font-medium text-sm py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
           >
             <GithubIcon />
