@@ -3,7 +3,11 @@ import { workspaces, workspaceItems, standalonePages, databases, pages, workspac
 
 export async function createSeedWorkspace(userId: string, userName?: string | null) {
   const workspaceName = userName ? `${userName} Workspace` : 'Personal Workspace';
-  await createRichWorkspaceData(userId, workspaceName);
+  // New (real) users get the sample Paint-clone workspace WITHOUT a pre-seeded
+  // agent token or audit-log history — a brand-new user hasn't connected any
+  // agent yet, so a planted "Claude AI Agent" token + activity feed in the AI
+  // Agents panel would be misleading (and would muddy the onboarding funnel).
+  await createRichWorkspaceData(userId, workspaceName, { includeAgent: false });
 }
 
 // ── Demo seed data ─────────────────────────────────────────────────────────
@@ -418,7 +422,16 @@ Wire up keyboard shortcuts for fast tool switching and common actions.
 - Shortcuts do not interfere with browser defaults (except Ctrl+S, which should be intentionally overridden)
 `;
 
-async function createRichWorkspaceData(userId: string, workspaceName: string) {
+async function createRichWorkspaceData(
+  userId: string,
+  workspaceName: string,
+  opts: { includeAgent?: boolean } = {},
+) {
+  // The demo workspace ships with a planted agent token + audit-log history (and
+  // per-row "agent edited" badges) so the demo tells the full AI-agent story out
+  // of the box. Real signups get the same sample content WITHOUT those records.
+  const includeAgent = opts.includeAgent ?? true;
+
   const h = (n: number) => {
     const dt = new Date();
     dt.setHours(dt.getHours() + n);
@@ -528,7 +541,7 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
       content: t.content,
       properties: { title: t.title, status: t.status, priority: t.priority, category: t.category },
       sortOrder: i,
-      ...(t.agentAt ? { agentEditedAt: t.agentAt, agentTokenId: demoTokenId } : {}),
+      ...(includeAgent && t.agentAt ? { agentEditedAt: t.agentAt, agentTokenId: demoTokenId } : {}),
     };
   });
 
@@ -568,10 +581,12 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
   // row in ONE batch (with multi-row inserts for the 16 tasks + the audit log)
   // collapses it to a single round-trip. Order is FK-safe: parents precede children.
 
-  await db.batch([
+  const writes = [
     db.insert(workspaces).values({ id: ws1, name: workspaceName, sortOrder: 0, billingOwnerId: userId, createdAt: new Date() }),
     db.insert(workspaceMembers).values({ id: crypto.randomUUID(), workspaceId: ws1, userId, role: 'owner', createdAt: new Date() }),
-    db.insert(agentTokens).values({ id: demoTokenId, workspaceId: ws1, name: 'Claude AI Agent', agentName: 'claude-code', tokenPrefix: 'rmns-demo', tokenHash: 'demo-seed-not-valid', scope: 'write', createdBy: userId, createdAt: h(-48), lastUsedAt: h(-1) }),
+    ...(includeAgent
+      ? [db.insert(agentTokens).values({ id: demoTokenId, workspaceId: ws1, name: 'Claude AI Agent', agentName: 'claude-code', tokenPrefix: 'rmns-demo', tokenHash: 'demo-seed-not-valid', scope: 'write', createdBy: userId, createdAt: h(-48), lastUsedAt: h(-1) })]
+      : []),
     db.insert(workspaceItems).values({ id: startHereItem, workspaceId: ws1, type: 'page', title: 'Start Here', sortOrder: 0, icon: '⭐', iconColor: 'default' }),
     db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: startHereItem, content: START_HERE_CONTENT.replace('{{HOW_BUILT_CB}}', howBuiltCb) }),
     db.insert(workspaceItems).values({ id: productSpecItem, workspaceId: ws1, type: 'page', title: 'Product Spec', sortOrder: 1, icon: '🎨', iconColor: 'default' }),
@@ -581,8 +596,10 @@ async function createRichWorkspaceData(userId: string, workspaceName: string) {
     db.insert(workspaceItems).values({ id: sprintDbItem, workspaceId: ws1, type: 'database', title: 'Sprint Board', sortOrder: 2, icon: '📋', iconColor: 'default' }),
     db.insert(databases).values({ id: sprintDb, name: 'Sprint Board', itemId: sprintDbItem, schema: sprintSchema, views: sprintViews }),
     db.insert(pages).values(taskRows),
-    db.insert(agentActivity).values(activityRows),
-  ]);
+    ...(includeAgent ? [db.insert(agentActivity).values(activityRows)] : []),
+  ];
+
+  await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
 }
 
 export async function createDemoSeedData(userId: string, userName?: string | null) {
