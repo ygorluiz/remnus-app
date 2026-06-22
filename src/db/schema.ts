@@ -9,7 +9,7 @@ export {
   users,
   accounts,
   sessions,
-  verificationTokens,
+  verification,
   workspaceMembers,
   workspaceInvites,
   agentTokens,

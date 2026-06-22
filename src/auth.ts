@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { jwt } from 'better-auth/plugins';
 import { db } from '@/db';
+import * as schema from '@/db/schema';
 import { createSeedWorkspace } from '@/lib/seed';
 import { captureServer, isCaptureAllowedFromRequest } from '@/lib/analytics/server';
 import { users, accounts, workspaces, workspaceMembers } from '@/db/schema';
@@ -9,7 +10,17 @@ import { eq, ne } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, { provider: 'pg' }),
+  baseURL: process.env.NEXT_PUBLIC_APP_URL || 'https://remnus.com',
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    schema: {
+      ...schema,
+      user: schema.users,
+      session: schema.sessions,
+      account: schema.accounts,
+      verification: schema.verification,
+    },
+  }),
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24,       // refresh every 24h

@@ -1,13 +1,11 @@
 'use client';
 import { useActionState, useEffect, useRef, useState } from 'react';
-import { createAuthClient } from 'better-auth/client';
+import { authClient } from '@/lib/auth/client';
 import { loginAsDemo } from '@/lib/actions/demo';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-
-const authClient = createAuthClient();
 
 type TauriState = 'idle' | 'waiting' | 'activating' | 'error';
 

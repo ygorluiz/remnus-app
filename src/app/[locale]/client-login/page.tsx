@@ -1,11 +1,9 @@
 'use client';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createAuthClient } from 'better-auth/client';
+import { authClient } from '@/lib/auth/client';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
-
-const authClient = createAuthClient();
 
 export default function ClientLoginPage() {
   return (

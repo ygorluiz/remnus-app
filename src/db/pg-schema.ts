@@ -106,7 +106,7 @@ export const sessions = pgTable('session', {
   index('session_user_id_idx').on(table.userId),
 ]);
 
-export const verificationTokens = pgTable('verificationToken', {
+export const verification = pgTable('verification', {
   identifier: text('identifier').notNull(),
   token:      text('token').notNull(),
   expires:    timestamp('expires').notNull(),
