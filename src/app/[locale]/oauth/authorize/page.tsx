@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { randomBytes, createHmac } from 'crypto';
 import { getTranslations } from 'next-intl/server';
 import { OAuthAuthorizeForm } from './OAuthAuthorizeForm';
-import { AGENT_MARKS } from '@/components/features/agents/AgentMark';
+import { AGENT_MARKS } from '@/components/features/agents/agentMarks';
 
 function signRedirectUrl(url: string): string {
   const secret = process.env.AUTH_SECRET ?? 'fallback-secret-change-me';
