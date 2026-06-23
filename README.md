@@ -12,7 +12,7 @@ Kanban boards, databases, and pages that Claude, Cursor, and any AI agent can re
 
 ## What is Remnus?
 
-Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Every page, database, and kanban board in your workspace is accessible to AI agents via a first-class MCP server — using a simple bearer token, with no OAuth dance required.
+Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Every page, database, and kanban board in your workspace is accessible to AI agents via a first-class MCP server — connect editors with one-click **OAuth 2.1 (PKCE)**, or use a scoped **bearer token** for headless / CI agents.
 
 **Unlike Notion's MCP integration**, Remnus is designed for headless, CI/CD, and coding agent workflows from day one.
 
@@ -20,7 +20,8 @@ Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)
 
 - **Pages** — Markdown editor with slash commands, nested sub-pages, and icons
 - **Databases** — Customizable columns, Table / Kanban / Calendar views, filters, sorts
-- **MCP Server** — 15 tools + 4 resources + 5 prompts, Streamable HTTP + SSE dual transport
+- **MCP Server** — 14 tools + 4 resources + 5 prompts, Streamable HTTP + SSE dual transport
+- **Agent auth** — One-click OAuth 2.1 + PKCE (RFC 7591 dynamic registration) for editors, or scoped read/write personal access tokens for headless agents
 - **Multi-workspace** — Invite members, role-based access (owner / member / viewer)
 - **Desktop app** — Tauri v2 shell for Windows, macOS, Linux
 - **Mobile** — Capacitor v8 for iOS and Android (loads remnus.com)
@@ -67,12 +68,25 @@ If you prefer to run Remnus using Docker:
 
 ### Add MCP to your editor
 
-After signing in, go to **Workspace Settings → Tokens** and create a token, then:
+After signing in, open the **AI Agents** panel from the sidebar and click **Connect editor**. It walks you through every supported editor (Cursor, VS Code, Claude Code, Codex, Windsurf, and more).
 
 [![Add to Cursor](https://img.shields.io/badge/Add%20to-Cursor-black?style=flat-square)](https://docs.cursor.com/context/model-context-protocol)
 [![Add to VS Code](https://img.shields.io/badge/Add%20to-VS%20Code-blue?style=flat-square&logo=visualstudiocode)](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)
 
-Or add manually to your MCP client config:
+**Recommended — OAuth (token-less):** point your editor at the MCP URL and approve the consent screen on first connect. Your editor runs the OAuth 2.1 flow automatically — nothing to copy.
+
+```json
+{
+  "mcpServers": {
+    "remnus": {
+      "type": "http",
+      "url": "https://your-instance.com/api/mcp"
+    }
+  }
+}
+```
+
+**Headless / CI — personal access token:** create a scoped token from the AI Agents panel and send it as a bearer header.
 
 ```json
 {
