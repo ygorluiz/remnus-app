@@ -73,10 +73,17 @@ export default async function LocaleLayout({
   }
 
   const messages = await getMessages();
-  const session = await auth.api.getSession({ headers: await headers() });
+  const headerStore = await headers();
+
+  let session;
+  try {
+    session = await auth.api.getSession({ headers: headerStore });
+  } catch {
+    // auth failure — treat as unauthenticated
+  }
 
   // Geo-aware cookie consent (server-resolved so the banner renders flash-free).
-  const [headerStore, consentCookieStore] = await Promise.all([headers(), cookies()]);
+  const consentCookieStore = await cookies();
   const consentRequired = isConsentRequired(headerStore.get('x-vercel-ip-country'));
   const initialConsent = parseConsent(consentCookieStore.get(CONSENT_COOKIE)?.value);
 
