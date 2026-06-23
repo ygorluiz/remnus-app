@@ -65,7 +65,7 @@ export default function AdminUserDetailModal({
 
   const toggleRole = () => {
     if (!detail || detail.account.role === 'demo') return;
-    const next = detail.account.role === 'admin' ? 'user' : 'admin';
+    const next = (detail.account.role === 'admin' || detail.account.role === 'super_admin') ? 'user' : 'admin';
     startTransition(async () => {
       await setUserRole(userId, next);
       setDetail((d) => (d ? { ...d, account: { ...d.account, role: next } } : d));
@@ -166,8 +166,8 @@ export default function AdminUserDetailModal({
                   <div className="flex flex-col gap-1">
                     <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-neutral-600"><Shield size={12} />{t('colRole')}</span>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-medium ${detail.account.role === 'admin' ? 'text-blue-400' : detail.account.role === 'demo' ? 'text-amber-500/80' : 'text-neutral-300'}`}>
-                        {detail.account.role === 'admin' ? t('roleAdmin') : detail.account.role === 'demo' ? t('roleDemo') : t('roleUser')}
+                      <span className={`text-xs font-medium ${detail.account.role === 'admin' || detail.account.role === 'super_admin' ? 'text-blue-400' : detail.account.role === 'demo' ? 'text-amber-500/80' : 'text-neutral-300'}`}>
+                        {(detail.account.role === 'admin' || detail.account.role === 'super_admin') ? t('roleAdmin') : detail.account.role === 'demo' ? t('roleDemo') : t('roleUser')}
                       </span>
                       {!isSelf && detail.account.role !== 'demo' && (
                         <button
@@ -175,7 +175,7 @@ export default function AdminUserDetailModal({
                           disabled={isPending}
                           className="text-[10px] font-medium text-blue-400 hover:text-blue-300 disabled:opacity-50 transition-colors"
                         >
-                          {detail.account.role === 'admin' ? t('demoteToUser') : t('promoteToAdmin')}
+                          {(detail.account.role === 'admin' || detail.account.role === 'super_admin') ? t('demoteToUser') : t('promoteToAdmin')}
                         </button>
                       )}
                     </div>

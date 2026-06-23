@@ -18,13 +18,15 @@ export async function GET(request: NextRequest) {
     if (!userId) throw new Error('Invalid token payload');
 
     // Create a Better Auth session
+    const sessionId = crypto.randomUUID();
     const sessionToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     await db.insert(sessions).values({
-      sessionToken,
+      id: sessionId,
+      token: sessionToken,
       userId,
-      expires: expiresAt,
+      expiresAt,
     });
 
     // Encode a JWT for the session cookie (matching Better Auth's jwt() plugin format)

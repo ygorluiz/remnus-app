@@ -48,7 +48,7 @@ export function ConsentProvider({
   const persistedConsent = useRef<boolean | null>(null);
 
   useEffect(() => {
-    const isAdmin = userRole === 'admin';
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin';
     const allowed = !isAdmin && (!consentRequired || consent === 'accepted');
 
     if (allowed) {
@@ -65,7 +65,7 @@ export function ConsentProvider({
     // Persist the effective permission for logged-in users so server-side funnel
     // events with no cookie context (MCP agent calls) can decide identified vs
     // anonymous capture. admin/demo are never captured, so skip the write.
-    if (userRole && userRole !== 'admin' && userRole !== 'demo') {
+    if (userRole && userRole !== 'admin' && userRole !== 'super_admin' && userRole !== 'demo') {
       if (persistedConsent.current !== allowed) {
         persistedConsent.current = allowed;
         setAnalyticsConsent(allowed).catch(() => {});

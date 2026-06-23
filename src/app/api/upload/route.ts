@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { workspaceMembers } from '@/db/schema';
 import { cloudinary } from '@/lib/cloudinary';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { recordAsset } from '@/lib/services/assets';
 import { checkWithinStorage } from '@/lib/services/billing';
 
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   // Pooled storage quota — counts against the workspace billing owner's plan.
   // Only enforced when the upload is attributed to a workspace; admins bypass.
-  if (workspaceId && user.role !== 'admin') {
+  if (workspaceId && !isAdminRole(user.role)) {
     const code = await checkWithinStorage(workspaceId, buffer.length);
     if (code) {
       return NextResponse.json({ error: code }, { status: 413 });

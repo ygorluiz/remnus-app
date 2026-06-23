@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { agentTokens, workspaceMembers, workspaces, agentActivity, oauthAccessTokens, oauthClients } from '@/db/schema';
 import { eq, and, isNull, desc, inArray } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { getTranslations } from 'next-intl/server';
 import { checkCanAddAgent } from '@/lib/services/billing';
 import { captureServer, isCaptureAllowedFromRequest } from '@/lib/analytics/server';
@@ -28,7 +29,7 @@ async function assertOwnerAccess(workspaceId: string): Promise<string> {
   const t = await getTranslations('Errors');
   if (!member) throw new Error(t('unauthorized'));
   // Admins get owner-level access for token management too
-  if (member.role !== 'owner' && user.role !== 'admin') throw new Error(t('unauthorized'));
+  if (member.role !== 'owner' && !isAdminRole(user.role)) throw new Error(t('unauthorized'));
   return user.id;
 }
 
@@ -43,7 +44,7 @@ export async function mintAgentToken(
 
   // Agent limit — the billing owner's plan caps connected agents (PAT + OAuth).
   const user = await getCurrentUser();
-  if (user.role !== 'admin') {
+  if (!isAdminRole(user.role)) {
     const code = await checkCanAddAgent(workspaceId);
     if (code) {
       const t = await getTranslations('Errors');
@@ -178,10 +179,10 @@ export async function getUserWorkspacesWithTokens() {
     name:      ws.name,
     icon:      ws.icon,
     iconColor: ws.iconColor,
-    canManage: ws.memberRole === 'owner' || user.role === 'admin',
+    canManage: ws.memberRole === 'owner' || isAdminRole(user.role),
     tokens: tokenList
       .filter(t => t.workspaceId === ws.id)
-      .map(t => ({ ...t, canRevoke: ws.memberRole === 'owner' || user.role === 'admin' })),
+      .map(t => ({ ...t, canRevoke: ws.memberRole === 'owner' || isAdminRole(user.role) })),
   }));
 }
 
@@ -215,7 +216,7 @@ export async function getUserAgentTokens() {
 
   return rows.map(row => ({
     ...row,
-    canRevoke: row.memberRole === 'owner' || user.role === 'admin',
+    canRevoke: row.memberRole === 'owner' || isAdminRole(user.role),
   }));
 }
 
@@ -329,7 +330,7 @@ export async function setOAuthTokenAgent(tokenId: string, agentName: string | nu
     .limit(1);
 
   if (!token) throw new Error(t('notFound'));
-  if (token.userId !== user.id && user.role !== 'admin') throw new Error(t('unauthorized'));
+  if (token.userId !== user.id && !isAdminRole(user.role)) throw new Error(t('unauthorized'));
 
   await db
     .update(oauthAccessTokens)
@@ -367,7 +368,7 @@ export async function revokeOAuthToken(tokenId: string): Promise<void> {
     .limit(1);
 
   if (!token) throw new Error(t('notFound'));
-  if (token.userId !== user.id && user.role !== 'admin') throw new Error(t('unauthorized'));
+  if (token.userId !== user.id && !isAdminRole(user.role)) throw new Error(t('unauthorized'));
 
   await db
     .update(oauthAccessTokens)

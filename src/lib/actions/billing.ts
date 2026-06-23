@@ -4,6 +4,7 @@ import { subscriptions, workspaceMembers, workspaces, users, workspaceInvites } 
 import { eq, and, inArray, isNull, or, gt, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { getTranslations } from 'next-intl/server';
 import { stripe, priceIdForTier } from '@/lib/stripe';
 import { syncSubscriptionForCustomer } from '@/lib/billing/sync';
@@ -168,7 +169,7 @@ export async function adminSetUserPlan(
 ): Promise<{ ok?: boolean; error?: string }> {
   const admin = await getCurrentUser();
   const t = await getTranslations('Errors');
-  if (admin.role !== 'admin') return { error: t('adminRequired') };
+  if (!isAdminRole(admin.role)) return { error: t('adminRequired') };
   if (!isPlanTier(tier)) return { error: t('billingInvalidTier') };
 
   const [row] = await db.select().from(subscriptions).where(eq(subscriptions.ownerUserId, userId)).limit(1);
@@ -199,7 +200,7 @@ export async function getWorkspaceSeatUsage(
   workspaceId: string,
 ): Promise<{ used: number; limit: number; tier: PlanTier } | null> {
   const user = await getCurrentUser();
-  if (user.role !== 'admin') {
+  if (!isAdminRole(user.role)) {
     const [m] = await db
       .select({ id: workspaceMembers.id })
       .from(workspaceMembers)

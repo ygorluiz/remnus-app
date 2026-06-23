@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/auth';
+import { isAdminRole } from '@/lib/auth/roles';
 import { getAllUsers } from '@/lib/actions/auth';
 import { getEngagementOverview } from '@/lib/actions/analytics';
 import { Shield, Users, TrendingUp, Clock, Activity, Timer, MonitorPlay } from 'lucide-react';
@@ -56,7 +57,7 @@ function SignupTrend({ data, locale }: { data: { date: string; count: number }[]
 
 export default async function AdminPage() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user || session.user.role !== 'admin') redirect('/login');
+  if (!session?.user || !isAdminRole(session.user.role)) redirect('/login');
 
   const [t, locale] = await Promise.all([getTranslations('Admin'), getLocale()]);
 

@@ -78,7 +78,7 @@ export async function captureServer(opts: {
 }): Promise<void> {
   const ph = client();
   if (!ph) return;
-  if (opts.role === 'admin' || opts.role === 'demo') return;
+  if (opts.role === 'admin' || opts.role === 'super_admin' || opts.role === 'demo') return;
 
   try {
     if (opts.allowed) {

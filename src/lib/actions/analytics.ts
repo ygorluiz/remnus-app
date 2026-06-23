@@ -5,12 +5,13 @@ import {
 } from '@/db/schema';
 import { eq, ne, and, inArray, asc, sql } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { getTranslations } from 'next-intl/server';
 import { isPlanTier, type PlanTier } from '@/lib/billing/plans';
 
 async function assertAdmin() {
   const user = await getCurrentUser();
-  if (user.role !== 'admin') {
+  if (!isAdminRole(user.role)) {
     const t = await getTranslations('Errors');
     throw new Error(t('adminRequired'));
   }
@@ -235,10 +236,10 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
   }
 
   const providerRows = await db
-    .select({ provider: accounts.provider })
+    .select({ providerId: accounts.providerId })
     .from(accounts)
     .where(eq(accounts.userId, userId));
-  const providers = providerRows.map((p) => p.provider);
+  const providers = providerRows.map((p) => p.providerId);
   const authType = providers.includes('google')
     ? ('google' as const)
     : providers.includes('github')

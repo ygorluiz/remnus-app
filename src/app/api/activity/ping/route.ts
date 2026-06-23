@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
+import { isAdminRole } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   userSessions,
@@ -80,7 +81,7 @@ export async function POST() {
 
   // Don't track admins — their browsing would create noise rows in the
   // engagement stats they're meant to be reviewing. (Still return changeVersion.)
-  if (session.user.role === 'admin') {
+  if (isAdminRole(session.user.role)) {
     return NextResponse.json({ ok: true, changeVersion });
   }
 

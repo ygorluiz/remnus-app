@@ -23,6 +23,7 @@ import UpdateBanner from '@/components/features/UpdateBanner';
 import ActivityTracker from '@/components/providers/ActivityTracker';
 import BillingSuccessModal from '@/components/features/BillingSuccessModal';
 import { METADATA_BASE_URL, DEFAULT_OG_IMAGE, DEFAULT_TWITTER_IMAGE } from '@/lib/metadata';
+import { isAdminRole } from '@/lib/auth/roles';
 
 export const metadata: Metadata = {
   metadataBase: new URL(METADATA_BASE_URL),
@@ -143,7 +144,7 @@ export default async function LocaleLayout({
 
   return (
     <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
-      <PostHogPageView skip={currentUser?.role === 'admin'} />
+      <PostHogPageView skip={currentUser ? isAdminRole(currentUser.role) : true} />
       <PostHogIdentify user={currentUser} />
       <NextIntlClientProvider messages={messages}>
         <ConsentProvider

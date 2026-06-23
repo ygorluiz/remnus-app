@@ -13,6 +13,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/auth';
+import { isAdminRole } from '@/lib/auth/roles';
 import SharedPageView from '@/components/share/SharedPageView';
 
 export type SharedNavItem = {
@@ -161,7 +162,7 @@ export default async function SharedPageRoute({ params }: Props) {
 
   // Workspace members get redirected to the real page instead of the shared view
   if (session?.user?.id) {
-    const isAdmin = (session.user as any).role === 'admin';
+    const isAdmin = isAdminRole((session.user as any).role);
     const hasMembership = isAdmin || await checkUserHasWorkspaceAccess(session.user.id, share.workspaceId);
     if (hasMembership) {
       const normalRoute = await getNormalRoute(share.pageId);

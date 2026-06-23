@@ -1329,7 +1329,7 @@ export default function WorkspaceSidebar({
         <ShareModal
           pageId={shareModalItemId}
           workspaceId={activeWorkspace.id}
-          isAdmin={currentUser.role === 'admin'}
+          isAdmin={currentUser.role === 'admin' || currentUser.role === 'super_admin'}
           onClose={() => setShareModalItemId(null)}
         />
       )}
@@ -1557,7 +1557,7 @@ export default function WorkspaceSidebar({
             <span className="text-xs font-medium text-neutral-200 truncate">
               {currentUser.name ?? currentUser.email ?? 'User'}
             </span>
-            {currentUser.role === 'admin' && (
+            {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
               <Link
                 href="/admin"
                 className={`shrink-0 flex items-center gap-0.5 text-[9px] font-semibold px-1 py-0.5 rounded transition-colors ${pathname.startsWith('/admin') ? 'text-blue-300 bg-blue-500/20' : 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300'}`}

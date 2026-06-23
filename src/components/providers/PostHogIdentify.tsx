@@ -21,7 +21,7 @@ export default function PostHogIdentify({ user }: Props) {
     // Capture on/off is owned entirely by ConsentProvider (geo + consent + admin).
     // This effect only manages identity, so it never fights the consent state.
     if (user) {
-      if (user.role === 'admin') return; // admins are not captured
+      if (user.role === 'admin' || user.role === 'super_admin') return; // admins are not captured
 
       // Identify user in PostHog and attach role & name properties
       posthog.identify(user.id, {

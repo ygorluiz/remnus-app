@@ -5,6 +5,7 @@ import { eq, asc, and, inArray, sql, count } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import type { SchemaColumn } from '@/lib/templates';
 import type { DatabaseView } from '@/lib/types/views';
 import { getTranslations } from 'next-intl/server';
@@ -37,7 +38,7 @@ export type WorkspaceItemRow = {
 
 async function assertWorkspaceAccess(workspaceId: string): Promise<string> {
   const user = await getCurrentUser();
-  if (user.role === 'admin') return user.id;
+  if (isAdminRole(user.role)) return user.id;
 
   const [member] = await db
     .select({ id: workspaceMembers.id })
@@ -121,7 +122,7 @@ export async function createWorkspace(name: string) {
   const user = await getCurrentUser();
 
   // Workspace cap — the caller's plan limits how many workspaces they may own.
-  if (user.role !== 'admin') {
+  if (!isAdminRole(user.role)) {
     const code = await checkCanCreateWorkspace(user.id);
     if (code) {
       const t = await getTranslations('Errors');
@@ -285,7 +286,7 @@ export async function getAllWorkspaceItems(): Promise<WorkspaceItemRow[]> {
 
   let accessibleWorkspaceIds: string[];
 
-  if (user.role === 'admin') {
+  if (isAdminRole(user.role)) {
     const all = await db.select({ id: workspaces.id }).from(workspaces);
     accessibleWorkspaceIds = all.map((w) => w.id);
   } else {
@@ -671,7 +672,7 @@ export async function updateWorkspacesOrder(workspaceIds: string[]) {
   const user = await getCurrentUser();
   for (let i = 0; i < workspaceIds.length; i++) {
     const wsId = workspaceIds[i];
-    if (user.role !== 'admin') {
+    if (!isAdminRole(user.role)) {
       const [member] = await db
         .select()
         .from(workspaceMembers)
@@ -804,7 +805,7 @@ export async function moveWorkspaceItemToWorkspace(itemId: string, targetWorkspa
 
 export async function getAdminWorkspacesOverview() {
   const user = await getCurrentUser();
-  if (user.role !== 'admin') {
+  if (!isAdminRole(user.role)) {
     const t = await getTranslations('Errors');
     throw new Error(t('adminRequired'));
   }
@@ -849,7 +850,7 @@ export async function getAdminWorkspacesOverview() {
 
 export async function adminDeleteWorkspace(workspaceId: string) {
   const user = await getCurrentUser();
-  if (user.role !== 'admin') {
+  if (!isAdminRole(user.role)) {
     const t = await getTranslations('Errors');
     throw new Error(t('adminRequired'));
   }

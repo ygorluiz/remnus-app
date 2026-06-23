@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { sharedPages, workspaceMembers, workspaceItems } from '@/db/schema';
 import { eq, and, count, inArray } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { getTranslations } from 'next-intl/server';
 import { getAnyPageById } from '@/lib/services/workspace';
 
@@ -11,7 +12,7 @@ const MAX_SLUG_LEN = 120;
 
 async function assertWorkspaceMember(workspaceId: string): Promise<{ userId: string; role: string }> {
   const user = await getCurrentUser();
-  if (user.role === 'admin') return { userId: user.id, role: 'admin' };
+  if (isAdminRole(user.role)) return { userId: user.id, role: 'admin' };
 
   const [member] = await db
     .select({ id: workspaceMembers.id, role: workspaceMembers.role })
@@ -60,7 +61,7 @@ export async function createShare(
   let slug: string;
 
   if (customSlug !== undefined && customSlug !== '') {
-    if (role !== 'admin') {
+    if (!isAdminRole(role)) {
       const tErr = await getTranslations('Errors');
       return { error: tErr('unauthorized') };
     }
@@ -197,7 +198,7 @@ export async function updateShare(
   patch: { permission?: 'read' | 'write'; width?: ShareWidth; inSitemap?: boolean },
 ): Promise<{ error?: string }> {
   const { role } = await assertWorkspaceMember(workspaceId);
-  if (patch.inSitemap !== undefined && role !== 'admin') {
+  if (patch.inSitemap !== undefined && !isAdminRole(role)) {
     const tErr = await getTranslations('Errors');
     return { error: tErr('unauthorized') };
   }

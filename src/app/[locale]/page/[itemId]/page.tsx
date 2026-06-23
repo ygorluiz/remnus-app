@@ -1,5 +1,6 @@
 import { getStandalonePageByItemId, getSubItems } from '@/lib/actions/workspace';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import StandalonePageEditor from '@/components/features/StandalonePageEditor';
 import NotFoundRedirect from '@/components/features/NotFoundRedirect';
 
@@ -20,7 +21,7 @@ export default async function StandalonePageRoute(
         item={data.item}
         page={data.page}
         subItems={subItems}
-        isAdmin={user.role === 'admin'}
+        isAdmin={isAdminRole(user.role)}
       />
     </div>
   );

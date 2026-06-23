@@ -71,7 +71,7 @@ export const auth = betterAuth({
           // Funnel: signup event
           try {
             const [acc] = await db
-              .select({ provider: accounts.provider })
+              .select({ providerId: accounts.providerId })
               .from(accounts)
               .where(eq(accounts.userId, user.id))
               .limit(1);
@@ -97,11 +97,18 @@ export const auth = betterAuth({
               userId: user.id,
               allowed: await isCaptureAllowedFromRequest(),
               role: isFirstUser ? 'admin' : 'user',
-              properties: { provider: acc?.provider ?? null },
+              properties: { provider: acc?.providerId ?? null },
               setOnce,
             });
           } catch {
             // analytics is best-effort — never block account creation
+          }
+
+          // ADMIN_EMAIL override: if the new user's email matches, promote to super_admin
+          const adminEmail = process.env.ADMIN_EMAIL;
+          if (adminEmail && user.email && user.email.toLowerCase() === adminEmail.toLowerCase()) {
+            await db.update(users).set({ role: 'super_admin' }).where(eq(users.id, user.id));
+            return; // super_admin doesn't need first-user bootstrap
           }
 
           if (!isFirstUser) return;

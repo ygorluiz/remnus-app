@@ -67,52 +67,70 @@ export const pages = pgTable('pages', {
   index('pages_database_id_idx').on(table.databaseId),
 ]);
 
-// ── Auth tables ─────────────────────────────────────────────────────────────
+// ── Auth tables (Better Auth generated schema) ──────────────────────────────
 
 export const users = pgTable('user', {
-  id:            text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name:          text('name'),
-  email:         text('email').unique(),
-  emailVerified: timestamp('emailVerified'),
-  image:         text('image'),
-  passwordHash:  text('password_hash'),
-  role:          text('role').notNull().default('user'),
-  analyticsConsent: text('analytics_consent'),
-  createdAt:     timestamp('created_at').notNull().defaultNow(),
+  id:                text('id').primaryKey(),
+  name:              text('name').notNull(),
+  email:             text('email').notNull().unique(),
+  emailVerified:     boolean('email_verified').default(false).notNull(),
+  image:             text('image'),
+  createdAt:         timestamp('created_at').defaultNow().notNull(),
+  updatedAt:         timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+  role:              text('role').default('user'),
+  analyticsConsent:  text('analytics_consent'),
+  passwordHash:      text('password_hash'),
 });
 
-export const accounts = pgTable('account', {
-  userId:            text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  type:              text('type').notNull(),
-  provider:          text('provider').notNull(),
-  providerAccountId: text('providerAccountId').notNull(),
-  refresh_token:     text('refresh_token'),
-  access_token:      text('access_token'),
-  expires_at:        integer('expires_at'),
-  token_type:        text('token_type'),
-  scope:             text('scope'),
-  id_token:          text('id_token'),
-  session_state:     text('session_state'),
-}, (table) => [
-  primaryKey({ columns: [table.provider, table.providerAccountId] }),
-  index('account_user_id_idx').on(table.userId),
-]);
-
 export const sessions = pgTable('session', {
-  sessionToken: text('sessionToken').primaryKey(),
-  userId:       text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  expires:      timestamp('expires').notNull(),
+  id:        text('id').primaryKey(),
+  expiresAt: timestamp('expires_at').notNull(),
+  token:     text('token').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').$onUpdate(() => new Date()).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
 }, (table) => [
   index('session_user_id_idx').on(table.userId),
 ]);
 
+export const accounts = pgTable('account', {
+  id:                     text('id').primaryKey(),
+  accountId:              text('account_id').notNull(),
+  providerId:             text('provider_id').notNull(),
+  userId:                 text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  accessToken:            text('access_token'),
+  refreshToken:           text('refresh_token'),
+  idToken:                text('id_token'),
+  accessTokenExpiresAt:   timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt:  timestamp('refresh_token_expires_at'),
+  scope:                  text('scope'),
+  password:               text('password'),
+  createdAt:              timestamp('created_at').defaultNow().notNull(),
+  updatedAt:              timestamp('updated_at').$onUpdate(() => new Date()).notNull(),
+}, (table) => [
+  index('account_user_id_idx').on(table.userId),
+]);
+
 export const verification = pgTable('verification', {
+  id:         text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value:      text('value').notNull(),
-  expires:    timestamp('expires').notNull(),
+  expiresAt:  timestamp('expires_at').notNull(),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+  updatedAt:  timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
 }, (table) => [
-  primaryKey({ columns: [table.identifier, table.value] }),
+  index('verification_identifier_idx').on(table.identifier),
 ]);
+
+export const jwks = pgTable('jwks', {
+  id:         text('id').primaryKey(),
+  publicKey:  text('public_key').notNull(),
+  privateKey: text('private_key').notNull(),
+  createdAt:  timestamp('created_at').notNull(),
+  expiresAt:  timestamp('expires_at'),
+});
 
 // ── Workspace membership ──────────────────────────────────────────────────────
 

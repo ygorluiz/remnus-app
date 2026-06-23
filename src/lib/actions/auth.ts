@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { deleteAssetByUrl } from '@/lib/services/assets';
 import { checkCanAddSeatForEmail } from '@/lib/services/billing';
 
@@ -84,7 +85,7 @@ export async function inviteToWorkspace(
   const t = await getTranslations('Errors');
 
   // Only owners and admins can invite
-  const isAdmin = session.user.role === 'admin';
+  const isAdmin = isAdminRole(session.user.role);
   if (!isAdmin) {
     const membership = await db
       .select()
@@ -168,7 +169,7 @@ export async function removeFromWorkspace(workspaceId: string, userId: string) {
   if (!session?.user?.id) redirect('/login');
   const t = await getTranslations('Errors');
 
-  const isAdmin = session.user.role === 'admin';
+  const isAdmin = isAdminRole(session.user.role);
   if (!isAdmin) {
     const membership = await db
       .select()
@@ -217,7 +218,7 @@ export async function getWorkspaceMembers(workspaceId: string) {
 
 export async function getAllUsers() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id || session.user.role !== 'admin') {
+  if (!session?.user?.id || !isAdminRole(session.user.role)) {
     const t = await getTranslations('Errors');
     return { error: t('adminRequired') };
   }
@@ -232,11 +233,11 @@ export async function getAllUsers() {
     hasPassword: sql<number>`case when ${users.passwordHash} is not null then 1 else 0 end`,
   }).from(users).where(ne(users.role, 'demo')); // demo users are ephemeral — keep them out of the admin list
 
-  const accountRows = await db.select({ userId: accounts.userId, provider: accounts.provider }).from(accounts);
+  const accountRows = await db.select({ userId: accounts.userId, providerId: accounts.providerId }).from(accounts);
   const providerMap = new Map<string, string[]>();
   for (const acc of accountRows) {
     if (!providerMap.has(acc.userId)) providerMap.set(acc.userId, []);
-    providerMap.get(acc.userId)!.push(acc.provider);
+    providerMap.get(acc.userId)!.push(acc.providerId);
   }
 
   return userRows.map((u) => ({
@@ -259,7 +260,7 @@ export async function getAllUsers() {
 export async function adminDeleteUser(userId: string) {
   const session = await auth.api.getSession({ headers: await headers() });
   const t = await getTranslations('Errors');
-  if (!session?.user?.id || session.user.role !== 'admin') {
+  if (!session?.user?.id || !isAdminRole(session.user.role)) {
     return { error: t('adminRequired') };
   }
   if (session.user.id === userId) {
@@ -287,9 +288,9 @@ export async function adminDeleteUser(userId: string) {
   return { success: true };
 }
 
-export async function setUserRole(userId: string, role: 'user' | 'admin') {
+export async function setUserRole(userId: string, role: 'user' | 'admin' | 'super_admin') {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user?.id || session.user.role !== 'admin') {
+  if (!session?.user?.id || !isAdminRole(session.user.role)) {
     const t = await getTranslations('Errors');
     return { error: t('adminRequired') };
   }
@@ -307,7 +308,7 @@ export async function updateWorkspaceMemberRole(
   if (!session?.user?.id) redirect('/login');
   const t = await getTranslations('Errors');
 
-  const isAdmin = session.user.role === 'admin';
+  const isAdmin = isAdminRole(session.user.role);
   if (!isAdmin) {
     const membership = await db
       .select()
@@ -361,7 +362,7 @@ export async function transferWorkspaceOwnership(
   if (!session?.user?.id) redirect('/login');
   const t = await getTranslations('Errors');
 
-  const isAdmin = session.user.role === 'admin';
+  const isAdmin = isAdminRole(session.user.role);
   if (!isAdmin) {
     const membership = await db
       .select()

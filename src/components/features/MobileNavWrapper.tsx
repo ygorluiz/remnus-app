@@ -184,7 +184,7 @@ export default function MobileNavWrapper({
                 <span className="text-sm font-medium text-neutral-100 truncate">
                   {currentUser.name ?? currentUser.email ?? 'User'}
                 </span>
-                {currentUser.role === 'admin' && (
+                {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
                   <span className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
                     <Shield size={9} /> Admin
                   </span>

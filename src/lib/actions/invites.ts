@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { workspaceInvites, workspaceMembers, workspaces } from '@/db/schema';
 import { eq, and, isNull, or, gt, desc } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { headers } from 'next/headers';
 import { auth } from '@/auth';
 import { getTranslations } from 'next-intl/server';
@@ -14,7 +15,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 async function assertOwner(workspaceId: string): Promise<string> {
   const user = await getCurrentUser();
-  if (user.role === 'admin') return user.id;
+  if (isAdminRole(user.role)) return user.id;
   const [m] = await db
     .select({ role: workspaceMembers.role })
     .from(workspaceMembers)
@@ -95,7 +96,7 @@ export async function acceptInvite(token: string): Promise<{ ok?: boolean; works
     .limit(1);
 
   if (!existing) {
-    if (session.user.role !== 'admin') {
+    if (!isAdminRole(session.user.role)) {
       // The invite already reserved a seat for this email, so this normally passes.
       const code = await checkCanAddSeatForEmail(inv.workspaceId, inv.email, session.user.id);
       if (code) return { error: t(code) };

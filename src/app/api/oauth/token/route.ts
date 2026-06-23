@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import { randomBytes, createHash, randomUUID } from 'crypto';
 import { checkCanAddAgent } from '@/lib/services/billing';
 import { captureServer, isCaptureAllowedForUser } from '@/lib/analytics/server';
+import { isAdminRole } from '@/lib/auth/roles';
 
 const ACCESS_TOKEN_TTL_MS  = 60 * 60 * 1000;          // 1 hour
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -95,7 +96,7 @@ async function handleAuthorizationCode(params: URLSearchParams): Promise<Respons
   // (Don't consume the auth code on a policy rejection — check before marking it used.)
   // Platform admins bypass the cap, mirroring PAT minting (mintAgentToken).
   const [grantee] = await db.select({ role: users.role }).from(users).where(eq(users.id, row.userId)).limit(1);
-  if (grantee?.role !== 'admin') {
+  if (!isAdminRole(grantee?.role)) {
     const limitCode = await checkCanAddAgent(row.workspaceId);
     if (limitCode) {
       console.error('[oauth/token] agent_limit_reached', { workspaceId: row.workspaceId });

@@ -72,7 +72,7 @@ export default function WorkspaceSettingsModal({
   }, [onClose]);
 
   const myRole = members.find((m) => m.id === currentUser.id)?.role;
-  const hasPrivilegedAccess = myRole === 'owner' || currentUser.role === 'admin';
+  const hasPrivilegedAccess = myRole === 'owner' || currentUser.role === 'admin' || currentUser.role === 'super_admin';
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; accent?: string }[] = [
     { id: 'general',  label: t('tabGeneral'),         icon: <Settings size={13} /> },
@@ -202,7 +202,7 @@ export default function WorkspaceSettingsModal({
             {activeTab === 'sharing' && (
               <SharingTab
                 workspaceId={workspaceId}
-                isAdmin={currentUser.role === 'admin'}
+                isAdmin={currentUser.role === 'admin' || currentUser.role === 'super_admin'}
                 onNavigateToMembers={() => setActiveTab('members')}
               />
             )}

@@ -100,14 +100,15 @@ export async function loginAsDemo(_prevState: unknown, _formData: FormData): Pro
   // Create a Better Auth session — encode a JWT and store the session in the DB.
   const isProd = process.env.NODE_ENV === 'production';
   const secret = new TextEncoder().encode(process.env.AUTH_SECRET!);
+  const sessionId = crypto.randomUUID();
   const sessionToken = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-  // Store session record in DB (matching the existing Auth.js-compatible schema)
   await db.insert(sessions).values({
-    sessionToken,
+    id: sessionId,
+    token: sessionToken,
     userId: demoUserId,
-    expires: expiresAt,
+    expiresAt,
   });
 
   // Encode a JWT for the session cookie (matching Better Auth's jwt() plugin format)

@@ -204,7 +204,7 @@ export default function AdminUsersTable({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {u.role === 'admin' ? (
+                      {u.role === 'admin' || u.role === 'super_admin' ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
                           <Shield size={9} />
                           {t('roleAdmin')}

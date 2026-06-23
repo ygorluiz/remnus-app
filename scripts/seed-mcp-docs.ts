@@ -7,7 +7,7 @@
 
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as dotenv from 'dotenv';
@@ -110,7 +110,7 @@ async function findAdminUser(): Promise<string | null> {
   const [user] = await db
     .select({ id: schema.users.id })
     .from(schema.users)
-    .where(eq(schema.users.role, 'admin'))
+    .where(inArray(schema.users.role, ['admin', 'super_admin']))
     .limit(1);
 
   return user?.id ?? null;

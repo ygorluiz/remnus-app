@@ -3,6 +3,7 @@ import { getDatabase } from '@/lib/actions/database';
 import { getSubItems } from '@/lib/actions/workspace';
 import { getWorkspaceMembers } from '@/lib/actions/auth';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import PageEditor from '@/components/features/PageEditor';
 import { MembersProvider } from '@/components/features/MembersContext';
 import NotFoundRedirect from '@/components/features/NotFoundRedirect';
@@ -23,7 +24,7 @@ export default async function PageDetail(props: { params: Promise<{ id: string, 
   return (
     <div className="flex-1 overflow-auto bg-neutral-850">
       <MembersProvider members={members}>
-        <PageEditor database={db} initialPage={page} subItems={subItems} isAdmin={user.role === 'admin'} />
+        <PageEditor database={db} initialPage={page} subItems={subItems} isAdmin={isAdminRole(user.role)} />
       </MembersProvider>
     </div>
   );

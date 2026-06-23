@@ -4,6 +4,7 @@ import { pages, databases, workspaceItems, workspaceMembers, agentTokens, oauthA
 import { eq, asc, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth/session';
+import { isAdminRole } from '@/lib/auth/roles';
 import { deleteWorkspaceItem } from './workspace';
 import { publish } from '@/lib/realtime/publish';
 import { isCloudinaryUrl, deleteCloudinaryImage } from '@/lib/cloudinary';
@@ -22,7 +23,7 @@ async function assertDatabaseAccess(databaseId: string): Promise<{ userId: strin
 
   if (!row) throw new Error('Database not found');
 
-  if (user.role !== 'admin') {
+  if (!isAdminRole(user.role)) {
     const [member] = await db
       .select({ id: workspaceMembers.id })
       .from(workspaceMembers)
