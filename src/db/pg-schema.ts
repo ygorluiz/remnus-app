@@ -108,10 +108,10 @@ export const sessions = pgTable('session', {
 
 export const verification = pgTable('verification', {
   identifier: text('identifier').notNull(),
-  token:      text('token').notNull(),
+  value:      text('value').notNull(),
   expires:    timestamp('expires').notNull(),
 }, (table) => [
-  primaryKey({ columns: [table.identifier, table.token] }),
+  primaryKey({ columns: [table.identifier, table.value] }),
 ]);
 
 // ── Workspace membership ──────────────────────────────────────────────────────
