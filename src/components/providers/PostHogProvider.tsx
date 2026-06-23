@@ -20,11 +20,14 @@ let initialized = false;
 
 function ensureInit(consentRequired: boolean, initialConsent: ConsentValue | null) {
   if (typeof window === 'undefined' || initialized) return;
+  const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+  if (!token) return; // PostHog not configured — skip init
+
   initialized = true;
 
   const shouldCapture = !consentRequired || initialConsent === 'accepted';
 
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN!, {
+  posthog.init(token, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
     person_profiles: 'identified_only', // KVKK / GDPR: only identified users get profiles
     capture_pageview: false,            // Next.js App Router manual tracking
