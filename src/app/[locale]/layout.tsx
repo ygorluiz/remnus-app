@@ -1,17 +1,11 @@
 import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/next';
-import { auth, signOut } from '@/auth';
+import { auth } from '@/auth';
 import { cookies, headers } from 'next/headers';
-import { getAllWorkspaceItems, getWorkspaces } from '@/lib/actions/workspace';
-import WorkspaceSidebar from '@/components/features/WorkspaceSidebar';
-import MobileNavWrapper from '@/components/features/MobileNavWrapper';
-import QueryProvider from '@/components/providers/QueryProvider';
-import AppShell from '@/components/AppShell';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
-import { getTranslations } from 'next-intl/server';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
 import PostHogPageView from '@/components/providers/PostHogPageView';
 import PostHogIdentify from '@/components/providers/PostHogIdentify';
@@ -19,10 +13,6 @@ import AttributionCapture from '@/components/providers/AttributionCapture';
 import { ConsentProvider } from '@/components/providers/ConsentContext';
 import CookieConsentBanner from '@/components/features/CookieConsentBanner';
 import { CONSENT_COOKIE, isConsentRequired, parseConsent } from '@/lib/consent';
-import UpdateBanner from '@/components/features/UpdateBanner';
-import ActivityTracker from '@/components/providers/ActivityTracker';
-import LastPathTracker from '@/components/providers/LastPathTracker';
-import BillingSuccessModal from '@/components/features/BillingSuccessModal';
 import { METADATA_BASE_URL, DEFAULT_OG_IMAGE, DEFAULT_TWITTER_IMAGE } from '@/lib/metadata';
 
 export const metadata: Metadata = {
@@ -59,6 +49,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Locale-level layout: providers only (intl, PostHog, consent). It is shared by ALL
+// routes under [locale] — marketing, public share pages, auth, and the in-app routes.
+// The authenticated app shell (sidebar/tabs) lives in the (app) route group's layout so
+// that crossing between a public share page and the app mounts/unmounts the shell
+// correctly (a conditional in this shared layout would be preserved across navigation).
 export default async function LocaleLayout({
   children,
   params,
@@ -72,145 +67,48 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const messages = await getMessages();
-  const session = await auth();
+  const [messages, session, headerStore, consentCookieStore] = await Promise.all([
+    getMessages(),
+    auth(),
+    headers(),
+    cookies(),
+  ]);
 
   // Geo-aware cookie consent (server-resolved so the banner renders flash-free).
-  const [headerStore, consentCookieStore] = await Promise.all([headers(), cookies()]);
   const consentRequired = isConsentRequired(headerStore.get('x-vercel-ip-country'));
   const initialConsent = parseConsent(consentCookieStore.get(CONSENT_COOKIE)?.value);
 
-  // Public share pages must never render the app shell (sidebar/tabs). A logged-in
-  // non-member would otherwise see the shared page nested inside their own workspace
-  // chrome. SharedPageView owns its own navbar; render it bare like a foreign visitor.
-  // (Workspace members are redirected to the real /page|/db route in the share route.)
-  const isShareRoute = headerStore.get('x-pathname')?.startsWith('/share/') ?? false;
-
-  if (isShareRoute || !session?.user) {
-    const sessionUser = session?.user ?? null;
-    const isAdmin = sessionUser?.role === 'admin';
-    return (
-      <>
-        <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
-          <PostHogPageView skip={isAdmin} />
-          {sessionUser ? (
-            <PostHogIdentify
-              user={{
-                id: sessionUser.id,
-                name: sessionUser.name ?? null,
-                email: sessionUser.email ?? null,
-                role: sessionUser.role,
-              }}
-            />
-          ) : (
-            <AttributionCapture />
-          )}
-          <NextIntlClientProvider messages={messages}>
-            <ConsentProvider
-              consentRequired={consentRequired}
-              initialConsent={initialConsent}
-              userRole={sessionUser?.role}
-            >
-              {children}
-              <CookieConsentBanner />
-            </ConsentProvider>
-          </NextIntlClientProvider>
-        </PostHogProvider>
-        <Analytics />
-      </>
-    );
-  }
-
-  const t = await getTranslations('Layout');
-
-  const [workspacesList, items] = await Promise.all([
-    getWorkspaces(),
-    getAllWorkspaceItems(),
-  ]);
-
-  const cookieStore = await cookies();
-  const activeWorkspaceId = cookieStore.get('remnus_workspace_id')?.value;
-  const activeWorkspace = workspacesList.find((w) => w.id === activeWorkspaceId) || workspacesList[0];
-  const sidebarDensity = (cookieStore.get('remnus_sidebar_density')?.value ?? 'comfortable') as 'compact' | 'comfortable';
-
-  const currentUser = {
-    id: session.user.id,
-    name: session.user.name ?? null,
-    email: session.user.email ?? null,
-    image: session.user.image ?? null,
-    role: session.user.role,
-  };
-
-  const demoBanner = session.user.role === 'demo' ? (
-    <div key="demo-banner" className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20">
-      <div className="flex items-center gap-1.5 text-xs text-amber-400 min-w-0">
-        <span className="font-semibold shrink-0">{t('demoMode')}</span>
-        <span className="text-amber-500/70 shrink-0">—</span>
-        <span className="text-amber-400/80 truncate">{t('demoChangesNote')}</span>
-      </div>
-      <form
-        action={async () => {
-          'use server';
-          await signOut({ redirectTo: '/login' });
-        }}
-      >
-        <button
-          type="submit"
-          className="shrink-0 text-xs font-medium text-amber-300 hover:text-amber-100 transition-colors self-start sm:self-auto"
-        >
-          {t('createFreeAccount')}
-        </button>
-      </form>
-    </div>
-  ) : undefined;
+  const sessionUser = session?.user ?? null;
+  const isAdmin = sessionUser?.role === 'admin';
 
   return (
-    <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
-      <PostHogPageView skip={currentUser?.role === 'admin'} />
-      <PostHogIdentify user={currentUser} />
-      <NextIntlClientProvider messages={messages}>
-        <ConsentProvider
-          consentRequired={consentRequired}
-          initialConsent={initialConsent}
-          userRole={currentUser.role}
-        >
-        <ActivityTracker />
-        <LastPathTracker />
-        <BillingSuccessModal />
-        <UpdateBanner />
-        <QueryProvider>
-          <AppShell
-            items={items}
-            activeWorkspaceId={activeWorkspace?.id ?? ''}
-            sidebar={
-              <WorkspaceSidebar
-                key="workspace-sidebar"
-                items={items}
-                workspaces={workspacesList}
-                activeWorkspace={activeWorkspace ?? { id: '', name: 'Workspace' }}
-                currentUser={currentUser}
-                density={sidebarDensity}
-                showOnboarding
-              />
-            }
-            mobileNav={
-              <MobileNavWrapper
-                key="mobile-nav"
-                items={items}
-                workspaces={workspacesList}
-                activeWorkspace={activeWorkspace ?? { id: '', name: 'Workspace' }}
-                currentUser={currentUser}
-              />
-            }
-            demoBanner={demoBanner}
+    <>
+      <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
+        <PostHogPageView skip={isAdmin} />
+        {sessionUser ? (
+          <PostHogIdentify
+            user={{
+              id: sessionUser.id,
+              name: sessionUser.name ?? null,
+              email: sessionUser.email ?? null,
+              role: sessionUser.role,
+            }}
+          />
+        ) : (
+          <AttributionCapture />
+        )}
+        <NextIntlClientProvider messages={messages}>
+          <ConsentProvider
+            consentRequired={consentRequired}
+            initialConsent={initialConsent}
+            userRole={sessionUser?.role}
           >
             {children}
-          </AppShell>
-        </QueryProvider>
-        <Analytics />
-        <CookieConsentBanner />
-        </ConsentProvider>
-      </NextIntlClientProvider>
-    </PostHogProvider>
+            <CookieConsentBanner />
+          </ConsentProvider>
+        </NextIntlClientProvider>
+      </PostHogProvider>
+      <Analytics />
+    </>
   );
 }
