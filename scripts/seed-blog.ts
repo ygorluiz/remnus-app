@@ -61,6 +61,22 @@ const BLOGS: BlogPage[] = [
     parentSlug: 'blog',
     icon: '🤖',
   },
+  {
+    slug: 'blog/how-i-built-mcp-native',
+    file: 'how-i-built-mcp-native.md',
+    title: 'How I Built an MCP-Native Open-Source Notion Alternative',
+    sortOrder: 2,
+    parentSlug: 'blog',
+    icon: '🛠️',
+  },
+  {
+    slug: 'blog/remnus-vs-notion-mcp',
+    file: 'remnus-vs-notion-mcp.md',
+    title: 'Remnus vs Notion MCP',
+    sortOrder: 3,
+    parentSlug: 'blog',
+    icon: '⚔️',
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
