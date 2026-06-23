@@ -10,7 +10,10 @@ import { AGENT_MARKS } from '@/components/features/agents/agentMarks';
 import { captureForUser } from '@/lib/analytics/server';
 
 function signRedirectUrl(url: string): string {
-  const secret = process.env.AUTH_SECRET ?? 'fallback-secret-change-me';
+  // Fail closed: a missing AUTH_SECRET would make the HMAC key public and the
+  // redirect signature forgeable (open redirect). Auth.js requires it anyway.
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error('AUTH_SECRET is not set');
   return createHmac('sha256', secret).update(url).digest('hex');
 }
 
