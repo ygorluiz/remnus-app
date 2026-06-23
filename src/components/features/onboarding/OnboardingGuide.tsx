@@ -143,6 +143,7 @@ export default function OnboardingGuide({ userRole }: Props) {
         <ConnectModal
           mcpUrl={mcpUrl}
           mintTargets={progress.mintTargets}
+          source="onboarding"
           onClose={() => { setConnectOpen(false); refresh(); }}
         />
       )}

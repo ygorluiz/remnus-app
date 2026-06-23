@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePostHog } from 'posthog-js/react';
 import { Check, Copy, ArrowRight, ChevronLeft, ChevronDown, X, KeyRound, Globe, AlertCircle, AlertTriangle, Plug } from 'lucide-react';
 import AIMark from '@/components/marketing/AIMark';
 import { VscodeMark } from '@/components/features/agents/AgentMark';
@@ -534,18 +535,44 @@ interface Props {
   mintTargets?: MintTarget[];
   /** When true, render only the step body (no outer card/header). Used by ConnectModal, which supplies its own chrome. */
   bare?: boolean;
+  /** Where the flow was opened from, for funnel attribution ('onboarding' | 'agents_modal' | 'workspace_settings'). */
+  source?: string;
 }
 
-export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [], bare = false }: Props) {
+export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [], bare = false, source = 'unknown' }: Props) {
   const t = useTranslations('WorkspaceSettings');
+  const posthog = usePostHog();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [editor, setEditor] = useState<EditorId | null>(null);
+
+  // Funnel (in-app): the connect flow was opened — top of the agent-add funnel.
+  // posthog-js honors the user's consent state, so no extra gating is needed here.
+  const openedRef = useRef(false);
+  useEffect(() => {
+    if (openedRef.current) return;
+    openedRef.current = true;
+    posthog?.capture('connect_flow_opened', { source });
+  }, [posthog, source]);
+
+  const selectEditor = (id: EditorId) => {
+    posthog?.capture('connect_editor_selected', { editor: id, source });
+    setEditor(id);
+    setStep(2);
+  };
+
+  const finish = () => {
+    // Funnel: user self-reports the connection is done (vs the server-side `agent_call`
+    // that proves a real tool call landed). The gap between the two = "thinks they're
+    // connected but no call arrived".
+    posthog?.capture('connect_completed', { editor: editor ?? null, source });
+    onClose();
+  };
 
   const steps = (
     // key={step} remounts on each transition so the fade/slide-in replays.
     <div key={step} className="animate-step-in">
       {step === 1 && (
-        <StepChoose t={t} current={editor ?? undefined} onSelect={id => { setEditor(id); setStep(2); }} />
+        <StepChoose t={t} current={editor ?? undefined} onSelect={selectEditor} />
       )}
       {step === 2 && editor && (
         <StepConnect
@@ -558,7 +585,7 @@ export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [], bare = 
         />
       )}
       {step === 3 && (
-        <StepTest t={t} onDone={onClose} onBack={() => setStep(2)} />
+        <StepTest t={t} onDone={finish} onBack={() => setStep(2)} />
       )}
     </div>
   );

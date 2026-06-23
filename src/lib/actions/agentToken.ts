@@ -46,6 +46,15 @@ export async function mintAgentToken(
   if (user.role !== 'admin') {
     const code = await checkCanAddAgent(workspaceId);
     if (code) {
+      // Funnel: a PAT mint was blocked by a plan limit — same "why can't they add
+      // an agent" signal as the OAuth agent_limit_reached path. Capture the exact code.
+      await captureServer({
+        event: 'mcp_token_mint_blocked',
+        userId,
+        allowed: await isCaptureAllowedFromRequest(),
+        role: user.role,
+        properties: { reason: code, type: 'pat', scope, workspaceId },
+      }).catch(() => {});
       const t = await getTranslations('Errors');
       throw new Error(t(code));
     }

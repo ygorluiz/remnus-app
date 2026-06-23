@@ -514,6 +514,7 @@ export default function AgentsModal({ onClose }: Props) {
       <ConnectModal
         mcpUrl={mcpUrl}
         mintTargets={mintTargets}
+        source="agents_modal"
         onClose={() => { setShowConnect(false); load(); }}
       />
     )}

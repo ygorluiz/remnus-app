@@ -6,7 +6,7 @@ import { eq, and, isNull } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { randomBytes, createHash, randomUUID } from 'crypto';
 import { checkCanAddAgent } from '@/lib/services/billing';
-import { captureServer, isCaptureAllowedForUser } from '@/lib/analytics/server';
+import { captureServer, isCaptureAllowedForUser, captureForUser, captureAnonymous } from '@/lib/analytics/server';
 
 const ACCESS_TOKEN_TTL_MS  = 60 * 60 * 1000;          // 1 hour
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -57,6 +57,8 @@ async function handleAuthorizationCode(params: URLSearchParams): Promise<Respons
 
   if (!code || !redirectUri || !clientId || !verifier) {
     console.error('[oauth/token] missing_params', { code: !!code, redirectUri: !!redirectUri, clientId: !!clientId, verifier: !!verifier });
+    // No user context yet — capture the drop-off anonymously so the funnel still counts it.
+    void captureAnonymous('oauth_token_exchange_failed', { reason: 'missing_params', clientId: clientId ?? null });
     return oauthError('invalid_request', 'Missing required parameters');
   }
 
@@ -68,27 +70,38 @@ async function handleAuthorizationCode(params: URLSearchParams): Promise<Respons
 
   if (!row) {
     console.error('[oauth/token] code_not_found', { codePrefix: code.slice(0, 8) });
+    void captureAnonymous('oauth_token_exchange_failed', { reason: 'code_not_found', clientId });
     return oauthError('invalid_grant', 'Authorization code not found or already used');
   }
+
+  // From here the auth code resolves to a user — attribute failures to them so we
+  // can see *which* users couldn't complete an agent connection and why.
+  const fail = (reason: string, res: Response): Response => {
+    void captureForUser('oauth_token_exchange_failed', row.userId, {
+      reason, clientId: row.clientId, workspaceId: row.workspaceId, scope: row.scope,
+    });
+    return res;
+  };
+
   if (row.usedAt) {
     console.error('[oauth/token] code_already_used', { codePrefix: code.slice(0, 8) });
-    return oauthError('invalid_grant', 'Authorization code already used');
+    return fail('code_already_used', oauthError('invalid_grant', 'Authorization code already used'));
   }
   if (row.expiresAt.getTime() < Date.now()) {
     console.error('[oauth/token] code_expired', { expiresAt: row.expiresAt });
-    return oauthError('invalid_grant', 'Authorization code expired');
+    return fail('code_expired', oauthError('invalid_grant', 'Authorization code expired'));
   }
   if (row.clientId !== clientId) {
     console.error('[oauth/token] client_id_mismatch', { stored: row.clientId, received: clientId });
-    return oauthError('invalid_grant', 'client_id mismatch');
+    return fail('client_id_mismatch', oauthError('invalid_grant', 'client_id mismatch'));
   }
   if (row.redirectUri !== redirectUri) {
     console.error('[oauth/token] redirect_uri_mismatch', { stored: row.redirectUri, received: redirectUri });
-    return oauthError('invalid_grant', 'redirect_uri mismatch');
+    return fail('redirect_uri_mismatch', oauthError('invalid_grant', 'redirect_uri mismatch'));
   }
   if (!verifyS256(verifier, row.codeChallenge)) {
     console.error('[oauth/token] pkce_invalid', { challengePrefix: row.codeChallenge.slice(0, 8) });
-    return oauthError('invalid_grant', 'code_verifier invalid');
+    return fail('pkce_invalid', oauthError('invalid_grant', 'code_verifier invalid'));
   }
 
   // Agent limit — a new OAuth connection counts against the workspace billing owner's plan.
@@ -99,7 +112,8 @@ async function handleAuthorizationCode(params: URLSearchParams): Promise<Respons
     const limitCode = await checkCanAddAgent(row.workspaceId);
     if (limitCode) {
       console.error('[oauth/token] agent_limit_reached', { workspaceId: row.workspaceId });
-      return oauthError('access_denied', 'Connected-agent limit reached for this workspace plan', 403);
+      // The single biggest "why can't they add an agent" reason — surface the exact limit code.
+      return fail('agent_limit_reached', oauthError('access_denied', 'Connected-agent limit reached for this workspace plan', 403));
     }
   }
 

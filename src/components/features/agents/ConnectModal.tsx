@@ -9,13 +9,15 @@ interface Props {
   /** Workspaces the user can mint a PAT in. Empty = OAuth-only (token mode unavailable). */
   mintTargets?: MintTarget[];
   onClose: () => void;
+  /** Funnel attribution for where the connect flow was opened from. */
+  source?: string;
 }
 
 /**
  * Standalone full-screen modal wrapping {@link ConnectFlow}.
  * Layered above the AI Agents control center (and Workspace Settings) — z-110.
  */
-export default function ConnectModal({ mcpUrl, mintTargets = [], onClose }: Props) {
+export default function ConnectModal({ mcpUrl, mintTargets = [], onClose, source }: Props) {
   const t = useTranslations('WorkspaceSettings');
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function ConnectModal({ mcpUrl, mintTargets = [], onClose }: Prop
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6">
-          <ConnectFlow bare mcpUrl={mcpUrl} mintTargets={mintTargets} onClose={onClose} />
+          <ConnectFlow bare mcpUrl={mcpUrl} mintTargets={mintTargets} onClose={onClose} source={source} />
         </div>
       </div>
     </div>

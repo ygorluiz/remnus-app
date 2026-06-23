@@ -7,6 +7,7 @@ import { randomBytes, createHmac } from 'crypto';
 import { getTranslations } from 'next-intl/server';
 import { OAuthAuthorizeForm } from './OAuthAuthorizeForm';
 import { AGENT_MARKS } from '@/components/features/agents/agentMarks';
+import { captureForUser } from '@/lib/analytics/server';
 
 function signRedirectUrl(url: string): string {
   const secret = process.env.AUTH_SECRET ?? 'fallback-secret-change-me';
@@ -98,6 +99,15 @@ export default async function OAuthAuthorizePage({
     return <ErrorPage title={t('errorTitle')} message={t('noWorkspaces')} />;
   }
 
+  // Funnel: the editor's OAuth flow reached our consent screen. A gap between
+  // `connect_editor_selected` and this event = config friction (couldn't even
+  // kick off OAuth from their tool).
+  await captureForUser('oauth_authorize_viewed', user!.id, {
+    clientId: client_id,
+    scope: validScope,
+    clientName: client.clientName,
+  });
+
   async function handleApprove(formData: FormData) {
     'use server';
     const workspaceId = formData.get('workspace_id') as string;
@@ -141,6 +151,15 @@ export default async function OAuthAuthorizePage({
       expiresAt:           new Date(Date.now() + 10 * 60 * 1000), // 10 min
     });
 
+    // Funnel: user approved consent — the auth code is now in flight to the editor.
+    await captureForUser('oauth_consent_result', currentUser.id, {
+      result: 'approved',
+      scope: chosenScope,
+      workspaceId,
+      clientId: client_id,
+      agentName: chosenAgent,
+    });
+
     const dest = new URL(redirect_uri!);
     dest.searchParams.set('code', code);
     if (state) dest.searchParams.set('state', state);
@@ -151,6 +170,14 @@ export default async function OAuthAuthorizePage({
 
   async function handleDeny() {
     'use server';
+    // Funnel: user explicitly denied consent — a distinct, intentional drop-off.
+    const denier = await getCurrentUser().catch(() => null);
+    if (denier) {
+      await captureForUser('oauth_consent_result', denier.id, {
+        result: 'denied',
+        clientId: client_id,
+      });
+    }
     oauthErrorRedirect(redirect_uri!, 'access_denied', state);
   }
 
