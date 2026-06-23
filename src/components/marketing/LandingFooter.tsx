@@ -6,7 +6,7 @@ export default async function LandingFooter() {
   const t = await getTranslations('Landing');
   const year = new Date().getFullYear();
 
-  const cols = [
+  const cols: { head: string; headHref?: string; links: { label: string; href: string }[] }[] = [
     {
       head: t('bridgeFooterColProtocol'),
       links: [
@@ -18,13 +18,13 @@ export default async function LandingFooter() {
     },
     {
       head: t('bridgeFooterCompanyBlog'),
+      headHref: '/share/blog',
       links: [
         { label: 'Why AGPL-3.0',              href: '/share/blog/why-agpl-3' },
         { label: 'MCP-Native vs Integrated',  href: '/share/blog/mcp-native-vs-integrated' },
         { label: 'Claude Fable 5 + Remnus',   href: '/share/blog/claude-fable-5' },
         { label: 'How I Built Remnus',        href: '/share/blog/how-i-built-mcp-native' },
         { label: 'Remnus vs Notion MCP',      href: '/share/blog/remnus-vs-notion-mcp' },
-        { label: t('bridgeFooterBlogAll'),    href: '/share/blog' },
       ],
     },
     {
@@ -39,7 +39,6 @@ export default async function LandingFooter() {
     {
       head: t('bridgeFooterColCompany'),
       links: [
-        { label: t('bridgeFooterCompanyManifesto'), href: '/#why' },
         { label: t('bridgeFooterCompanyPricing'),   href: '/pricing' },
         { label: t('bridgeFooterCompanyContact'),   href: '/contact' },
         { label: t('bridgeFooterCompanyPrivacy'),   href: '/privacy' },
@@ -68,9 +67,18 @@ export default async function LandingFooter() {
         {/* 3 link columns */}
         {cols.map((col) => (
           <div key={col.head} className="flex flex-col gap-3">
-            <span className="font-mono text-[11px] text-dim uppercase tracking-[0.12em] mb-1">
-              {col.head}
-            </span>
+            {col.headHref ? (
+              <Link
+                href={col.headHref}
+                className="font-mono text-[11px] text-dim hover:text-neutral-100 uppercase tracking-[0.12em] mb-1 transition-colors duration-150"
+              >
+                {col.head}
+              </Link>
+            ) : (
+              <span className="font-mono text-[11px] text-dim uppercase tracking-[0.12em] mb-1">
+                {col.head}
+              </span>
+            )}
             {col.links.map((l) => (
               <Link
                 key={l.label}
