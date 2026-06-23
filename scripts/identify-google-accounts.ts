@@ -24,9 +24,9 @@ function decodeJwt(jwt?: string | null) {
 async function main() {
   const rows = await db
     .select({
-      provider: accounts.provider,
-      providerAccountId: accounts.providerAccountId,
-      idToken: accounts.id_token,
+      provider: accounts.providerId,
+      providerAccountId: accounts.accountId,
+      idToken: accounts.idToken,
       scope: accounts.scope,
     })
     .from(accounts)

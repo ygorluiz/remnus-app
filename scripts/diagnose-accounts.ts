@@ -31,9 +31,8 @@ async function main() {
     ? await db
         .select({
           userId: accounts.userId,
-          provider: accounts.provider,
-          providerAccountId: accounts.providerAccountId,
-          type: accounts.type,
+          provider: accounts.providerId,
+          providerAccountId: accounts.accountId,
         })
         .from(accounts)
         .where(inArray(accounts.userId, ids))

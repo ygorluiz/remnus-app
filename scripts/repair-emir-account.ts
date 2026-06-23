@@ -13,9 +13,9 @@ const PROVIDER_ACCOUNT_ID = '101470341751382915973'; // emir.oguz03@gmail.com (v
 
 async function main() {
   const before = await db
-    .select({ userId: accounts.userId, provider: accounts.provider, providerAccountId: accounts.providerAccountId })
+    .select({ userId: accounts.userId, provider: accounts.providerId, providerAccountId: accounts.accountId })
     .from(accounts)
-    .where(and(eq(accounts.provider, PROVIDER), eq(accounts.providerAccountId, PROVIDER_ACCOUNT_ID)));
+    .where(and(eq(accounts.providerId, PROVIDER), eq(accounts.accountId, PROVIDER_ACCOUNT_ID)));
 
   console.log('Row to delete:', before);
   if (before.length === 0) {
@@ -25,12 +25,12 @@ async function main() {
 
   await db
     .delete(accounts)
-    .where(and(eq(accounts.provider, PROVIDER), eq(accounts.providerAccountId, PROVIDER_ACCOUNT_ID)));
+    .where(and(eq(accounts.providerId, PROVIDER), eq(accounts.accountId, PROVIDER_ACCOUNT_ID)));
 
   const after = await db
-    .select({ providerAccountId: accounts.providerAccountId })
+    .select({ providerAccountId: accounts.accountId })
     .from(accounts)
-    .where(and(eq(accounts.provider, PROVIDER), eq(accounts.providerAccountId, PROVIDER_ACCOUNT_ID)));
+    .where(and(eq(accounts.providerId, PROVIDER), eq(accounts.accountId, PROVIDER_ACCOUNT_ID)));
 
   console.log(after.length === 0 ? '✅ Deleted. emir.oguz03 Google link removed.' : '⚠ Still present!');
   process.exit(0);

@@ -85,6 +85,7 @@
   },
   "devDependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@evilmartians/lefthook": "^2.1.9",
     "@libsql/client": "^0.17.4",
     "@swc/helpers": "^0.5.23",
     "@tailwindcss/postcss": "^4",

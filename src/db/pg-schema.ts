@@ -77,7 +77,7 @@ export const users = pgTable('user', {
   image:             text('image'),
   createdAt:         timestamp('created_at').defaultNow().notNull(),
   updatedAt:         timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
-  role:              text('role').default('user'),
+  role:              text('role').default('user').notNull(),
   analyticsConsent:  text('analytics_consent'),
   passwordHash:      text('password_hash'),
 });

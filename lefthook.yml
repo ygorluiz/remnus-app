@@ -1,0 +1,20 @@
+pre-push:
+  commands:
+    type-check:
+      run: npx tsc --noEmit
+      tags: typescript
+    build:
+      run: npm run build
+      tags: build
+      skip:
+        - merge
+        - rebase
+
+commit-msg:
+  commands:
+    "no-wip":
+      run: echo {1} | grep -ivE "^wip"
+
+# ⚡ Install: npx lefthook install
+# Run pre-push checks locally before pushing to avoid CI-style failures.
+# Overrides in lefthook-local.yml (gitignored).
