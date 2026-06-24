@@ -8,6 +8,7 @@ import {
   deleteBlockSelection,
   blockSelectionKey,
 } from './BlockSelectionExtension';
+import { nodesToCleanMarkdown } from './clipboardMarkdown';
 import {
   GripVertical, MoreVertical, ArrowUp, ArrowDown, ChevronsDownUp, Trash2, Copy, CopyPlus, Scissors, Check, ChevronRight,
   Pilcrow, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code2,
@@ -556,7 +557,6 @@ export default function BlockDragHandle({ editor }: Props) {
 
   // ── Target-aware primitives (no menu side-effects) ──
   const copyTarget = (tgt: Target) => {
-    const manager = (editor as any).markdown ?? (editor as any).storage?.markdown?.manager;
     let text: string | null = null;
     try {
       if (tgt.kind === 'blocks') {
@@ -566,7 +566,7 @@ export default function BlockDragHandle({ editor }: Props) {
         text = editor.state.doc.textBetween(tgt.from, tgt.to, '\n', '\n');
       } else {
         const node = editor.state.doc.nodeAt(tgt.pos);
-        if (node) text = manager?.serialize ? manager.serialize({ type: 'doc', content: [node.toJSON()] }) : node.textContent;
+        if (node) text = nodesToCleanMarkdown(editor, [node]);
       }
     } catch { /* best-effort */ }
     if (text != null) void navigator.clipboard?.writeText(text).catch(() => {});

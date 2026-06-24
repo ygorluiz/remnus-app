@@ -1,6 +1,6 @@
 ﻿'use client';
 import { useState, useEffect } from 'react';
-import { X, Monitor, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { X, Monitor, ZoomIn, ZoomOut, RotateCcw, FolderOpen, FolderInput } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 const ZOOM_KEY = 'remnus_desktop_zoom';
@@ -40,6 +40,7 @@ interface Props {
 export default function DesktopSettingsModal({ onClose }: Props) {
   const t = useTranslations('Workspace');
   const [zoom, setZoom] = useState<number>(getSavedZoom);
+  const [downloadDir, setDownloadDir] = useState<string | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -48,6 +49,42 @@ export default function DesktopSettingsModal({ onClose }: Props) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // Load the currently configured custom download folder (desktop only).
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.__TAURI_INTERNALS__) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const dir = await invoke<string | null>('get_download_dir');
+        if (!cancelled) setDownloadDir(dir ?? null);
+      } catch {
+        /* not running in the desktop shell — leave as default */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function chooseDownloadDir() {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const dir = await invoke<string | null>('pick_download_dir');
+      if (dir) setDownloadDir(dir);
+    } catch {
+      /* user cancelled or not in desktop shell */
+    }
+  }
+
+  async function resetDownloadDir() {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('reset_download_dir');
+      setDownloadDir(null);
+    } catch {
+      /* not in desktop shell */
+    }
+  }
 
   function changeZoom(next: number) {
     const clamped = round1(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, next)));
@@ -132,6 +169,37 @@ export default function DesktopSettingsModal({ onClose }: Props) {
               onChange={(e) => changeZoom(parseFloat(e.target.value))}
               className="w-full accent-blue-500"
             />
+          </div>
+
+          {/* Download folder section */}
+          <div className="px-6 py-5 space-y-3 border-t border-neutral-800">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-300">{t('downloadFolder')}</span>
+            </div>
+
+            <div className="text-xs text-neutral-500 font-mono truncate bg-neutral-800 px-2.5 py-1.5 rounded border border-neutral-700/40" title={downloadDir ?? undefined}>
+              {downloadDir ?? t('downloadFolderDefault')}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={chooseDownloadDir}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40 border border-neutral-800 cursor-pointer rounded transition-colors"
+              >
+                <FolderInput size={12} />
+                {t('downloadChooseFolder')}
+              </button>
+
+              <button
+                onClick={resetDownloadDir}
+                disabled={!downloadDir}
+                className="flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40 disabled:opacity-30 disabled:cursor-not-allowed border border-neutral-800 cursor-pointer rounded transition-colors"
+                title={t('downloadFolderReset')}
+              >
+                <FolderOpen size={12} />
+                {t('downloadFolderReset')}
+              </button>
+            </div>
           </div>
         </div>
       </div>

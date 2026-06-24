@@ -1,15 +1,93 @@
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
-    Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    webview::DownloadEvent,
+    Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
-#[cfg(not(debug_assertions))]
-use tauri::Emitter;
 use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_updater::UpdaterExt;
 
 const ZOOM_INIT: &str = "(function(){try{var z=parseFloat(localStorage.getItem('remnus_desktop_zoom'));if(z&&z>=0.5&&z<=2.0){var el=document.documentElement;el.style.zoom=String(z);if(z<1){var p=(100/z).toFixed(2)+'%';el.style.width=p;el.style.height=p;el.style.overflow='hidden';}}}catch(e){}})();";
+
+/// Holds the user-chosen download directory (None ⇒ the platform default
+/// Downloads folder). Persisted to a small text file in the app config dir so
+/// it survives restarts; loaded into this state on startup.
+#[derive(Default)]
+struct DownloadConfig {
+    dir: Mutex<Option<PathBuf>>,
+}
+
+/// Path of the file that persists the chosen download directory.
+fn download_config_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|d| d.join("download-dir.txt"))
+}
+
+/// Persist (or clear) the chosen download directory to disk.
+fn persist_download_dir<R: tauri::Runtime>(app: &tauri::AppHandle<R>, dir: &Option<PathBuf>) {
+    if let Some(cfg) = download_config_path(app) {
+        match dir {
+            Some(p) => {
+                if let Some(parent) = cfg.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                let _ = fs::write(&cfg, p.to_string_lossy().as_bytes());
+            }
+            None => {
+                let _ = fs::remove_file(&cfg);
+            }
+        }
+    }
+}
+
+/// Return the currently configured custom download directory, if any.
+#[tauri::command]
+fn get_download_dir(state: State<DownloadConfig>) -> Option<String> {
+    state
+        .dir
+        .lock()
+        .ok()?
+        .as_ref()
+        .map(|p| p.to_string_lossy().to_string())
+}
+
+/// Open a native folder picker, store the chosen directory (in memory + on
+/// disk) and return it. Returns `None` if the user cancels.
+#[tauri::command]
+fn pick_download_dir(app: tauri::AppHandle, state: State<DownloadConfig>) -> Option<String> {
+    let folder = app.dialog().file().blocking_pick_folder()?;
+    let path = folder.into_path().ok()?;
+    if let Ok(mut guard) = state.dir.lock() {
+        *guard = Some(path.clone());
+    }
+    persist_download_dir(&app, &Some(path.clone()));
+    Some(path.to_string_lossy().to_string())
+}
+
+/// Clear the custom download directory, reverting to the platform default.
+#[tauri::command]
+fn reset_download_dir(app: tauri::AppHandle, state: State<DownloadConfig>) {
+    if let Ok(mut guard) = state.dir.lock() {
+        *guard = None;
+    }
+    persist_download_dir(&app, &None);
+}
+
+/// Reveal a downloaded file in the OS file manager (highlights it).
+#[tauri::command]
+fn reveal_download(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    app.opener()
+        .reveal_item_in_dir(path)
+        .map_err(|e| e.to_string())
+}
 
 /// Exit the application cleanly. Called from the UpdateBanner after an
 /// update has been downloaded and installed — the user clicks "Quit & Reopen"
@@ -84,7 +162,21 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
+        .manage(DownloadConfig::default())
         .setup(|app| {
+            // Restore the persisted custom download directory (if any) into state.
+            if let Some(cfg) = download_config_path(app.handle()) {
+                if let Ok(saved) = fs::read_to_string(&cfg) {
+                    let trimmed = saved.trim().to_string();
+                    if !trimmed.is_empty() {
+                        if let Ok(mut guard) = app.state::<DownloadConfig>().dir.lock() {
+                            *guard = Some(PathBuf::from(trimmed));
+                        }
+                    }
+                }
+            }
+
             #[cfg(debug_assertions)]
             let url = "http://localhost:3000/tauri-app";
             #[cfg(not(debug_assertions))]
@@ -108,6 +200,44 @@ pub fn run() {
             .disable_drag_drop_handler()
             .additional_browser_args("--disable-spell-checking --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection")
             .initialization_script(ZOOM_INIT)
+            // Handle file downloads triggered from the WebView so the user gets a
+            // clear "download finished" toast and downloads honor the configured
+            // download folder. Without this the WebView silently dropped files in
+            // the OS default location with no in-app feedback.
+            .on_download(|webview, event| {
+                match event {
+                    DownloadEvent::Requested { destination, .. } => {
+                        // Redirect the download into the user-chosen folder, if set,
+                        // keeping the original filename the WebView picked.
+                        let app = webview.app_handle();
+                        if let Ok(guard) = app.state::<DownloadConfig>().dir.lock() {
+                            if let Some(dir) = guard.as_ref() {
+                                if let Some(filename) = destination.file_name() {
+                                    *destination = dir.join(filename);
+                                }
+                            }
+                        }
+                    }
+                    DownloadEvent::Finished { path, success, .. } => {
+                        let path_str = path.as_ref().map(|p| p.to_string_lossy().to_string());
+                        let name = path
+                            .as_ref()
+                            .and_then(|p| p.file_name())
+                            .map(|f| f.to_string_lossy().to_string());
+                        let _ = webview.app_handle().emit(
+                            "download-finished",
+                            serde_json::json!({
+                                "success": success,
+                                "path": path_str,
+                                "name": name,
+                            }),
+                        );
+                    }
+                    _ => {}
+                }
+                // Always allow the download to proceed.
+                true
+            })
             .build()?;
 
             // Hide to tray on window close instead of quitting.
@@ -173,7 +303,13 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![quit_app])
+        .invoke_handler(tauri::generate_handler![
+            quit_app,
+            get_download_dir,
+            pick_download_dir,
+            reset_download_dir,
+            reveal_download
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application")
 }

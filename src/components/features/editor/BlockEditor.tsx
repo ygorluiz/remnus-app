@@ -22,6 +22,7 @@ import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import { YoutubeEmbed } from './YoutubeEmbedExtension';
+import { fragmentToCleanMarkdown } from './clipboardMarkdown';
 
 // Markdown has no native syntax for text/highlight colors, so the default
 // serializer drops them (a colored run reverts on reload). These extends emit
@@ -296,6 +297,16 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       attributes: {
         class: 'prose-editor focus:outline-none min-h-[500px]',
         spellcheck: 'false',
+      },
+      // Copy/cut a native text selection as clean markdown (not the storage HTML
+      // for atom blocks, and with no doubled blank lines) — so a callout pastes
+      // as a blockquote and consecutive paragraphs paste tightly. The marquee
+      // block selection goes through serializeBlockSelectionMarkdown, which uses
+      // the same cleaner, so both copy paths produce identical output.
+      clipboardTextSerializer: (slice) => {
+        const ed = editorRef.current;
+        if (!ed) return slice.content.textBetween(0, slice.content.size, '\n\n', '\n');
+        return fragmentToCleanMarkdown(ed, slice.content);
       },
       handleClick: (_view, _pos, event) => {
         const anchor = (event.target as HTMLElement | null)?.closest('a');
