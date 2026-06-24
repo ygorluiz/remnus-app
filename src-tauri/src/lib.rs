@@ -83,13 +83,33 @@ fn reset_download_dir(app: tauri::AppHandle, state: State<DownloadConfig>) {
 
 /// Reveal a downloaded file in the OS file manager (highlights it).
 ///
-/// `reveal_item_in_dir` (SHOpenFolderAndSelectItems on Windows) can fail on
-/// some systems — e.g. it returns ERROR_FILE_NOT_FOUND even when the file is
-/// present, or the path can't be turned into an item-id list. When it does, we
-/// fall back to simply opening the containing folder so "Show in folder" always
-/// does something useful instead of silently no-op'ing.
+/// On Windows we shell out to `explorer.exe /select,<path>` directly instead of
+/// using `tauri-plugin-opener`'s `reveal_item_in_dir`. That plugin calls
+/// `SHOpenFolderAndSelectItems`, a shell API that requires the calling thread to
+/// be in an STA COM apartment — but Tauri runs commands on async-runtime worker
+/// threads that may be MTA, where the call silently fails (this is why
+/// "Show in folder" did nothing). `explorer.exe` has no apartment requirement.
+/// We use `raw_arg` so the path is passed verbatim (explorer does its own,
+/// non-standard command-line parsing and mis-handles Rust's auto-quoting).
+/// On other platforms the plugin's reveal works fine; we keep it with an
+/// open-the-containing-folder fallback.
 #[tauri::command]
 fn reveal_download(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+        // explorer.exe returns exit code 1 even on success, so we don't wait on it.
+        if Command::new("explorer.exe")
+            .raw_arg(format!("/select,\"{}\"", path))
+            .spawn()
+            .is_ok()
+        {
+            return Ok(());
+        }
+        // fall through to the opener-based path below if spawning failed
+    }
+
     if app.opener().reveal_item_in_dir(&path).is_ok() {
         return Ok(());
     }
