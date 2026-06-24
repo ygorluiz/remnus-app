@@ -399,7 +399,11 @@ function PlanCard({
 
       <div className="mb-6 flex items-end gap-2">
         <span
-          className="font-sans font-bold text-neutral-100 text-[40px] lg:text-[48px]"
+          className={`font-sans font-bold text-neutral-100 ${
+            /\d/.test(price)
+              ? 'text-[40px] lg:text-[48px]'
+              : 'text-[26px] lg:text-[30px]'
+          }`}
           style={{ letterSpacing: '-0.04em', lineHeight: 1 }}
         >
           {price}
