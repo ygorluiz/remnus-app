@@ -5,6 +5,7 @@ import { usePostHog } from 'posthog-js/react';
 import { Check, Copy, ArrowRight, ChevronLeft, ChevronDown, X, KeyRound, Globe, AlertCircle, AlertTriangle, Plug } from 'lucide-react';
 import AIMark from '@/components/marketing/AIMark';
 import { VscodeMark } from '@/components/features/agents/AgentMark';
+import ClaudeConnectAnimation from '@/components/features/agents/ClaudeConnectAnimation';
 import { mintAgentToken } from '@/lib/actions/agentToken';
 import {
   EDITORS, OAUTH_READY, CONFIG_PATHS, TEST_PROMPT, CODEX_LOGIN_CMD,
@@ -417,6 +418,16 @@ function StepConnect({
               {k === 'mac' ? 'macOS' : k === 'linux' ? 'Linux' : 'Windows'}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Animated walkthrough — Claude Code only, above Quick connect */}
+      {editor === 'claude' && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-widest">
+            {t('connectAnimTitle')}
+          </p>
+          <ClaudeConnectAnimation mcpUrl={mcpUrl} />
         </div>
       )}
 
