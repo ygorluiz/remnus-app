@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2 } from 'lucide-react';
+import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2, Monitor } from 'lucide-react';
 import ImportTab from './workspace-settings/ImportTab';
+import DesktopTab from './workspace-settings/DesktopTab';
 import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
 import { updateMyProfile } from '@/lib/actions/auth';
 import {
@@ -129,7 +130,7 @@ interface UserSettingsModalProps {
   onClose: () => void;
 }
 
-type Tab = 'account' | 'preferences' | 'import';
+type Tab = 'account' | 'preferences' | 'desktop' | 'import';
 
 // ── Editable profile (avatar + display name) ────────────────────────────────────
 
@@ -300,6 +301,13 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
 
   const [activeTab, setActiveTab] = useState<Tab>('account');
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
+  const [isTauri, setIsTauri] = useState(false);
+
+  // Detect the desktop shell — the Desktop tab (zoom + download folder) only
+  // makes sense (and its Tauri commands only resolve) inside Tauri.
+  useEffect(() => {
+    setIsTauri('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+  }, []);
 
   // Preference states — read from cookie-derived data attributes on <html>
   const [locale, setLocaleState] = useState(currentLocale);
@@ -355,6 +363,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'account', label: t('tabAccount'), icon: <User size={13} /> },
     { id: 'preferences', label: t('tabPreferences'), icon: <SlidersHorizontal size={13} /> },
+    ...(isTauri ? [{ id: 'desktop' as Tab, label: t('tabDesktop'), icon: <Monitor size={13} /> }] : []),
     { id: 'import', label: t('tabImport'), icon: <Download size={13} /> },
   ];
 
@@ -504,6 +513,11 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
                 onChange={handleDefaultWidth}
               />
             </div>
+          )}
+
+          {/* Desktop (Tauri only) */}
+          {activeTab === 'desktop' && isTauri && (
+            <DesktopTab />
           )}
 
           {/* Import */}

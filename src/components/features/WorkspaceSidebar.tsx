@@ -20,7 +20,6 @@ import {
   Settings,
   Layers,
   ArrowLeft,
-  Monitor,
   Bot,
   Globe,
   Eye,
@@ -50,7 +49,7 @@ import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 import IconPicker from './IconPicker';
 import TemplatePickerModal from './TemplatePickerModal';
 import WorkspaceSettingsModal from './WorkspaceSettingsModal';
-import DesktopSettingsModal, { initDesktopZoom } from './DesktopSettingsModal';
+import { initDesktopZoom } from '@/lib/desktop/zoom';
 import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 import AgentsModal from './AgentsModal';
 import OnboardingGuide from './onboarding/OnboardingGuide';
@@ -194,7 +193,6 @@ export default function WorkspaceSidebar({
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [workspaceCreateError, setWorkspaceCreateError] = useState<string | null>(null);
   const [settingsModalWorkspace, setSettingsModalWorkspace] = useState<{ id: string; name: string; icon?: string | null; iconColor?: string | null } | null>(null);
-  const [desktopSettingsOpen, setDesktopSettingsOpen] = useState(false);
   const [agentsModalOpen, setAgentsModalOpen] = useState(false);
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
@@ -1417,10 +1415,6 @@ export default function WorkspaceSidebar({
         />
       )}
 
-      {desktopSettingsOpen && (
-        <DesktopSettingsModal onClose={() => setDesktopSettingsOpen(false)} />
-      )}
-
       {userSettingsOpen && (
         <UserSettingsModal
           currentUser={currentUser}
@@ -1585,17 +1579,6 @@ export default function WorkspaceSidebar({
             <p className="text-[10px] text-neutral-500 truncate">{currentUser.email}</p>
           )}
         </div>
-
-        {/* Desktop Settings (Tauri only) */}
-        {isTauri && (
-          <button
-            onClick={() => setDesktopSettingsOpen(true)}
-            className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
-            title={t('desktopSettings')}
-          >
-            <Monitor size={13} />
-          </button>
-        )}
 
         {/* Logout */}
         <button

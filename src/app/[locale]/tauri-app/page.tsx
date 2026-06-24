@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { setLocale } from '@/lib/actions/locale';
-import { initDesktopZoom } from '@/components/features/DesktopSettingsModal';
+import { initDesktopZoom } from '@/lib/desktop/zoom';
 
 const SUPPORTED_LOCALES = ['en', 'tr', 'hi', 'es', 'fr', 'de', 'zh', 'ru'];
 

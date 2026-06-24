@@ -82,10 +82,26 @@ fn reset_download_dir(app: tauri::AppHandle, state: State<DownloadConfig>) {
 }
 
 /// Reveal a downloaded file in the OS file manager (highlights it).
+///
+/// `reveal_item_in_dir` (SHOpenFolderAndSelectItems on Windows) can fail on
+/// some systems — e.g. it returns ERROR_FILE_NOT_FOUND even when the file is
+/// present, or the path can't be turned into an item-id list. When it does, we
+/// fall back to simply opening the containing folder so "Show in folder" always
+/// does something useful instead of silently no-op'ing.
 #[tauri::command]
 fn reveal_download(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    if app.opener().reveal_item_in_dir(&path).is_ok() {
+        return Ok(());
+    }
+
+    let parent = PathBuf::from(&path)
+        .parent()
+        .map(|p| p.to_path_buf())
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| PathBuf::from(&path));
+
     app.opener()
-        .reveal_item_in_dir(path)
+        .open_path(parent.to_string_lossy().to_string(), None::<&str>)
         .map_err(|e| e.to_string())
 }
 

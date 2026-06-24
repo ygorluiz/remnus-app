@@ -1279,6 +1279,7 @@
     "title": "Settings",
     "tabAccount": "Account",
     "tabPreferences": "Preferences",
+    "tabDesktop": "Desktop",
     "tabImport": "Import",
     "profileName": "Display name",
     "profileNamePlaceholder": "Your name",

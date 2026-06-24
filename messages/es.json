@@ -1279,6 +1279,7 @@
     "title": "Configuración",
     "tabAccount": "Cuenta",
     "tabPreferences": "Preferencias",
+    "tabDesktop": "Escritorio",
     "tabImport": "Importar",
     "profileName": "Nombre visible",
     "profileNamePlaceholder": "Tu nombre",
