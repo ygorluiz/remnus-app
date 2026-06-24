@@ -23,7 +23,11 @@
     "mcpb:install": "npm --prefix mcpb/server install --omit=dev",
     "mcpb:pack": "npx --yes @anthropic-ai/mcpb pack mcpb mcpb-build/remnus.mcpb",
     "mcpb:build": "npm run mcpb:install && npm run mcpb:pack",
-    "version:bump": "npm version patch && sed -i 's/^version = .*/version = \"'$(node -p \"require('./package.json').version\")'\"/' src-tauri/Cargo.toml"
+    "release": "node scripts/release.mjs",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
+    "release:current": "node scripts/release.mjs current"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
