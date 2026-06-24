@@ -6,7 +6,7 @@ export default async function LandingSetup() {
   const steps = [
     { num: '01', titleKey: 'bridgeSetup1Title', bodyKey: 'bridgeSetup1Body', code: 'https://remnus.com/login' },
     { num: '02', titleKey: 'bridgeSetup2Title', bodyKey: 'bridgeSetup2Body', code: t('bridgeSetupCode2') },
-    { num: '03', titleKey: 'bridgeSetup3Title', bodyKey: 'bridgeSetup3Body', code: '{"type":"http","url":"https://remnus.com/api/mcp"}' },
+    { num: '03', titleKey: 'bridgeSetup3Title', bodyKey: 'bridgeSetup3Body', code: 'https://www.remnus.com/api/mcp' },
   ];
 
   return (

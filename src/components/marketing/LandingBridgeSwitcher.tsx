@@ -16,8 +16,8 @@ export default function LandingBridgeSwitcher() {
       <main>
         <LandingHero />
         <LandingWhy />
-        <LandingWhatsInside />
         <LandingIntegrations />
+        <LandingWhatsInside />
         <LandingSetup />
         <LandingTools />
         <LandingPricing />
