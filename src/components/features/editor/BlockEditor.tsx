@@ -7,12 +7,11 @@ import { Markdown } from '@tiptap/markdown';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
-import { TableCell } from '@tiptap/extension-table-cell';
-import { TableHeader } from '@tiptap/extension-table-header';
+import { MarkdownTable, BgTableCell, BgTableHeader } from './TableMarkdown';
 import BubbleMenuBar from './BubbleMenuBar';
 import BlockDragHandle, { getDragSource, getNestTarget, clearNestTarget } from './BlockDragHandle';
+import TableControls from './TableControls';
 import { Slice, Fragment } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import { dropPoint } from '@tiptap/pm/transform';
@@ -260,10 +259,10 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: false }),
+      MarkdownTable.configure({ resizable: true, lastColumnResizable: false }),
       TableRow,
-      TableCell,
-      TableHeader,
+      BgTableCell,
+      BgTableHeader,
       ChildBlock.configure({
         workspaceId: workspaceId ?? null,
         parentId: parentId ?? null,
@@ -657,6 +656,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       <BubbleMenuBar editor={editor} />
       {editable && <BlockDragHandle editor={editor} />}
       {editable && <BlockSelectionToolbar editor={editor} />}
+      {editable && <TableControls editor={editor} />}
       <EditorContent editor={editor} />
     </div>
   );

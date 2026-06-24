@@ -671,7 +671,15 @@
     "bubbleTextColor": "Yazı rengi",
     "bubbleHighlight": "Vurgu",
     "bubbleColorDefault": "Varsayılan",
-    "bubbleColorNone": "Yok"
+    "bubbleColorNone": "Yok",
+    "tableAddColumn": "Sütun ekle",
+    "tableAddRow": "Satır ekle",
+    "tableDeleteColumn": "Sütunu sil",
+    "tableDeleteRow": "Satırı sil",
+    "tableToggleHeaderRow": "Başlık satırını aç/kapat",
+    "tableDelete": "Tabloyu sil",
+    "tableCellColor": "Hücre rengi",
+    "tableCellColorNone": "Renk yok"
   },
   "Page": {
     "untitled": "Başlıksız",

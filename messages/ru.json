@@ -671,7 +671,15 @@
     "bubbleTextColor": "Цвет текста",
     "bubbleHighlight": "Выделение",
     "bubbleColorDefault": "По умолчанию",
-    "bubbleColorNone": "Нет"
+    "bubbleColorNone": "Нет",
+    "tableAddColumn": "Добавить столбец",
+    "tableAddRow": "Добавить строку",
+    "tableDeleteColumn": "Удалить столбец",
+    "tableDeleteRow": "Удалить строку",
+    "tableToggleHeaderRow": "Переключить строку заголовка",
+    "tableDelete": "Удалить таблицу",
+    "tableCellColor": "Цвет ячейки",
+    "tableCellColorNone": "Без цвета"
   },
   "Page": {
     "untitled": "Без названия",

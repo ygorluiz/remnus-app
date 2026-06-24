@@ -671,7 +671,15 @@
     "bubbleTextColor": "टेक्स्ट रंग",
     "bubbleHighlight": "हाइलाइट",
     "bubbleColorDefault": "डिफ़ॉल्ट",
-    "bubbleColorNone": "कोई नहीं"
+    "bubbleColorNone": "कोई नहीं",
+    "tableAddColumn": "कॉलम जोड़ें",
+    "tableAddRow": "पंक्ति जोड़ें",
+    "tableDeleteColumn": "कॉलम हटाएं",
+    "tableDeleteRow": "पंक्ति हटाएं",
+    "tableToggleHeaderRow": "हेडर पंक्ति टॉगल करें",
+    "tableDelete": "तालिका हटाएं",
+    "tableCellColor": "सेल रंग",
+    "tableCellColorNone": "कोई रंग नहीं"
   },
   "Page": {
     "untitled": "शीर्षकहीन",

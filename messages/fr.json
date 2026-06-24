@@ -671,7 +671,15 @@
     "bubbleTextColor": "Couleur du texte",
     "bubbleHighlight": "Surlignage",
     "bubbleColorDefault": "Par défaut",
-    "bubbleColorNone": "Aucun"
+    "bubbleColorNone": "Aucun",
+    "tableAddColumn": "Ajouter une colonne",
+    "tableAddRow": "Ajouter une ligne",
+    "tableDeleteColumn": "Supprimer la colonne",
+    "tableDeleteRow": "Supprimer la ligne",
+    "tableToggleHeaderRow": "Basculer la ligne d’en-tête",
+    "tableDelete": "Supprimer le tableau",
+    "tableCellColor": "Couleur de cellule",
+    "tableCellColorNone": "Aucune couleur"
   },
   "Page": {
     "untitled": "Sans titre",

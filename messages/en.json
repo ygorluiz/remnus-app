@@ -671,7 +671,15 @@
     "bubbleTextColor": "Text color",
     "bubbleHighlight": "Highlight",
     "bubbleColorDefault": "Default",
-    "bubbleColorNone": "None"
+    "bubbleColorNone": "None",
+    "tableAddColumn": "Add column",
+    "tableAddRow": "Add row",
+    "tableDeleteColumn": "Delete column",
+    "tableDeleteRow": "Delete row",
+    "tableToggleHeaderRow": "Toggle header row",
+    "tableDelete": "Delete table",
+    "tableCellColor": "Cell color",
+    "tableCellColorNone": "No color"
   },
   "Page": {
     "untitled": "Untitled",

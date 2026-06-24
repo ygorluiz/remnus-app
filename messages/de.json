@@ -671,7 +671,15 @@
     "bubbleTextColor": "Textfarbe",
     "bubbleHighlight": "Hervorhebung",
     "bubbleColorDefault": "Standard",
-    "bubbleColorNone": "Keine"
+    "bubbleColorNone": "Keine",
+    "tableAddColumn": "Spalte hinzufügen",
+    "tableAddRow": "Zeile hinzufügen",
+    "tableDeleteColumn": "Spalte löschen",
+    "tableDeleteRow": "Zeile löschen",
+    "tableToggleHeaderRow": "Kopfzeile umschalten",
+    "tableDelete": "Tabelle löschen",
+    "tableCellColor": "Zellenfarbe",
+    "tableCellColorNone": "Keine Farbe"
   },
   "Page": {
     "untitled": "Ohne Titel",

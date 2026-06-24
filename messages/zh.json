@@ -671,7 +671,15 @@
     "bubbleTextColor": "文本颜色",
     "bubbleHighlight": "高亮",
     "bubbleColorDefault": "默认",
-    "bubbleColorNone": "无"
+    "bubbleColorNone": "无",
+    "tableAddColumn": "添加列",
+    "tableAddRow": "添加行",
+    "tableDeleteColumn": "删除列",
+    "tableDeleteRow": "删除行",
+    "tableToggleHeaderRow": "切换表头行",
+    "tableDelete": "删除表格",
+    "tableCellColor": "单元格颜色",
+    "tableCellColorNone": "无颜色"
   },
   "Page": {
     "untitled": "无标题",
