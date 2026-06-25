@@ -54,16 +54,32 @@ export default function GroupedTableLayout({
   const [draggedGroup, setDraggedGroup] = useState<string | null>(null);
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null);
 
+  const handleGroupDragStart = (e: DragEvent, groupName: string) => {
+    if (groupName === UNCATEGORIZED_TABLE_GROUP) return;
+    setDraggedGroup(groupName);
+    e.dataTransfer.setData('text/plain', groupName);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleGroupDragOver = (e: DragEvent, groupName: string) => {
+    e.preventDefault();
+    const sourceGroup = draggedGroup || e.dataTransfer.getData('text/plain');
+    if (sourceGroup && sourceGroup !== groupName && groupName !== UNCATEGORIZED_TABLE_GROUP) {
+      setDragOverGroup(groupName);
+    }
+  };
+
   const handleGroupDrop = (e: DragEvent, targetGroup: string) => {
     e.preventDefault();
-    if (!draggedGroup || draggedGroup === targetGroup || targetGroup === UNCATEGORIZED_TABLE_GROUP) {
+    const sourceGroup = draggedGroup || e.dataTransfer.getData('text/plain');
+    if (!sourceGroup || sourceGroup === targetGroup || targetGroup === UNCATEGORIZED_TABLE_GROUP) {
       setDraggedGroup(null);
       setDragOverGroup(null);
       return;
     }
 
     const current = [...effectiveOptionOrder];
-    const fromIdx = current.indexOf(draggedGroup);
+    const fromIdx = current.indexOf(sourceGroup);
     const toIdx = current.indexOf(targetGroup);
     if (fromIdx !== -1 && toIdx !== -1) {
       const [moved] = current.splice(fromIdx, 1);
@@ -91,23 +107,14 @@ export default function GroupedTableLayout({
         return (
           <section
             key={groupName}
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (draggedGroup && draggedGroup !== groupName && !isUncategorized) {
-                setDragOverGroup(groupName);
-              }
-            }}
+            onDragOver={(e) => handleGroupDragOver(e, groupName)}
             onDrop={(e) => handleGroupDrop(e, groupName)}
             className={`transition-opacity ${groupColBg ? 'p-3 rounded' : ''} ${isDraggingThis ? 'opacity-30' : ''} ${isOver ? 'ring-1 ring-blue-500/40' : ''}`}
             style={groupBgStyle}
           >
             <div
               draggable={!isUncategorized}
-              onDragStart={(e) => {
-                if (isUncategorized) return;
-                setDraggedGroup(groupName);
-                e.dataTransfer.effectAllowed = 'move';
-              }}
+              onDragStart={(e) => handleGroupDragStart(e, groupName)}
               onDragEnd={() => {
                 setDraggedGroup(null);
                 setDragOverGroup(null);
@@ -116,7 +123,7 @@ export default function GroupedTableLayout({
             >
               <div className={`flex items-center gap-2 min-w-0 ${!isUncategorized ? 'cursor-grab active:cursor-grabbing' : ''}`}>
                 {!isUncategorized && <GripVertical size={12} className="text-neutral-600 shrink-0" />}
-                <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-400 truncate">
+                <h3 draggable={!isUncategorized} className="text-xs font-medium uppercase tracking-wider text-neutral-400 truncate">
                   {isUncategorized ? t('uncategorized') : groupName}
                 </h3>
               </div>
