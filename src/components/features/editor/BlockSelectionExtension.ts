@@ -3,7 +3,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorView } from '@tiptap/pm/view';
 import type { Node as PmNode } from '@tiptap/pm/model';
-import { nodesToCleanMarkdown } from './clipboardMarkdown';
+import { contentToCleanMarkdown, nodesToCleanMarkdown } from './clipboardMarkdown';
 
 export interface BlockSelectionState {
   /** Sorted positions of selected visual blocks (top-level or listItem/taskItem). */
@@ -31,15 +31,59 @@ export function hasBlockSelection(editorState: any): boolean {
  * editor's storage format, so it pastes back cleanly through the markdown paste
  * path. Returns null when there is no block selection.
  */
+const LIST_TYPES = new Set(['bulletList', 'orderedList', 'taskList']);
+const LIST_ITEM_TYPES = new Set(['listItem', 'taskItem']);
+
 export function serializeBlockSelectionMarkdown(editor: any): string | null {
   const s = getBlockSelection(editor.state);
   if (!s.selected.length) return null;
+  const doc = editor.state.doc;
   const sorted = [...s.selected].sort((a, b) => a - b);
-  const nodes = sorted
-    .map((pos: number) => editor.state.doc.nodeAt(pos))
-    .filter((n: PmNode | null): n is PmNode => n != null);
-  if (!nodes.length) return null;
-  return nodesToCleanMarkdown(editor, nodes);
+
+  // Resolve each selected position to its node + parent list type, skipping any
+  // position that sits inside an already-collected node (so selecting both a list
+  // item and one of its nested children doesn't serialize the child twice).
+  type Entry = { node: PmNode; parentType: string; parentAttrs: Record<string, any> };
+  const entries: Entry[] = [];
+  let coveredUntil = -1;
+  for (const pos of sorted) {
+    if (pos < coveredUntil) continue;
+    const node = doc.nodeAt(pos);
+    if (!node) continue;
+    const parent = doc.resolve(pos).parent;
+    entries.push({ node, parentType: parent.type.name, parentAttrs: parent.attrs ?? {} });
+    coveredUntil = pos + node.nodeSize;
+  }
+  if (!entries.length) return null;
+
+  // Loose list items selected on their own serialize as separate `- x` blocks,
+  // which the doc's blank-line (`\n\n`) join then spreads apart with an empty line
+  // between every item. Regroup consecutive items sharing the same parent list back
+  // into that list so they serialize as one tight list (single newlines).
+  const content: any[] = [];
+  let i = 0;
+  while (i < entries.length) {
+    const e = entries[i];
+    if (LIST_ITEM_TYPES.has(e.node.type.name) && LIST_TYPES.has(e.parentType)) {
+      const listType = e.parentType;
+      const items: any[] = [];
+      const attrs = e.parentAttrs;
+      while (
+        i < entries.length &&
+        entries[i].parentType === listType &&
+        LIST_ITEM_TYPES.has(entries[i].node.type.name)
+      ) {
+        items.push(entries[i].node.toJSON());
+        i++;
+      }
+      content.push({ type: listType, attrs, content: items });
+    } else {
+      content.push(e.node.toJSON());
+      i++;
+    }
+  }
+
+  return contentToCleanMarkdown(editor, content) ?? nodesToCleanMarkdown(editor, entries.map((e) => e.node));
 }
 
 /**

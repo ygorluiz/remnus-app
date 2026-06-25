@@ -151,17 +151,25 @@ export function fragmentToCleanMarkdown(editor: any, fragment: Fragment): string
 }
 
 /**
+ * Serialize a pre-built JSON content array (doc children) to clean markdown.
+ * Callers that need to massage the structure first (e.g. regrouping loose list
+ * items back into their parent list) build the content themselves and pass it here.
+ */
+export function contentToCleanMarkdown(editor: any, content: any[]): string | null {
+  const manager = getManager(editor);
+  if (!manager?.serialize) return null;
+  try {
+    const md = manager.serialize({ type: 'doc', content });
+    return cleanupCopiedMarkdown(md) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Serialize an explicit list of block nodes (block selection) to clean markdown.
  */
 export function nodesToCleanMarkdown(editor: any, nodes: any[]): string | null {
-  const manager = getManager(editor);
-  if (!manager?.serialize) {
-    return nodes.map((n) => n.textContent).join('\n\n') || null;
-  }
-  try {
-    const md = manager.serialize({ type: 'doc', content: nodes.map((n) => n.toJSON()) });
-    return cleanupCopiedMarkdown(md) || null;
-  } catch {
-    return nodes.map((n) => n.textContent).join('\n\n') || null;
-  }
+  const fallback = () => nodes.map((n) => n.textContent).join('\n\n') || null;
+  return contentToCleanMarkdown(editor, nodes.map((n) => n.toJSON())) ?? fallback();
 }

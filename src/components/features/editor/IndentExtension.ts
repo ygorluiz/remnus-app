@@ -47,6 +47,13 @@ export const IndentGlobal = Extension.create({
   },
 });
 
+// Marker for empty paragraphs (blank lines), mirroring the stock
+// @tiptap/extension-paragraph. Plain markdown collapses consecutive blank lines
+// into a single block separator, so spacing paragraphs vanish on reload. Emitting
+// &nbsp; for the 2nd+ empty paragraph in a consecutive run keeps them from
+// collapsing; the inherited parseMarkdown turns &nbsp; back into an empty paragraph.
+const EMPTY_PARAGRAPH_MARKDOWN = '&nbsp;';
+
 // Extends the built-in paragraph node to support a numeric indent level (0–6).
 // indent=0 → plain markdown paragraph (unchanged serialization)
 // indent>0 → <p data-indent="N">content</p> HTML block; h.renderChildren serializes
@@ -62,11 +69,25 @@ export const IndentedParagraph = Paragraph.extend({
   },
 
   // @ts-ignore — renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
-  renderMarkdown(node: any, h: any) {
+  renderMarkdown(node: any, h: any, ctx: any) {
     const indent = (node.attrs?.indent as number) ?? 0;
-    const content = node.content ? h.renderChildren(node.content) : '';
-    if (!indent) return content;
-    return `<p data-indent="${indent}">${content}</p>`;
+    const content = Array.isArray(node.content) ? node.content : [];
+
+    // Empty paragraph = a blank line the user typed for spacing. Overriding the
+    // base renderMarkdown for indent support dropped the stock extension's
+    // blank-line preservation, so consecutive blank lines collapsed to one on
+    // reload. Restore it: the first empty paragraph in a run stays '' (the natural
+    // block separator), the 2nd+ emit &nbsp; so markdown doesn't merge them.
+    if (content.length === 0) {
+      const prevContent = Array.isArray(ctx?.previousNode?.content) ? ctx.previousNode.content : [];
+      const prevIsEmptyParagraph = ctx?.previousNode?.type === 'paragraph' && prevContent.length === 0;
+      const blank = prevIsEmptyParagraph ? EMPTY_PARAGRAPH_MARKDOWN : '';
+      return indent ? `<p data-indent="${indent}">${blank}</p>` : blank;
+    }
+
+    const rendered = h.renderChildren(content);
+    if (!indent) return rendered;
+    return `<p data-indent="${indent}">${rendered}</p>`;
   },
 });
 
