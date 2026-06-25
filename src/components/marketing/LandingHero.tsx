@@ -232,7 +232,7 @@ export default async function LandingHero() {
 
             {/* Trust badges — subtle, tucked just under the showcase (desktop
                 only). Lighter styling: borderless, muted, faint hover. */}
-            <div className="-mt-4 flex flex-wrap items-center gap-1.5 pl-1">
+            <div className="mt-4 flex flex-wrap items-center gap-4 pl-1">
               {/* Smithery quality score */}
               <a
                 href="https://smithery.ai/servers/ranorkk/remnus"
