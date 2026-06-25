@@ -7,6 +7,8 @@ Kanban boards, databases, and pages that Claude, Cursor, and any AI agent can re
 [![GitHub Stars](https://img.shields.io/github/stars/Ranork/remnus-app?style=flat-square)](https://github.com/Ranork/remnus-app/stargazers)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square)](LICENSE)
 [![Deploy with Vercel](https://img.shields.io/badge/Deploy%20to-Vercel-black?style=flat-square&logo=vercel)](https://vercel.com/new/clone?repository-url=https://github.com/Ranork/remnus-app)
+[![smithery badge](https://smithery.ai/badge/ranorkk/remnus)](https://smithery.ai/servers/ranorkk/remnus)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-io.github.Ranork%2Fremnus-6f42c1?style=flat-square)](https://registry.modelcontextprotocol.io)
 
 ---
 
@@ -72,6 +74,16 @@ After signing in, open the **AI Agents** panel from the sidebar and click **Conn
 
 [![Add to Cursor](https://img.shields.io/badge/Add%20to-Cursor-black?style=flat-square)](https://docs.cursor.com/context/model-context-protocol)
 [![Add to VS Code](https://img.shields.io/badge/Add%20to-VS%20Code-blue?style=flat-square&logo=visualstudiocode)](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)
+
+#### Install from a registry
+
+Remnus is published on the [official MCP Registry](https://registry.modelcontextprotocol.io) (`io.github.Ranork/remnus`) and on [Smithery](https://smithery.ai/servers/ranorkk/remnus), so MCP-aware clients and directories can discover it automatically. Smithery offers one-click install across many clients (Claude, Cursor, VS Code, Codex, Windsurf, and more) — open the [Smithery page](https://smithery.ai/servers/ranorkk/remnus) and click **Add to toolbox**, or use the Smithery CLI to install straight into a client's config:
+
+```bash
+npx -y smithery@latest mcp add ranorkk/remnus --client claude
+```
+
+Swap `--client` for `cursor`, `vscode`, `codex`, `windsurf`, etc. Either way, the first connection runs the same OAuth 2.1 sign-in — no token to paste.
 
 **Recommended — OAuth (token-less):** point your editor at the MCP URL and approve the consent screen on first connect. Your editor runs the OAuth 2.1 flow automatically — nothing to copy.
 
