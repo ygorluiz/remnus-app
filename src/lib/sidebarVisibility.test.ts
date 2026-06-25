@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   SIDEBAR_VISIBILITY_KEY,
+  getSidebarAnimationClasses,
+  getSidebarRestoreButtonClassName,
   getSidebarVisibleServerSnapshot,
+  getSidebarVisibilityToggleHost,
   readSidebarVisible,
   subscribeSidebarVisibility,
   writeSidebarVisible,
@@ -46,6 +49,24 @@ describe('sidebar visibility persistence', () => {
 
   it('uses a visible server snapshot for hydration', () => {
     assert.equal(getSidebarVisibleServerSnapshot(), true);
+  });
+
+  it('hosts the hide control in the sidebar and the show control in the main area', () => {
+    assert.equal(getSidebarVisibilityToggleHost(true), 'sidebar');
+    assert.equal(getSidebarVisibilityToggleHost(false), 'main');
+  });
+
+  it('positions the restore button below the demo banner when present', () => {
+    assert.match(getSidebarRestoreButtonClassName(false), /top-2/);
+    assert.doesNotMatch(getSidebarRestoreButtonClassName(false), /top-12/);
+    assert.match(getSidebarRestoreButtonClassName(true), /top-12/);
+  });
+
+  it('keeps the collapsed sidebar mounted but non-interactive for animation', () => {
+    assert.match(getSidebarAnimationClasses(true), /w-72/);
+    assert.doesNotMatch(getSidebarAnimationClasses(true), /pointer-events-none/);
+    assert.match(getSidebarAnimationClasses(false), /w-0/);
+    assert.match(getSidebarAnimationClasses(false), /pointer-events-none/);
   });
 
   it('does not subscribe when no window exists', () => {

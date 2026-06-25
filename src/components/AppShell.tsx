@@ -2,13 +2,16 @@
 import { usePathname } from 'next/navigation';
 import { useSyncExternalStore, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { PanelLeftOpen } from 'lucide-react';
 import TauriTitlebar from './features/TauriTitlebar';
 import ZoomProvider from './providers/ZoomProvider';
 import { TabsProvider } from './providers/TabsContext';
 import { useIsTauri } from '@/lib/hooks/useIsTauri';
 import {
+  getSidebarAnimationClasses,
+  getSidebarRestoreButtonClassName,
   getSidebarVisibleServerSnapshot,
+  getSidebarVisibilityToggleHost,
   readSidebarVisible,
   subscribeSidebarVisibility,
   writeSidebarVisible,
@@ -39,6 +42,8 @@ export default function AppShell({
   );
   const MARKETING_PATHS = new Set(['/', '/pricing', '/contact', '/download', '/privacy', '/security']);
   const isMarketing = MARKETING_PATHS.has(pathname) || pathname.startsWith('/oauth/');
+  const sidebarToggleHost = getSidebarVisibilityToggleHost(sidebarVisible);
+  const hasDemoBanner = Boolean(demoBanner);
 
   const toggleSidebar = () => {
     writeSidebarVisible(!sidebarVisible);
@@ -67,22 +72,24 @@ export default function AppShell({
     <ZoomProvider>
       <TabsProvider items={items} enabled={isTauri}>
         <div className="flex h-full overflow-hidden">
-          {sidebarVisible && (
-            <aside className="hidden lg:flex w-72 bg-neutral-900 border-r border-neutral-800 flex-col">
+          <aside className={getSidebarAnimationClasses(sidebarVisible)} aria-hidden={!sidebarVisible}>
+            <div className="w-72 h-full flex flex-col shrink-0 transition-transform duration-200 ease-out">
               {sidebar}
-            </aside>
-          )}
+            </div>
+          </aside>
           {mobileNav}
           <main className="relative flex-1 flex flex-col h-full overflow-hidden bg-neutral-850 pb-14 lg:pb-0">
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              aria-label={sidebarVisible ? t('hideSidebar') : t('showSidebar')}
-              title={sidebarVisible ? t('hideSidebar') : t('showSidebar')}
-              className="hidden lg:flex absolute top-2 left-2 z-30 h-7 w-7 items-center justify-center text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800/80 transition-colors"
-            >
-              {sidebarVisible ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
-            </button>
+            {sidebarToggleHost === 'main' && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                aria-label={t('showSidebar')}
+                title={t('showSidebar')}
+                className={getSidebarRestoreButtonClassName(hasDemoBanner)}
+              >
+                <PanelLeftOpen size={15} />
+              </button>
+            )}
             {/* TauriTitlebar renders the browser-style TabBar inline in its row (Tauri only). */}
             <TauriTitlebar key="tauri-titlebar" />
             {demoBanner}

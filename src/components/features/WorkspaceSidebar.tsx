@@ -27,6 +27,7 @@ import {
   CreditCard,
   ArrowUpRight,
   Link2,
+  PanelLeftClose,
 } from 'lucide-react';
 import PageIcon from './PageIcon';
 import { useContextMenu, type MenuItem } from './ContextMenu';
@@ -58,6 +59,7 @@ import UserSettingsModal from './UserSettingsModal';
 import { getUserAgentTokenCount } from '@/lib/actions/agentToken';
 import { getMyTier } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
+import { writeSidebarVisible } from '@/lib/sidebarVisibility';
 
 const TIER_BADGE: Record<PlanTier, { color: string; background: string; borderColor: string }> = {
   free:         { color: 'var(--color-neutral-50)',    background: 'rgba(127,195,109,0.10)', borderColor: 'rgba(127,195,109,0.30)' },
@@ -110,6 +112,7 @@ export default function WorkspaceSidebar({
   showOnboarding?: boolean;
 }) {
   const t = useTranslations('Workspace');
+  const tLayout = useTranslations('Layout');
   const tSharing = useTranslations('Sharing');
   const tBilling = useTranslations('Billing');
   const router = useRouter();
@@ -852,7 +855,7 @@ export default function WorkspaceSidebar({
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">
       {/* Brand Header — hidden in mobile sheet */}
-      <div className={`px-4 h-10 border-b border-neutral-800 flex items-center justify-between shrink-0 ${hideBrandHeader ? 'hidden' : ''}`} {...(isTauri ? { 'data-tauri-drag-region': '' } : {})}>
+      <div className={`px-4 h-10 border-b border-neutral-800 flex items-center justify-between shrink-0 ${hideBrandHeader ? 'hidden' : ''}`}>
         <div className="flex items-center group/brand">
           {!isTauri && (
             <div className="w-0 overflow-hidden group-hover/brand:w-6 transition-[width] duration-200 shrink-0">
@@ -881,6 +884,15 @@ export default function WorkspaceSidebar({
               <span>{t('saving')}</span>
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => writeSidebarVisible(false)}
+            aria-label={tLayout('hideSidebar')}
+            title={tLayout('hideSidebar')}
+            className="hidden lg:flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors"
+          >
+            <PanelLeftClose size={14} />
+          </button>
           <LanguageSwitcher compact />
         </div>
       </div>
