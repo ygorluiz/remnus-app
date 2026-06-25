@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { BadgeCheck } from 'lucide-react';
 import AIMark from './AIMark';
 import { HeroDemoOverlay } from './HeroDemoOverlay';
 
@@ -226,6 +227,61 @@ export default async function LandingHero() {
               buttonLabel={t('bridgeHeroDemoButton')}
               loadingLabel={t('bridgeHeroDemoLoading')}
             />
+          </div>
+        </div>
+
+        {/* Trust badges — Smithery quality score + official MCP Registry listing.
+            Sits right under the animated showcase; centered so it doubles as
+            social proof on mobile (where the right column is hidden). */}
+        <div className="mt-12 lg:mt-14 flex flex-col items-center gap-3.5">
+          <span className="font-mono text-[11px] text-dim uppercase tracking-[0.18em]">
+            {t('bridgeBadgesCaption')}
+          </span>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* Smithery — animated quality-score ring */}
+            <a
+              href="https://smithery.ai/servers/ranorkk/remnus"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hero-trust-badge group/badge flex items-center gap-3 bg-neutral-900 border border-neutral-800 rounded-xl pl-2.5 pr-4 py-2.5 hover:border-blue-500 transition-colors duration-150"
+            >
+              <span className="relative inline-flex items-center justify-center w-9 h-9 shrink-0">
+                <svg width="36" height="36" viewBox="0 0 36 36" className="-rotate-90">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-neutral-800)" strokeWidth="3" />
+                  <circle
+                    className="hero-score-ring"
+                    cx="18" cy="18" r="15.5" fill="none"
+                    stroke="var(--color-green-400)" strokeWidth="3" strokeLinecap="round"
+                    pathLength={100} strokeDasharray="100" strokeDashoffset={2}
+                  />
+                </svg>
+                <span className="absolute font-sans font-bold text-[12px] text-neutral-100 leading-none">98</span>
+              </span>
+              <span className="flex flex-col text-left">
+                <span className="text-[14px] font-medium text-neutral-100 leading-tight">Smithery</span>
+                <span className="font-mono text-[10px] text-dim tracking-[0.02em] mt-0.5">
+                  {t('bridgeBadgeSmitherySub')} · 98/100
+                </span>
+              </span>
+            </a>
+
+            {/* Official MCP Registry listing */}
+            <a
+              href="https://registry.modelcontextprotocol.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hero-trust-badge group/badge flex items-center gap-3 bg-neutral-900 border border-neutral-800 rounded-xl pl-3 pr-4 py-2.5 hover:border-blue-500 transition-colors duration-150"
+            >
+              <span className="relative inline-flex items-center justify-center w-9 h-9 shrink-0">
+                <BadgeCheck className="w-7 h-7 text-accent-strong" strokeWidth={1.75} />
+              </span>
+              <span className="flex flex-col text-left">
+                <span className="text-[14px] font-medium text-neutral-100 leading-tight">MCP Registry</span>
+                <span className="font-mono text-[10px] text-dim tracking-[0.02em] mt-0.5">
+                  {t('bridgeBadgeRegistrySub')} · io.github.Ranork/remnus
+                </span>
+              </span>
+            </a>
           </div>
         </div>
       </div>
