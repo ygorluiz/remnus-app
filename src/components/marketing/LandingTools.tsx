@@ -7,6 +7,8 @@ const TOOLS = [
   { scope: 'read',  tool: 'get_page',                descKey: 'bridgeToolsDescGetPage' },
   { scope: 'read',  tool: 'get_database_schema',     descKey: 'bridgeToolsDescGetDatabaseSchema' },
   { scope: 'read',  tool: 'query_database',          descKey: 'bridgeToolsDescQueryDatabase' },
+  { scope: 'read',  tool: 'list_members',            descKey: 'bridgeToolsDescListMembers' },
+  { scope: 'read',  tool: 'query_audit_log',         descKey: 'bridgeToolsDescQueryAuditLog' },
   { scope: 'write', tool: 'create_page',             descKey: 'bridgeToolsDescCreatePage' },
   { scope: 'write', tool: 'update_page',             descKey: 'bridgeToolsDescUpdatePage' },
   { scope: 'write', tool: 'bulk_update_pages',       descKey: 'bridgeToolsDescBulkUpdate' },
