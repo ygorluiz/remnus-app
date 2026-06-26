@@ -945,27 +945,22 @@ body.block-marquee-active * {
   50% { box-shadow: 0 0 16px -2px currentColor; }
 }
 
-/* Trust badges below the hero showcase — gentle fade-up entrance + the
-   Smithery score ring drawing itself from 0 → 98 once on load. */
+/* Trust badges below the hero showcase — gentle staggered fade-up entrance. */
 .hero-trust-badge {
   animation: hero-trust-badge 0.6s ease-out both;
 }
 .hero-trust-badge:nth-of-type(2) {
   animation-delay: 0.12s;
 }
+.hero-trust-badge:nth-of-type(3) {
+  animation-delay: 0.24s;
+}
 @keyframes hero-trust-badge {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.hero-score-ring {
-  animation: hero-score-ring 1.1s ease-out 0.25s both;
-}
-@keyframes hero-score-ring {
-  from { stroke-dashoffset: 100; }
-  to   { stroke-dashoffset: 2; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .hero-trust-badge, .hero-score-ring { animation: none; }
+  .hero-trust-badge { animation: none; }
 }
 
 /* Command dot streaming down the AI → MCP connector */

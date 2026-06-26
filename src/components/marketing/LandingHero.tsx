@@ -233,33 +233,6 @@ export default async function LandingHero() {
             {/* Trust badges — subtle, tucked just under the showcase (desktop
                 only). Lighter styling: borderless, muted, faint hover. */}
             <div className="mt-4 flex flex-wrap items-center gap-4 pl-1">
-              {/* Smithery quality score */}
-              <a
-                href="https://smithery.ai/servers/ranorkk/remnus"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hero-trust-badge group/badge inline-flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-neutral-900/60 transition-colors duration-150"
-              >
-                <span className="relative inline-flex items-center justify-center w-7 h-7 shrink-0">
-                  <svg width="28" height="28" viewBox="0 0 36 36" className="-rotate-90">
-                    <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-neutral-800)" strokeWidth="3" />
-                    <circle
-                      className="hero-score-ring"
-                      cx="18" cy="18" r="15.5" fill="none"
-                      stroke="var(--color-green-400)" strokeWidth="3" strokeLinecap="round"
-                      pathLength={100} strokeDasharray="100" strokeDashoffset={2}
-                    />
-                  </svg>
-                  <span className="absolute font-sans font-bold text-[10px] text-neutral-50 leading-none">98</span>
-                </span>
-                <span className="flex flex-col text-left leading-tight">
-                  <span className="text-[12px] text-neutral-50">Smithery</span>
-                  <span className="font-mono text-[9.5px] text-dim tracking-[0.02em]">
-                    {t('bridgeBadgeSmitherySub')} · 98/100
-                  </span>
-                </span>
-              </a>
-
               {/* Official MCP Registry listing */}
               <a
                 href="https://registry.modelcontextprotocol.io"
@@ -274,6 +247,68 @@ export default async function LandingHero() {
                   <span className="text-[12px] text-neutral-50">MCP Registry</span>
                   <span className="font-mono text-[9.5px] text-dim tracking-[0.02em]">
                     {t('bridgeBadgeRegistrySub')}
+                  </span>
+                </span>
+              </a>
+
+              {/* Smithery quality score */}
+              <a
+                href="https://smithery.ai/servers/ranorkk/remnus"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-trust-badge group/badge inline-flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-neutral-900/60 transition-colors duration-150"
+              >
+                <span className="inline-flex items-center justify-center w-7 h-7 shrink-0">
+                  <svg
+                    viewBox="0 0 211 211"
+                    className="w-7 h-7 rounded-md"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <rect width="211" height="211" rx="36" fill="#EFEAD6" />
+                    <g transform="translate(44.4 36.9) scale(0.65)" fill="#FF5601">
+                      <path d="M41.7011 77.48H0V100.264C0 118.171 14.5275 132.698 32.4342 132.698H55.2183V90.9971C55.2183 83.5418 49.1565 77.48 41.7011 77.48Z" />
+                      <path d="M66.0879 90.9971V132.698H107.789C115.244 132.698 121.306 126.636 121.306 119.181V77.48H79.6051C72.1497 77.48 66.0879 83.5418 66.0879 90.9971Z" />
+                      <path d="M154.995 77.48H132.21V119.181C132.21 126.636 138.272 132.698 145.728 132.698H187.429V106.152C187.429 88.2449 172.901 77.5148 154.995 77.5148V77.48Z" />
+                      <path d="M0 45.9514V66.6103H41.7011C49.1565 66.6103 55.2183 60.5485 55.2183 53.0932V0C25.8498 0.209028 0.034838 14.6668 0 45.9514Z" />
+                      <path d="M66.0879 53.093C66.0879 60.5483 72.1497 66.6101 79.6051 66.6101H121.306V11.4615C100.926 8.36092 90.3003 1.74169 66.0879 0.243652V53.0581V53.093Z" />
+                      <path d="M144.09 13.0639C139.77 13.0639 135.834 12.9246 132.21 12.6807V66.61H154.995C172.901 66.61 187.429 52.0825 187.429 34.1758V0.173828C177.291 8.1169 162.903 13.0639 144.09 13.0639Z" />
+                      <path d="M0 176.002V210.004C10.1379 202.061 24.526 197.114 43.3385 197.114C47.6584 197.114 51.5951 197.253 55.2183 197.532V143.603H32.4342C14.5275 143.603 0 158.13 0 176.037L0 176.002Z" />
+                      <path d="M107.789 143.603H66.0879V198.716C86.4681 201.817 97.0938 208.436 121.306 209.934V157.12C121.306 149.664 115.244 143.603 107.789 143.603Z" />
+                      <path d="M132.21 157.085V210.178C161.544 209.969 187.324 195.511 187.429 164.296V143.568H145.728C138.272 143.568 132.21 149.63 132.21 157.085Z" />
+                    </g>
+                  </svg>
+                </span>
+                <span className="flex flex-col text-left leading-tight">
+                  <span className="text-[12px] text-neutral-50">Smithery</span>
+                  <span className="font-mono text-[9.5px] text-dim tracking-[0.02em]">
+                    {t('bridgeBadgeSmitherySub')} · 98/100
+                  </span>
+                </span>
+              </a>
+
+              {/* Glama MCP directory listing */}
+              <a
+                href="https://glama.ai/mcp/connectors/io.github.Ranork/remnus"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-trust-badge group/badge inline-flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-neutral-900/60 transition-colors duration-150"
+              >
+                <span className="inline-flex items-center justify-center w-7 h-7 shrink-0">
+                  <svg
+                    viewBox="0 0 330 330"
+                    className="w-7 h-7 rounded-md"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path d="M314 0H16C7.16344 0 0 7.16345 0 16V314C0 322.837 7.16345 330 16 330H314C322.837 330 330 322.837 330 314V16C330 7.16344 322.837 0 314 0Z" fill="black" />
+                    <path d="M95 15H75V155H95V15ZM255 15H235V155H255V15ZM75 25H65V125H75V25ZM265 25H255V125H265V25ZM65 35H55V95H65V35ZM275 35H265V95H275V35ZM105 75H95V155H105V75ZM235 75H225V155H235V75ZM205 85H125V185H205V85ZM125 95H105V155H125V95ZM225 95H205V155H225V95ZM75 145H65V155H75V145ZM265 145H255V155H265V145ZM125 155H115V225H125V155ZM215 155H205V225H215V155ZM85 165H75V315H85V165ZM115 165H105V315H115V165ZM225 165H215V315H225V165ZM255 165H245V315H255V165ZM105 175H85V315H105V175ZM245 175H225V315H245V175ZM135 185H125V235H135V185ZM185 185H145V195H185V185ZM205 185H195V235H205V185ZM75 195H65V275H75V195ZM145 195H135V235H145V195ZM195 195H185V235H195V195ZM265 195H255V275H265V195ZM155 205H145V235H155V205ZM185 205H175V235H185V205ZM125 235H115V315H125V235ZM215 235H205V315H215V235ZM145 245H125V315H145V245ZM205 245H185V315H205V245ZM185 265H145V315H185V265Z" fill="white" />
+                  </svg>
+                </span>
+                <span className="flex flex-col text-left leading-tight">
+                  <span className="text-[12px] text-neutral-50">Glama</span>
+                  <span className="font-mono text-[9.5px] text-dim tracking-[0.02em]">
+                    {t('bridgeBadgeGlamaSub')}
                   </span>
                 </span>
               </a>
