@@ -15,7 +15,7 @@ import {
   agentTokens,
   sharedPages,
 } from '@/db/schema';
-import { eq, and, like, asc, desc, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, or, like, asc, desc, gte, lte, sql } from 'drizzle-orm';
 
 // ── Cursor pagination utilities ───────────────────────────────────────────────
 
@@ -161,12 +161,27 @@ export async function searchWorkspace(
   limit = 10,
 ) {
   const pattern = `%${query}%`;
+  const q = query.toLowerCase();
 
-  const rows = await db
+  const snippetFrom = (content: string | null | undefined): string => {
+    if (!content) return '';
+    const idx = content.toLowerCase().indexOf(q);
+    const slice = idx >= 0
+      ? content.slice(Math.max(0, idx - 40), idx + 80)
+      : content.slice(0, 100);
+    return slice.replace(/\n/g, ' ').trim();
+  };
+
+  const matchedOn = (title: string | null, content: string | null): 'title' | 'content' =>
+    title && title.toLowerCase().includes(q) ? 'title' : 'content';
+
+  // Sidebar items (standalone pages + databases): match on title OR page content.
+  const itemRows = await db
     .select({
       id: workspaceItems.id,
       type: workspaceItems.type,
       title: workspaceItems.title,
+      parentId: workspaceItems.parentId,
       content: standalonePages.content,
     })
     .from(workspaceItems)
@@ -174,22 +189,82 @@ export async function searchWorkspace(
     .where(
       and(
         eq(workspaceItems.workspaceId, workspaceId),
-        like(workspaceItems.title, pattern),
+        or(
+          like(workspaceItems.title, pattern),
+          like(standalonePages.content, pattern),
+        ),
       ),
     )
     .orderBy(asc(workspaceItems.sortOrder))
     .limit(limit);
 
-  return rows.map(({ content, ...item }) => {
-    let snippet = '';
-    if (item.type === 'page' && content) {
-      const idx = content.toLowerCase().indexOf(query.toLowerCase());
-      snippet = idx >= 0
-        ? content.slice(Math.max(0, idx - 40), idx + 80).replace(/\n/g, ' ')
-        : content.slice(0, 100).replace(/\n/g, ' ');
+  // Database rows (each row is a page): match on title OR content, scoped to the
+  // workspace via databases -> workspace_items. Without this, rows of a database
+  // (e.g. tasks in a tracker) are invisible to search.
+  const dbRows = await db
+    .select({
+      id: pages.id,
+      title: pages.title,
+      content: pages.content,
+      databaseId: databases.id,
+      dbItemId: workspaceItems.id,
+    })
+    .from(pages)
+    .innerJoin(databases, eq(pages.databaseId, databases.id))
+    .innerJoin(workspaceItems, eq(databases.itemId, workspaceItems.id))
+    .where(
+      and(
+        eq(workspaceItems.workspaceId, workspaceId),
+        or(
+          like(pages.title, pattern),
+          like(pages.content, pattern),
+        ),
+      ),
+    )
+    .limit(limit);
+
+  // Resolve a location breadcrumb (root -> ... -> parent) for any item by walking
+  // the parent_id chain over a lightweight in-memory map of the workspace tree.
+  const treeRows = await db
+    .select({ id: workspaceItems.id, parentId: workspaceItems.parentId, title: workspaceItems.title })
+    .from(workspaceItems)
+    .where(eq(workspaceItems.workspaceId, workspaceId));
+  const tree = new Map(treeRows.map((t) => [t.id, { parentId: t.parentId, title: t.title }]));
+  const breadcrumbOf = (startId: string | null): string[] => {
+    const path: string[] = [];
+    let cur = startId;
+    for (let guard = 0; cur && guard < 25; guard++) {
+      const node = tree.get(cur);
+      if (!node) break;
+      path.unshift(node.title);
+      cur = node.parentId;
     }
-    return { id: item.id, type: item.type, title: item.title, snippet };
-  });
+    return path;
+  };
+
+  const items = itemRows.map((item) => ({
+    id: item.id,
+    type: item.type,
+    title: item.title,
+    parentId: item.parentId ?? undefined,
+    breadcrumb: breadcrumbOf(item.parentId),
+    matchedOn: matchedOn(item.title, item.content),
+    snippet: item.type === 'page' ? snippetFrom(item.content) : '',
+  }));
+
+  // A row lives inside its database, so its breadcrumb is the path to that database
+  // (ancestors + database name).
+  const rows = dbRows.map((r) => ({
+    id: r.id,
+    type: 'database_row' as const,
+    title: r.title,
+    databaseId: r.databaseId,
+    breadcrumb: breadcrumbOf(r.dbItemId),
+    matchedOn: matchedOn(r.title, r.content),
+    snippet: snippetFrom(r.content),
+  }));
+
+  return [...items, ...rows].slice(0, limit);
 }
 
 export async function getPageById(workspaceId: string, itemId: string) {

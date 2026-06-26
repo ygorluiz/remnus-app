@@ -15,17 +15,21 @@ export function registerReadTools(server: McpServer, ctx: TokenContext) {
   server.registerTool(
     'search_workspace',
     {
-      description: 'Search pages and databases in the workspace by title.',
+      description: 'Search the workspace by title and content. Matches standalone pages, databases, and database rows (each row is a page) on their title or body text. Use it to locate an item before reading or updating it.',
       inputSchema: {
-        query: z.string().describe('Search query'),
+        query: z.string().describe('Text to match against item titles and content (case-insensitive substring)'),
         limit: z.number().optional().default(10).describe('Maximum results (default 10)'),
       },
       outputSchema: z.object({
         results: z.array(z.object({
-          id: z.string().describe('Item ID'),
-          type: z.string().describe('Item type (page | database)'),
+          id: z.string().describe('Item ID (pass to get_page)'),
+          type: z.string().describe('Item type: page | database | database_row'),
           title: z.string().describe('Item title'),
-          snippet: z.string().describe('Matching content snippet (pages only)'),
+          breadcrumb: z.array(z.string()).describe('Location path from the workspace root to the item (for a database_row, ends with its parent database name)'),
+          matchedOn: z.string().describe('Where the query matched: title | content'),
+          snippet: z.string().describe('Matching content snippet (empty when the match was on the title)'),
+          databaseId: z.string().optional().describe('Parent database ID, present for database_row results (pass to query_database)'),
+          parentId: z.string().optional().describe('Parent item ID for nested sidebar items'),
         }).passthrough()).describe('Matching items'),
       }),
       annotations: { title: 'Search workspace', readOnlyHint: true, openWorldHint: false },
