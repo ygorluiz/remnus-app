@@ -955,6 +955,9 @@ body.block-marquee-active * {
 .hero-trust-badge:nth-of-type(3) {
   animation-delay: 0.24s;
 }
+.hero-trust-badge:nth-of-type(4) {
+  animation-delay: 0.36s;
+}
 @keyframes hero-trust-badge {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }

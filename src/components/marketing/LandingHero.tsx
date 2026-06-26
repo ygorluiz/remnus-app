@@ -312,6 +312,35 @@ export default async function LandingHero() {
                   </span>
                 </span>
               </a>
+
+              {/* mcp.so directory listing */}
+              <a
+                href="https://mcp.so/server/remnus/Ranork"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-trust-badge group/badge inline-flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-neutral-900/60 transition-colors duration-150"
+              >
+                <span className="inline-flex items-center justify-center w-7 h-7 shrink-0">
+                  <svg
+                    viewBox="0 0 32 32"
+                    className="w-7 h-7 rounded-md"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <rect width="32" height="32" rx="8" fill="#2563EB" />
+                    <g transform="translate(5 5) scale(0.9167)" fill="#ffffff">
+                      <path d="M11.016 2.099a3.998 3.998 0 0 1 5.58.072l.073.074a3.991 3.991 0 0 1 1.058 3.318 3.994 3.994 0 0 1 3.32 1.06l.073.071.048.047.071.075a3.998 3.998 0 0 1 0 5.506l-.071.074-8.183 8.182-.034.042a.267.267 0 0 0 .034.335l1.68 1.68a.8.8 0 0 1-1.131 1.13l-1.68-1.679a1.866 1.866 0 0 1-.034-2.604l8.26-8.261a2.4 2.4 0 0 0-.044-3.349l-.047-.047-.044-.043a2.4 2.4 0 0 0-3.349.043l-6.832 6.832-.03.029a.8.8 0 0 1-1.1-1.16l6.876-6.875a2.4 2.4 0 0 0-.044-3.35l-.179-.161a2.399 2.399 0 0 0-3.169.119l-.045.043-9.047 9.047-.03.028a.8.8 0 0 1-1.1-1.16l9.046-9.046.074-.072Z" />
+                      <path d="M13.234 4.404a.8.8 0 0 1 1.1 1.16l-6.69 6.691a2.399 2.399 0 1 0 3.393 3.393l6.691-6.692a.8.8 0 0 1 1.131 1.131l-6.691 6.692a4 4 0 0 1-5.581.07l-.073-.07a3.998 3.998 0 0 1 0-5.655l6.69-6.691.03-.029Z" />
+                    </g>
+                  </svg>
+                </span>
+                <span className="flex flex-col text-left leading-tight">
+                  <span className="text-[12px] text-neutral-50">MCP.so</span>
+                  <span className="font-mono text-[9.5px] text-dim tracking-[0.02em]">
+                    {t('bridgeBadgeMcpsoSub')}
+                  </span>
+                </span>
+              </a>
             </div>
           </div>
         </div>
