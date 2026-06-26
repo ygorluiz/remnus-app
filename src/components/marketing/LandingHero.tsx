@@ -280,9 +280,9 @@ export default async function LandingHero() {
                   </svg>
                 </span>
                 <span className="flex flex-col text-left leading-tight">
-                  <span className="text-[12px] text-neutral-50">Smithery</span>
+                  <span className="text-[12px] text-neutral-50">Smithery <span className="text-dim ml-0.5">98/100</span></span>
                   <span className="font-mono text-[9.5px] text-dim tracking-[0.02em]">
-                    {t('bridgeBadgeSmitherySub')} · 98/100
+                    {t('bridgeBadgeSmitherySub')}
                   </span>
                 </span>
               </a>
@@ -306,7 +306,7 @@ export default async function LandingHero() {
                   </svg>
                 </span>
                 <span className="flex flex-col text-left leading-tight">
-                  <span className="text-[12px] text-neutral-50">Glama</span>
+                  <span className="text-[12px] text-neutral-50">Glama <span className="text-dim ml-0.5">4.2/5</span></span>
                   <span className="font-mono text-[9.5px] text-dim tracking-[0.02em]">
                     {t('bridgeBadgeGlamaSub')}
                   </span>
