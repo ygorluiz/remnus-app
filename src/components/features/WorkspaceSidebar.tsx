@@ -1,5 +1,6 @@
 ﻿'use client';
 import { useState, useTransition, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -59,7 +60,7 @@ import UserSettingsModal from './UserSettingsModal';
 import { getUserAgentTokenCount } from '@/lib/actions/agentToken';
 import { getMyTier } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
-import { writeSidebarVisible } from '@/lib/sidebarVisibility';
+import { getSidebarOverlayContainer, writeSidebarVisible } from '@/lib/sidebarVisibility';
 
 const TIER_BADGE: Record<PlanTier, { color: string; background: string; borderColor: string }> = {
   free:         { color: 'var(--color-neutral-50)',    background: 'rgba(127,195,109,0.10)', borderColor: 'rgba(127,195,109,0.30)' },
@@ -851,6 +852,7 @@ export default function WorkspaceSidebar({
   };
 
   const activeMenuItem = openMenuItemId ? items.find(i => i.id === openMenuItemId) : null;
+  const sidebarOverlayContainer = getSidebarOverlayContainer();
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">
@@ -976,14 +978,15 @@ export default function WorkspaceSidebar({
                         </div>
                       )}
                     </button>
-                    {activeWorkspaceIconPickerId === w.id && (
+                    {activeWorkspaceIconPickerId === w.id && sidebarOverlayContainer && createPortal(
                       <IconPicker
                         currentIcon={w.icon}
                         currentIconColor={w.iconColor}
                         onSelect={(newIcon, newColor) => handleWorkspaceIconSelect(w.id, newIcon, newColor)}
                         onClose={() => setActiveWorkspaceIconPickerId(null)}
                         anchorRef={{ current: workspaceIconRefs.current[w.id] }}
-                      />
+                      />,
+                      sidebarOverlayContainer,
                     )}
                   </div>
 
@@ -1120,14 +1123,15 @@ export default function WorkspaceSidebar({
                                   className="shrink-0"
                                 />
                               </button>
-                              {activeIconPickerId === item.id && (
+                              {activeIconPickerId === item.id && sidebarOverlayContainer && createPortal(
                                 <IconPicker
                                   currentIcon={item.icon}
                                   currentIconColor={item.iconColor}
                                   onSelect={(newIcon, newColor) => handleSidebarIconSelect(item.id, newIcon, newColor)}
                                   onClose={() => setActiveIconPickerId(null)}
                                   anchorRef={{ current: itemRefs.current[item.id] }}
-                                />
+                                />,
+                                sidebarOverlayContainer,
                               )}
                             </div>
 
@@ -1283,7 +1287,7 @@ export default function WorkspaceSidebar({
       </div>
 
       {/* Item context menu — mobile: bottom sheet, desktop: floating dropdown */}
-      {activeMenuItem && (
+      {activeMenuItem && sidebarOverlayContainer && createPortal(
         <>
           {/* Mobile bottom sheet menu */}
           <div
@@ -1334,22 +1338,24 @@ export default function WorkspaceSidebar({
               {t('delete')}
             </button>
           </div>
-        </>
+        </>,
+        sidebarOverlayContainer,
       )}
 
       {/* Desktop: Notion-style right-click / ⋯ menu (rendered via portal) */}
       {itemMenu.node}
 
-      {shareModalItemId && (
+      {shareModalItemId && sidebarOverlayContainer && createPortal(
         <ShareModal
           pageId={shareModalItemId}
           workspaceId={activeWorkspace.id}
           isAdmin={currentUser.role === 'admin'}
           onClose={() => setShareModalItemId(null)}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {templatePickerWorkspaceId && (
+      {templatePickerWorkspaceId && sidebarOverlayContainer && createPortal(
         <TemplatePickerModal
           workspaceId={templatePickerWorkspaceId}
           activeWorkspaceId={activeWorkspace.id}
@@ -1389,10 +1395,11 @@ export default function WorkspaceSidebar({
             }));
             router.push(type === 'page' ? `/page/${navId}` : `/db/${navId}`);
           }}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {settingsModalWorkspace && (
+      {settingsModalWorkspace && sidebarOverlayContainer && createPortal(
         <WorkspaceSettingsModal
           workspaceId={settingsModalWorkspace.id}
           workspaceName={settingsModalWorkspace.name}
@@ -1424,37 +1431,41 @@ export default function WorkspaceSidebar({
             setSettingsInitialTab('general');
             setBillingModalOpen(true);
           }}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {userSettingsOpen && (
+      {userSettingsOpen && sidebarOverlayContainer && createPortal(
         <UserSettingsModal
           currentUser={currentUser}
           onClose={() => setUserSettingsOpen(false)}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {agentsModalOpen && (
+      {agentsModalOpen && sidebarOverlayContainer && createPortal(
         <AgentsModal
           onClose={() => {
             setAgentsModalOpen(false);
             getUserAgentTokenCount().then(setAgentTokenCount).catch(() => {});
           }}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {billingModalOpen && (
+      {billingModalOpen && sidebarOverlayContainer && createPortal(
         <BillingModal isDemo={currentUser.role === 'demo'} onClose={() => {
           setBillingModalOpen(false);
           getMyTier().then(setPlanTier).catch(() => {});
-        }} />
+        }} />,
+        sidebarOverlayContainer,
       )}
 
       {/* Delete confirmation modal */}
       {confirmDeleteItemId && (() => {
         const item = localItems.find(i => i.id === confirmDeleteItemId);
         if (!item) return null;
-        return (
+        return sidebarOverlayContainer && createPortal(
           <>
             <div
               className="fixed inset-0 z-300 bg-black/60"
@@ -1482,7 +1493,8 @@ export default function WorkspaceSidebar({
                 </button>
               </div>
             </div>
-          </>
+          </>,
+          sidebarOverlayContainer,
         );
       })()}
 

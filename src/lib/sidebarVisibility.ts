@@ -60,6 +60,12 @@ export function getSidebarAnimationClasses(sidebarVisible: boolean): string {
   ].join(' ');
 }
 
+export function getSidebarOverlayContainer(doc?: { body: Element } | null): Element | null {
+  if (doc !== undefined) return doc?.body ?? null;
+  if (typeof document === 'undefined') return null;
+  return document.body;
+}
+
 export function subscribeSidebarVisibility(onStoreChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {};
 

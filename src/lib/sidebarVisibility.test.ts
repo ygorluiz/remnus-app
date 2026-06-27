@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   SIDEBAR_VISIBILITY_KEY,
   getSidebarAnimationClasses,
+  getSidebarOverlayContainer,
   getSidebarRestoreButtonClassName,
   getSidebarVisibleServerSnapshot,
   getSidebarVisibilityToggleHost,
@@ -64,9 +65,18 @@ describe('sidebar visibility persistence', () => {
 
   it('keeps the collapsed sidebar mounted but non-interactive for animation', () => {
     assert.match(getSidebarAnimationClasses(true), /w-72/);
+    assert.match(getSidebarAnimationClasses(true), /translate-x-0/);
     assert.doesNotMatch(getSidebarAnimationClasses(true), /pointer-events-none/);
     assert.match(getSidebarAnimationClasses(false), /w-0/);
+    assert.match(getSidebarAnimationClasses(false), /-translate-x-2/);
     assert.match(getSidebarAnimationClasses(false), /pointer-events-none/);
+  });
+
+  it('uses the document body for sidebar-owned overlays', () => {
+    const body = {} as Element;
+
+    assert.equal(getSidebarOverlayContainer({ body }), body);
+    assert.equal(getSidebarOverlayContainer(null), null);
   });
 
   it('does not subscribe when no window exists', () => {
