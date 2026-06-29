@@ -1324,6 +1324,7 @@
     "planFree": "Ücretsiz Plan",
     "planFreeHint": "Tüm özellikler dahil",
     "planCurrentBadge": "Mevcut plan",
+    "planDetails": "Detaylar",
     "storageTitle": "Depolama",
     "storageUsed": "{size} kullanıldı",
     "storageLoading": "Hesaplanıyor…",

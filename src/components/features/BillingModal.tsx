@@ -25,13 +25,13 @@ const TIER_ACCENT: Record<PlanTier, string> = {
   enterprise: 'var(--color-amber-500)',
 };
 
-export default function BillingModal({ isDemo = false, onClose }: { isDemo?: boolean; onClose: () => void }) {
+export default function BillingModal({ isDemo = false, initialPickerOpen = false, onClose }: { isDemo?: boolean; initialPickerOpen?: boolean; onClose: () => void }) {
   const t = useTranslations('Billing');
   const [data, setData] = useState<Usage | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(initialPickerOpen);
 
   useEffect(() => {
     getMySubscription()

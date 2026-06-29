@@ -10,6 +10,7 @@ import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
 import { updateMyProfile } from '@/lib/actions/auth';
 import { getMyTier } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
+import BillingModal from './BillingModal';
 import {
   setEditorFontSize, setSidebarDensity, setDefaultPageWidth, setTheme,
   type EditorFontSize, type SidebarDensity, type DefaultPageWidth,
@@ -391,7 +392,10 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
   const [activeTab, setActiveTab] = useState<Tab>('account');
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
   const [planTier, setPlanTier] = useState<PlanTier | null>(null);
+  const [billing, setBilling] = useState<null | 'details' | 'upgrade'>(null);
   const [isTauri, setIsTauri] = useState(false);
+
+  const isDemo = currentUser.role === 'demo';
 
   // Detect the desktop shell — the Desktop tab (zoom + download folder) only
   // makes sense (and its Tauri commands only resolve) inside Tauri.
@@ -459,6 +463,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
   ];
 
   return (
+    <>
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6"
       onClick={onClose}
@@ -547,6 +552,23 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
                     </span>
                   </div>
 
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setBilling('details')}
+                      className="text-xs font-medium px-3 py-1.5 border border-neutral-700 rounded-md text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
+                    >
+                      {t('planDetails')}
+                    </button>
+                    {planTier !== 'enterprise' && (
+                      <button
+                        onClick={() => setBilling('upgrade')}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-md bg-blue-500 hover:bg-blue-400 text-white transition-colors cursor-pointer"
+                      >
+                        {tBilling('upgrade')}
+                      </button>
+                    )}
+                  </div>
+
                   <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider pt-1">{t('storageTitle')}</p>
                   <div className="flex items-center gap-3 py-3 border-b border-neutral-800">
                     <HardDrive size={14} className="text-neutral-500 shrink-0" />
@@ -621,5 +643,17 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
         </div>
       </div>
     </div>
+
+    {billing && (
+      <BillingModal
+        isDemo={isDemo}
+        initialPickerOpen={billing === 'upgrade'}
+        onClose={() => {
+          setBilling(null);
+          getMyTier().then(setPlanTier).catch(() => {});
+        }}
+      />
+    )}
+    </>
   );
 }

@@ -1324,6 +1324,7 @@
     "planFree": "Plan gratuito",
     "planFreeHint": "Todas las funciones incluidas",
     "planCurrentBadge": "Plan actual",
+    "planDetails": "Detalles",
     "storageTitle": "Almacenamiento",
     "storageUsed": "{size} usado",
     "storageLoading": "Calculando…",

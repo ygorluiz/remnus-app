@@ -1320,6 +1320,7 @@
     "planFree": "Бесплатный тариф",
     "planFreeHint": "Все возможности включены",
     "planCurrentBadge": "Текущий тариф",
+    "planDetails": "Подробности",
     "storageTitle": "Хранилище",
     "storageUsed": "Использовано {size}",
     "storageLoading": "Подсчёт…",

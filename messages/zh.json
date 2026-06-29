@@ -1320,6 +1320,7 @@
     "planFree": "免费套餐",
     "planFreeHint": "包含所有功能",
     "planCurrentBadge": "当前套餐",
+    "planDetails": "详情",
     "storageTitle": "存储",
     "storageUsed": "已用 {size}",
     "storageLoading": "正在计算…",
