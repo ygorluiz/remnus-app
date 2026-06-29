@@ -535,38 +535,40 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
 
                 <div className="border-t border-neutral-800 pt-5 space-y-4">
                   <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">{t('planTitle')}</p>
-                  <div className="flex items-center justify-between py-3 border-b border-neutral-800">
-                    <div className="flex items-center gap-2.5">
-                      <Crown size={14} className="text-amber-400 shrink-0" />
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-200">
-                          {planTier === null ? '—' : tBilling(`tier_${planTier}` as 'tier_free')}
-                        </p>
-                        {planTier === 'free' && (
-                          <p className="text-[11px] text-neutral-500 mt-0.5">{t('planFreeHint')}</p>
-                        )}
+                  <div className="py-3 border-b border-neutral-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <Crown size={14} className="text-amber-400 shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-neutral-200">
+                            {planTier === null ? '—' : tBilling(`tier_${planTier}` as 'tier_free')}
+                          </p>
+                          {planTier === 'free' && (
+                            <p className="text-[11px] text-neutral-500 mt-0.5">{t('planFreeHint')}</p>
+                          )}
+                        </div>
                       </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-neutral-800 text-neutral-500 border border-neutral-700 rounded-md shrink-0">
+                        {t('planCurrentBadge')}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-neutral-800 text-neutral-500 border border-neutral-700 rounded-md shrink-0">
-                      {t('planCurrentBadge')}
-                    </span>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setBilling('details')}
-                      className="text-xs font-medium px-3 py-1.5 border border-neutral-700 rounded-md text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
-                    >
-                      {t('planDetails')}
-                    </button>
-                    {planTier !== 'enterprise' && (
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setBilling('upgrade')}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-md bg-blue-500 hover:bg-blue-400 text-white transition-colors cursor-pointer"
+                        onClick={() => setBilling('details')}
+                        className="text-xs font-medium px-3 py-1.5 border border-neutral-700 rounded-md text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
                       >
-                        {tBilling('upgrade')}
+                        {t('planDetails')}
                       </button>
-                    )}
+                      {planTier !== 'enterprise' && (
+                        <button
+                          onClick={() => setBilling('upgrade')}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-md bg-blue-500 hover:bg-blue-400 text-white transition-colors cursor-pointer"
+                        >
+                          {tBilling('upgrade')}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider pt-1">{t('storageTitle')}</p>
