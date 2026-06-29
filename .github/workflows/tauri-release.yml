@@ -12,6 +12,12 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
+      # Run the platform jobs ONE AT A TIME. tauri-action has every matrix job
+      # read-modify-write the same shared `latest.json` updater manifest on the
+      # release; running them concurrently races on the GitHub asset API and one
+      # job fails with "Not Found - delete-a-release-asset". Serializing removes
+      # the race (releases are tag-triggered and rare, so the extra time is fine).
+      max-parallel: 1
       matrix:
         include:
           - platform: ubuntu-22.04
