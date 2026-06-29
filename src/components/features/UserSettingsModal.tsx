@@ -323,7 +323,7 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="text-xs font-medium px-3 py-1.5 border border-neutral-700 text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
+              className="text-xs font-medium px-3 py-1.5 border border-neutral-700 rounded-md text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
             >
               {t('profileUpload')}
             </button>
@@ -331,7 +331,7 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
               <button
                 onClick={onRemove}
                 disabled={uploading}
-                className="text-xs font-medium px-3 py-1.5 border border-neutral-800 text-neutral-400 hover:text-red-400 hover:border-red-400/40 transition-colors cursor-pointer disabled:opacity-50"
+                className="text-xs font-medium px-3 py-1.5 border border-neutral-800 rounded-md text-neutral-400 hover:text-red-400 hover:border-red-400/40 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {t('profileRemove')}
               </button>
@@ -533,7 +533,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
                         <p className="text-[11px] text-neutral-500 mt-0.5">{t('planFreeHint')}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-neutral-800 text-neutral-500 border border-neutral-700 shrink-0">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-neutral-800 text-neutral-500 border border-neutral-700 rounded-md shrink-0">
                       {t('planCurrentBadge')}
                     </span>
                   </div>
