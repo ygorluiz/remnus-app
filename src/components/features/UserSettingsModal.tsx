@@ -46,7 +46,7 @@ function PrefRow<T extends string>({
           <button
             key={opt.value}
             onClick={() => onChange(opt.value)}
-            className={`px-3 py-1.5 text-xs font-medium border transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 text-xs font-medium border rounded-md transition-colors cursor-pointer ${
               value === opt.value
                 ? 'bg-neutral-700 border-neutral-600 text-neutral-100'
                 : 'bg-transparent border-neutral-800 text-neutral-500 hover:border-neutral-600 hover:text-neutral-300'
@@ -82,7 +82,7 @@ function ThemePicker({ value, onChange }: { value: AppTheme; onChange: (v: AppTh
           >
             {/* Swatch strip — extra outline ensures visibility on light and dark bg */}
             <div
-              className={`flex h-8 w-16 overflow-hidden border transition-all ${
+              className={`flex h-8 w-16 overflow-hidden border rounded-md transition-all ${
                 value === theme.value
                   ? 'border-blue-500 ring-1 ring-blue-500/50'
                   : 'border-neutral-700 group-hover:border-neutral-500'
