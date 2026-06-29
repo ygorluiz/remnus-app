@@ -52,7 +52,6 @@ import IconPicker from './IconPicker';
 import TemplatePickerModal from './TemplatePickerModal';
 import WorkspaceSettingsModal from './WorkspaceSettingsModal';
 import { initDesktopZoom } from '@/lib/desktop/zoom';
-import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 import AgentsModal from './AgentsModal';
 import OnboardingGuide from './onboarding/OnboardingGuide';
 import BillingModal from './BillingModal';
@@ -895,7 +894,6 @@ export default function WorkspaceSidebar({
           >
             <PanelLeftClose size={14} />
           </button>
-          <LanguageSwitcher compact />
         </div>
       </div>
 

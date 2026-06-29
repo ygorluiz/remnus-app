@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2, Monitor } from 'lucide-react';
+import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2, Monitor, ChevronDown, Check } from 'lucide-react';
+import FlagIcon from './FlagIcon';
 import ImportTab from './workspace-settings/ImportTab';
 import DesktopTab from './workspace-settings/DesktopTab';
 import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
@@ -113,7 +114,92 @@ const LOCALE_OPTIONS = [
   { value: 'fr', label: 'Français' },
   { value: 'es', label: 'Español' },
   { value: 'hi', label: 'हिन्दी' },
+  { value: 'zh', label: '中文' },
+  { value: 'ru', label: 'Русский' },
 ] as const;
+
+// ── Flag-based language select ───────────────────────────────────────────────────
+
+function LocaleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = LOCALE_OPTIONS.find(l => l.value === value) ?? LOCALE_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-48 shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`w-full flex items-center gap-2.5 bg-neutral-950 border rounded-md px-3 py-2 text-sm text-neutral-100 transition-colors cursor-pointer ${
+          open ? 'border-blue-500/60' : 'border-neutral-700 hover:border-neutral-600'
+        }`}
+      >
+        <FlagIcon code={current.value} size={18} />
+        <span className="flex-1 text-left truncate">{current.label}</span>
+        <ChevronDown size={15} className={`shrink-0 text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute top-full mt-1.5 left-0 right-0 z-10 bg-neutral-900 border border-neutral-800 rounded-md py-1 modal-shadow max-h-64 overflow-y-auto"
+        >
+          {LOCALE_OPTIONS.map(lang => {
+            const selected = lang.value === value;
+            return (
+              <button
+                key={lang.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => { onChange(lang.value); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors cursor-pointer ${
+                  selected ? 'text-blue-400 bg-blue-500/10' : 'text-neutral-300 hover:bg-neutral-800/60'
+                }`}
+              >
+                <FlagIcon code={lang.value} size={18} />
+                <span className="flex-1 truncate">{lang.label}</span>
+                {selected && <Check size={14} className="shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Language preference row ───────────────────────────────────────────────────────
+
+function LanguagePrefRow({ label, hint, value, onChange }: { label: string; hint?: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="py-4 border-b border-neutral-800 flex items-start justify-between gap-6">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-neutral-200">{label}</p>
+        {hint && <p className="text-[11px] text-neutral-500 mt-0.5">{hint}</p>}
+      </div>
+      <LocaleSelect value={value} onChange={onChange} />
+    </div>
+  );
+}
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -472,13 +558,11 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
           {activeTab === 'preferences' && (
             <div>
               <ThemePicker value={theme} onChange={handleTheme} />
-              <PrefRow
+              <LanguagePrefRow
                 label={t('prefLanguage')}
                 hint={t('prefLanguageHint')}
-                options={LOCALE_OPTIONS.map(l => ({ value: l.value, label: l.label }))}
                 value={locale}
                 onChange={handleLocale}
-                wrap
               />
               <PrefRow
                 label={t('prefEditorSize')}
