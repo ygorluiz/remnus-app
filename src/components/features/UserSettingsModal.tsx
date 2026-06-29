@@ -8,6 +8,8 @@ import ImportTab from './workspace-settings/ImportTab';
 import DesktopTab from './workspace-settings/DesktopTab';
 import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
 import { updateMyProfile } from '@/lib/actions/auth';
+import { getMyTier } from '@/lib/actions/billing';
+import type { PlanTier } from '@/lib/billing/plans';
 import {
   setEditorFontSize, setSidebarDensity, setDefaultPageWidth, setTheme,
   type EditorFontSize, type SidebarDensity, type DefaultPageWidth,
@@ -382,11 +384,13 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
 
 export default function UserSettingsModal({ currentUser, onClose }: UserSettingsModalProps) {
   const t = useTranslations('UserSettings');
+  const tBilling = useTranslations('Billing');
   const router = useRouter();
   const currentLocale = useLocale();
 
   const [activeTab, setActiveTab] = useState<Tab>('account');
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
+  const [planTier, setPlanTier] = useState<PlanTier | null>(null);
   const [isTauri, setIsTauri] = useState(false);
 
   // Detect the desktop shell — the Desktop tab (zoom + download folder) only
@@ -413,6 +417,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
 
   useEffect(() => {
     getCurrentUserStorageBytes().then(setStorageBytes).catch(() => setStorageBytes(0));
+    getMyTier().then(setPlanTier).catch(() => setPlanTier('free'));
   }, []);
 
   // Apply editor size immediately via data attribute + refresh for SSR components
@@ -529,8 +534,12 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
                     <div className="flex items-center gap-2.5">
                       <Crown size={14} className="text-amber-400 shrink-0" />
                       <div>
-                        <p className="text-xs font-semibold text-neutral-200">{t('planFree')}</p>
-                        <p className="text-[11px] text-neutral-500 mt-0.5">{t('planFreeHint')}</p>
+                        <p className="text-xs font-semibold text-neutral-200">
+                          {planTier === null ? '—' : tBilling(`tier_${planTier}` as 'tier_free')}
+                        </p>
+                        {planTier === 'free' && (
+                          <p className="text-[11px] text-neutral-500 mt-0.5">{t('planFreeHint')}</p>
+                        )}
                       </div>
                     </div>
                     <span className="text-[10px] font-semibold px-2 py-0.5 bg-neutral-800 text-neutral-500 border border-neutral-700 rounded-md shrink-0">
