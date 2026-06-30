@@ -15,6 +15,7 @@ import TableControls from './TableControls';
 import { Slice, Fragment } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import { dropPoint } from '@tiptap/pm/transform';
+import { joinTextblockForward } from '@tiptap/pm/commands';
 import { SlashCommand } from './SlashCommandMenu';
 import { ChildBlock } from './ChildBlockExtension';
 import Color from '@tiptap/extension-color';
@@ -351,6 +352,23 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
         }
       },
       handleKeyDown: (view, event) => {
+        // Delete at the end of a textblock should merge with the next textblock even
+        // when the next block is a different node type (e.g. paragraph → listItem inside
+        // a bulletList). ProseMirror's base keymap only binds `joinForward` for Delete,
+        // which requires the two nodes at the boundary to be the same type — so pressing
+        // Delete at end of a paragraph above a bullet list does nothing (it falls through
+        // to `selectNodeForward` which just selects the list). `joinTextblockForward`
+        // descends into the next container and finds the first textblock, enabling the
+        // "Delete at end of parent → child merges up" behaviour the user expects.
+        if (event.key === 'Delete') {
+          const { state } = view;
+          const { empty, $from } = state.selection;
+          if (empty && $from.parentOffset === $from.parent.content.size) {
+            return joinTextblockForward(state, view.dispatch, view) ?? false;
+          }
+          return false;
+        }
+
         if (event.key !== 'Backspace') return false;
         const { state } = view;
         const { selection } = state;
@@ -551,6 +569,43 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
 
           const doc = manager.parse(text);
           if (!doc?.content?.length) return false;
+
+          // When the cursor is inside a list item and the pasted content contains a
+          // list, `insertContent` would nest the pasted list INSIDE the current list
+          // item (valid per schema, but not what the user expects — they want siblings).
+          // Fix: extract the individual listItem nodes from the pasted list and insert
+          // them directly after the current list item so they become siblings.
+          const LIST_TYPES_SET = new Set(['bulletList', 'orderedList', 'taskList']);
+          const LIST_ITEM_TYPES_SET = new Set(['listItem', 'taskItem']);
+          const hasList = doc.content.some((n: any) => LIST_TYPES_SET.has(n.type));
+          if (hasList) {
+            const { $from } = _view.state.selection;
+            let listItemDepth = -1;
+            for (let d = $from.depth; d >= 0; d--) {
+              if (LIST_ITEM_TYPES_SET.has($from.node(d).type.name)) {
+                listItemDepth = d;
+                break;
+              }
+            }
+            if (listItemDepth >= 0) {
+              // Position right after the closing of the current list item (inside parent list)
+              const afterItem = $from.after(listItemDepth);
+              const siblings: any[] = [];
+              for (const item of doc.content) {
+                if (LIST_TYPES_SET.has(item.type)) {
+                  // Unwrap list → extract the child listItem nodes as direct siblings
+                  for (const li of (item.content ?? [])) siblings.push(li);
+                } else {
+                  // Non-list block: wrap in a listItem so it fits in the parent list
+                  siblings.push({ type: 'listItem', content: [item] });
+                }
+              }
+              if (siblings.length) {
+                ed.chain().insertContentAt(afterItem, siblings).run();
+                return true;
+              }
+            }
+          }
 
           ed.commands.insertContent(doc.content);
           return true;

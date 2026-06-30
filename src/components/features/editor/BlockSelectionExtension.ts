@@ -489,6 +489,13 @@ export const BlockSelection = Extension.create({
             if (event.button !== 0 || event.shiftKey) return;
             if (isInteractiveTarget(event.target)) return;
 
+            // Skip if the editor is hidden (e.g. in a display:none keep-alive tab pane).
+            // offsetParent is null for elements with display:none or inside one.
+            // Without this check the hidden editor's document-level listener fires first,
+            // calls preventDefault and removeAllRanges, and prevents text selection in the
+            // VISIBLE editor — causing bug where clicks/selections don't register after tab switch.
+            if (editorView.dom.offsetParent === null) return;
+
             const pmRect = editorView.dom.getBoundingClientRect();
             const containerRect = container.getBoundingClientRect();
             const x = event.clientX;

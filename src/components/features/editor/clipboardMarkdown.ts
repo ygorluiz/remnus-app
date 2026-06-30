@@ -91,6 +91,16 @@ export function cleanupCopiedMarkdown(md: string): string {
     decodeEntities(label),
   );
 
+  // Strip inline color-mark HTML wrappers. The storage serializer emits
+  // <span style="color:…"> (ColorTextStyle) and <mark data-color="…"> (ColorHighlight)
+  // so colors round-trip on reload; but these appear LITERALLY when pasted through
+  // the markdown path (text/plain). Colors are preserved via text/html (ProseMirror's
+  // default serializer) — so the text/plain path only needs the bare text.
+  out = out.replace(/<span style="color:[^"]*">/g, '');
+  out = out.replace(/<\/span>/g, '');
+  out = out.replace(/<mark\b[^>]*>/g, '');
+  out = out.replace(/<\/mark>/g, '');
+
   // Normalize whitespace: drop blank-only (`&nbsp;`) lines the paragraph
   // serializer leaves behind, collapse 3+ newlines to a single blank line, and
   // trim — so pasting never produces the "doubled blank line" look.
