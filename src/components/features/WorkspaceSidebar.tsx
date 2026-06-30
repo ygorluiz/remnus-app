@@ -29,6 +29,7 @@ import {
   ArrowUpRight,
   Link2,
   PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import PageIcon from './PageIcon';
 import { useContextMenu, type MenuItem } from './ContextMenu';
@@ -60,6 +61,7 @@ import { getUserAgentTokenCount } from '@/lib/actions/agentToken';
 import { getMyTier } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
 import { getSidebarOverlayContainer, writeSidebarVisible } from '@/lib/sidebarVisibility';
+import { useSidebarPeek } from '@/lib/sidebarPeekContext';
 
 const TIER_BADGE: Record<PlanTier, { color: string; background: string; borderColor: string }> = {
   free:         { color: 'var(--color-neutral-50)',    background: 'rgba(127,195,109,0.10)', borderColor: 'rgba(127,195,109,0.30)' },

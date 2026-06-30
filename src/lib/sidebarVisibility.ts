@@ -65,6 +65,20 @@ export function getSidebarAnimationClasses(sidebarVisible: boolean, peeking = fa
   ].join(' ');
 }
 
+/**
+ * Classes for the <main> content area.
+ * When the sidebar is pinned (sidebarVisible=true) the content is pushed right via
+ * padding-left so it doesn't sit under the overlay sidebar. The transition duration
+ * matches the sidebar's so both animate together on pin/unpin.
+ */
+export function getMainContentClasses(sidebarVisible: boolean): string {
+  return [
+    'relative flex-1 flex flex-col h-full overflow-hidden bg-neutral-850 pb-14 lg:pb-0',
+    'transition-[padding-left] duration-200 ease-out',
+    sidebarVisible ? 'lg:pl-72' : '',
+  ].join(' ');
+}
+
 export function getSidebarOverlayContainer(doc?: { body: Element } | null): Element | null {
   if (doc !== undefined) return doc?.body ?? null;
   if (typeof document === 'undefined') return null;

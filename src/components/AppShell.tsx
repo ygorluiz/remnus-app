@@ -9,12 +9,14 @@ import { TabsProvider } from './providers/TabsContext';
 import { useIsTauri } from '@/lib/hooks/useIsTauri';
 import {
   getSidebarAnimationClasses,
+  getMainContentClasses,
   getSidebarRestoreButtonClassName,
   getSidebarVisibleServerSnapshot,
   readSidebarVisible,
   subscribeSidebarVisibility,
   writeSidebarVisible,
 } from '@/lib/sidebarVisibility';
+import { SidebarPeekContext } from '@/lib/sidebarPeekContext';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
 export default function AppShell({
@@ -45,13 +47,9 @@ export default function AppShell({
   const isMarketing = MARKETING_PATHS.has(pathname) || pathname.startsWith('/oauth/');
   const hasDemoBanner = Boolean(demoBanner);
 
-  const toggleSidebar = () => {
-    writeSidebarVisible(!sidebarVisible);
-  };
-
   // Hover-to-peek: when sidebar is hidden, hovering the left edge shows it as an
-  // overlay without pushing the main content. A short timeout prevents flicker
-  // when the pointer moves from the hover zone into the sidebar.
+  // overlay. A short timeout prevents flicker when moving between the hover zone
+  // and the sidebar itself.
   const [sidebarPeeking, setSidebarPeeking] = useState(false);
   const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -64,6 +62,18 @@ export default function AppShell({
     clearTimeout(peekTimeoutRef.current);
     peekTimeoutRef.current = setTimeout(() => setSidebarPeeking(false), 150);
   }
+
+  // Pin: makes the sidebar permanently visible and stops peeking.
+  // The content area then smoothly shifts right via its padding-left transition.
+  function pin() {
+    clearTimeout(peekTimeoutRef.current);
+    setSidebarPeeking(false);
+    writeSidebarVisible(true);
+  }
+
+  const toggleSidebar = () => {
+    writeSidebarVisible(!sidebarVisible);
+  };
 
   // Only /db/* and /page/* routes live in tabs. The keep-alive TabHost owns the
   // content for those in Tauri; other in-app routes (e.g. /admin) keep their
@@ -94,26 +104,27 @@ export default function AppShell({
     <ZoomProvider>
       <TabsProvider items={items} enabled={isTauri}>
         {/*
-          `relative` is required so the overlay aside is positioned within this
-          container. The aside is ALWAYS absolute — it never participates in the
-          flex layout — so the main content always takes full width and doesn't
-          jump when the sidebar opens or closes.
+          `relative` is required so the absolute aside is positioned within this
+          container. The aside never participates in flex layout (always absolute),
+          and the main area uses padding-left to make room when the sidebar is pinned.
         */}
         <div className="relative flex h-full overflow-hidden">
-          <aside
-            className={getSidebarAnimationClasses(sidebarVisible, sidebarPeeking)}
-            onMouseEnter={!sidebarVisible ? startPeek : undefined}
-            onMouseLeave={!sidebarVisible ? schedulePeekClose : undefined}
-            aria-hidden={!sidebarVisible && !sidebarPeeking}
-          >
-            <div className="w-72 h-full flex flex-col shrink-0">
-              {sidebar}
-            </div>
-          </aside>
+          <SidebarPeekContext.Provider value={{ isPeeking: sidebarPeeking, pin }}>
+            <aside
+              className={getSidebarAnimationClasses(sidebarVisible, sidebarPeeking)}
+              onMouseEnter={!sidebarVisible ? startPeek : undefined}
+              onMouseLeave={!sidebarVisible ? schedulePeekClose : undefined}
+              aria-hidden={!sidebarVisible && !sidebarPeeking}
+            >
+              <div className="w-72 h-full flex flex-col shrink-0">
+                {sidebar}
+              </div>
+            </aside>
+          </SidebarPeekContext.Provider>
           {mobileNav}
-          <main className="relative flex-1 flex flex-col h-full overflow-hidden bg-neutral-850 pb-14 lg:pb-0">
+          <main className={getMainContentClasses(sidebarVisible)}>
             {/* Hover zone on the left edge — triggers sidebar peek when hidden.
-                w-12 (48px) is wide enough to hit comfortably without being intrusive. */}
+                w-12 (48px) is comfortably wide without being intrusive. */}
             {!sidebarVisible && (
               <div
                 className="hidden lg:block absolute left-0 inset-y-0 w-12 z-10"
@@ -122,10 +133,9 @@ export default function AppShell({
               />
             )}
             {/*
-              Sidebar toggle: Remnus logo button shown in web when sidebar is hidden.
-              In Tauri, TauriTitlebar renders the logo instead so we skip it here to
-              avoid a double icon (TauriTitlebar is invisible before mount → isTauri
-              flips false→true, so we conditionally hide this when running in Tauri).
+              Sidebar toggle for web (non-Tauri): shows Remnus logo when sidebar is
+              hidden. In Tauri, TauriTitlebar renders the logo in the titlebar row
+              instead (avoids a duplicate icon after the isTauri false→true flip).
             */}
             {!sidebarVisible && !isTauri && (
               <button
