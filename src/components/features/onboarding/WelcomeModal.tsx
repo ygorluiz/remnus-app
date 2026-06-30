@@ -31,7 +31,7 @@ export default function WelcomeModal({ onConnect, onExplore, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-120 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-120 flex items-center justify-center p-4 bg-black/70"
       onClick={onClose}
     >
       <div
