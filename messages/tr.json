@@ -1334,7 +1334,11 @@
     "storageTitle": "Depolama",
     "storageUsed": "{size} kullanıldı",
     "storageLoading": "Hesaplanıyor…",
-    "storageHint": "Tüm çalışma alanlarınızda"
+    "storageHint": "Tüm çalışma alanlarınızda",
+    "cropTitle": "Fotoğrafı Kırp",
+    "cropHint": "Sürükle konumlandır · Kaydır veya sıkıştır yakınlaştır",
+    "cropCancel": "İptal",
+    "cropApply": "Uygula"
   },
   "OAuthAuthorize": {
     "errorTitle": "Yetkilendirme Hatası",

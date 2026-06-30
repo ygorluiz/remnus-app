@@ -1334,7 +1334,11 @@
     "storageTitle": "Storage",
     "storageUsed": "{size} used",
     "storageLoading": "Calculating…",
-    "storageHint": "Across all your workspaces"
+    "storageHint": "Across all your workspaces",
+    "cropTitle": "Crop Photo",
+    "cropHint": "Drag to reposition · Scroll or pinch to zoom",
+    "cropCancel": "Cancel",
+    "cropApply": "Apply"
   },
   "OAuthAuthorize": {
     "errorTitle": "Authorization Error",

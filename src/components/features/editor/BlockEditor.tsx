@@ -570,39 +570,52 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
           const doc = manager.parse(text);
           if (!doc?.content?.length) return false;
 
-          // When the cursor is inside a list item and the pasted content contains a
-          // list, `insertContent` would nest the pasted list INSIDE the current list
-          // item (valid per schema, but not what the user expects — they want siblings).
-          // Fix: extract the individual listItem nodes from the pasted list and insert
-          // them directly after the current list item so they become siblings.
           const LIST_TYPES_SET = new Set(['bulletList', 'orderedList', 'taskList']);
           const LIST_ITEM_TYPES_SET = new Set(['listItem', 'taskItem']);
-          const hasList = doc.content.some((n: any) => LIST_TYPES_SET.has(n.type));
-          if (hasList) {
-            const { $from } = _view.state.selection;
-            let listItemDepth = -1;
-            for (let d = $from.depth; d >= 0; d--) {
-              if (LIST_ITEM_TYPES_SET.has($from.node(d).type.name)) {
-                listItemDepth = d;
-                break;
+
+          // Count total list items and whether there is non-list content mixed in.
+          let totalListItems = 0;
+          let hasNonList = false;
+          for (const item of doc.content) {
+            if (LIST_TYPES_SET.has(item.type)) totalListItems += (item.content ?? []).length;
+            else hasNonList = true;
+          }
+
+          if (totalListItems > 0) {
+            if (totalListItems === 1 && !hasNonList) {
+              // Single bullet copied → paste its inner content as plain paragraphs.
+              // One list item feels like "text"; multiple feel like a "list" — keep
+              // the wrapping only when the user explicitly selected several items.
+              const innerContent = doc.content[0]?.content?.[0]?.content ?? [];
+              if (innerContent.length) {
+                ed.commands.insertContent(innerContent);
+                return true;
               }
-            }
-            if (listItemDepth >= 0) {
-              // Position right after the closing of the current list item (inside parent list)
-              const afterItem = $from.after(listItemDepth);
-              const siblings: any[] = [];
-              for (const item of doc.content) {
-                if (LIST_TYPES_SET.has(item.type)) {
-                  // Unwrap list → extract the child listItem nodes as direct siblings
-                  for (const li of (item.content ?? [])) siblings.push(li);
-                } else {
-                  // Non-list block: wrap in a listItem so it fits in the parent list
-                  siblings.push({ type: 'listItem', content: [item] });
+            } else {
+              // Multiple list items: when cursor is inside a list, extract the
+              // listItem nodes and insert them as siblings so they don't nest.
+              const { $from } = _view.state.selection;
+              let listItemDepth = -1;
+              for (let d = $from.depth; d >= 0; d--) {
+                if (LIST_ITEM_TYPES_SET.has($from.node(d).type.name)) {
+                  listItemDepth = d;
+                  break;
                 }
               }
-              if (siblings.length) {
-                ed.chain().insertContentAt(afterItem, siblings).run();
-                return true;
+              if (listItemDepth >= 0) {
+                const afterItem = $from.after(listItemDepth);
+                const siblings: any[] = [];
+                for (const item of doc.content) {
+                  if (LIST_TYPES_SET.has(item.type)) {
+                    for (const li of (item.content ?? [])) siblings.push(li);
+                  } else {
+                    siblings.push({ type: 'listItem', content: [item] });
+                  }
+                }
+                if (siblings.length) {
+                  ed.chain().insertContentAt(afterItem, siblings).run();
+                  return true;
+                }
               }
             }
           }

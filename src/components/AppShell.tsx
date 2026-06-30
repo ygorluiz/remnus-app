@@ -1,6 +1,6 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import { useSyncExternalStore, type ReactNode } from 'react';
+import { useSyncExternalStore, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { PanelLeftOpen } from 'lucide-react';
 import TauriTitlebar from './features/TauriTitlebar';
@@ -52,6 +52,22 @@ export default function AppShell({
     writeSidebarVisible(!sidebarVisible);
   };
 
+  // Hover-to-peek: when sidebar is hidden, hovering the left edge shows it as an
+  // overlay without pushing the main content. A short timeout prevents flicker
+  // when the pointer moves from the hover zone into the sidebar.
+  const [sidebarPeeking, setSidebarPeeking] = useState(false);
+  const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function startPeek() {
+    clearTimeout(peekTimeoutRef.current);
+    setSidebarPeeking(true);
+  }
+
+  function schedulePeekClose() {
+    clearTimeout(peekTimeoutRef.current);
+    peekTimeoutRef.current = setTimeout(() => setSidebarPeeking(false), 150);
+  }
+
   // Only /db/* and /page/* routes live in tabs. The keep-alive TabHost owns the
   // content for those in Tauri; other in-app routes (e.g. /admin) keep their
   // normal server-rendered `{children}`.
@@ -80,14 +96,28 @@ export default function AppShell({
   return (
     <ZoomProvider>
       <TabsProvider items={items} enabled={isTauri}>
-        <div className="flex h-full overflow-hidden">
-          <aside className={getSidebarAnimationClasses(sidebarVisible)} aria-hidden={!sidebarVisible}>
-            <div className="w-72 h-full flex flex-col shrink-0 transition-transform duration-200 ease-out">
+        {/* `relative` is required so the peek-overlay aside is positioned within this container */}
+        <div className="relative flex h-full overflow-hidden">
+          <aside
+            className={getSidebarAnimationClasses(sidebarVisible, sidebarPeeking)}
+            onMouseEnter={!sidebarVisible ? startPeek : undefined}
+            onMouseLeave={!sidebarVisible ? schedulePeekClose : undefined}
+            aria-hidden={!sidebarVisible && !sidebarPeeking}
+          >
+            <div className="w-72 h-full flex flex-col shrink-0">
               {sidebar}
             </div>
           </aside>
           {mobileNav}
           <main className="relative flex-1 flex flex-col h-full overflow-hidden bg-neutral-850 pb-14 lg:pb-0">
+            {/* Thin hover zone on the left edge — triggers sidebar peek when hidden */}
+            {!sidebarVisible && (
+              <div
+                className="hidden lg:block absolute left-0 inset-y-0 w-3 z-10"
+                onMouseEnter={startPeek}
+                onMouseLeave={schedulePeekClose}
+              />
+            )}
             {sidebarToggleHost === 'main' && (
               <button
                 type="button"

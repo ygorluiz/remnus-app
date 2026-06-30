@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2, Monitor, ChevronDown, Check } from 'lucide-react';
+import AvatarCropModal from './AvatarCropModal';
 import FlagIcon from './FlagIcon';
 import ImportTab from './workspace-settings/ImportTab';
 import DesktopTab from './workspace-settings/DesktopTab';
@@ -234,20 +235,18 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
   const [savingName, setSavingName] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [err, setErr] = useState('');
+  const [cropObjectUrl, setCropObjectUrl] = useState<string | null>(null);
 
   const initials = (name || currentUser.email || 'U').trim().charAt(0).toUpperCase();
   const nameTrim = name.trim();
   const nameChanged = nameTrim.length > 0 && nameTrim !== (currentUser.name ?? '').trim();
 
-  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  async function uploadBlob(blob: Blob) {
     setErr('');
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
       fd.append('kind', 'icon');
       const res = await fetch('/api/upload', { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
@@ -261,6 +260,26 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
     } finally {
       setUploading(false);
     }
+  }
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    // Show crop dialog before uploading
+    const url = URL.createObjectURL(file);
+    setCropObjectUrl(url);
+  }
+
+  function onCropConfirm(blob: Blob) {
+    if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+    setCropObjectUrl(null);
+    uploadBlob(blob);
+  }
+
+  function onCropCancel() {
+    if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+    setCropObjectUrl(null);
   }
 
   async function onRemove() {
@@ -293,6 +312,14 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
 
   return (
     <div className="space-y-5">
+      {cropObjectUrl && (
+        <AvatarCropModal
+          objectUrl={cropObjectUrl}
+          onConfirm={onCropConfirm}
+          onCancel={onCropCancel}
+        />
+      )}
+
       {/* Avatar + actions */}
       <div className="flex items-center gap-4">
         <div className="relative shrink-0 group">

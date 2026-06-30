@@ -50,7 +50,15 @@ export function getSidebarRestoreButtonClassName(hasDemoBanner: boolean): string
   ].join(' ');
 }
 
-export function getSidebarAnimationClasses(sidebarVisible: boolean): string {
+export function getSidebarAnimationClasses(sidebarVisible: boolean, peeking = false): string {
+  if (!sidebarVisible && peeking) {
+    // Peek: absolute overlay — doesn't consume flex space so main content is unaffected
+    return [
+      'hidden lg:flex flex-col',
+      'absolute left-0 inset-y-0 w-72 z-50',
+      'bg-neutral-900 border-r border-neutral-800 shadow-xl',
+    ].join(' ');
+  }
   return [
     'hidden lg:flex shrink-0 overflow-hidden bg-neutral-900 border-r border-neutral-800 flex-col',
     'transition-[width,opacity,transform] duration-200 ease-out',
