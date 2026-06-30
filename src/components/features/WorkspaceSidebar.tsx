@@ -123,6 +123,7 @@ export default function WorkspaceSidebar({
   const [isSaving, startSaveTransition] = useTransition();
   const [avatarError, setAvatarError] = useState(false);
   const [isTauri, setIsTauri] = useState(false);
+  const { isPeeking, pin } = useSidebarPeek();
 
   useEffect(() => {
     const isTauriNow = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
@@ -887,15 +888,29 @@ export default function WorkspaceSidebar({
               <span>{t('saving')}</span>
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => writeSidebarVisible(false)}
-            aria-label={tLayout('hideSidebar')}
-            title={tLayout('hideSidebar')}
-            className="hidden lg:flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors"
-          >
-            <PanelLeftClose size={14} />
-          </button>
+          {isPeeking ? (
+            /* Peek mode: clicking pins the sidebar and adjusts the content layout */
+            <button
+              type="button"
+              onClick={pin}
+              aria-label={tLayout('pinSidebar')}
+              title={tLayout('pinSidebar')}
+              className="hidden lg:flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors"
+            >
+              <PanelLeft size={14} />
+            </button>
+          ) : (
+            /* Pinned mode: clicking hides the sidebar and content fills the space */
+            <button
+              type="button"
+              onClick={() => writeSidebarVisible(false)}
+              aria-label={tLayout('hideSidebar')}
+              title={tLayout('hideSidebar')}
+              className="hidden lg:flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors"
+            >
+              <PanelLeftClose size={14} />
+            </button>
+          )}
         </div>
       </div>
 

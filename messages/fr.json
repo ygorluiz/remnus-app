@@ -9,7 +9,8 @@
     "tabCloseAll": "Tout fermer",
     "tabUntitled": "Sans titre",
     "showSidebar": "Afficher la barre latérale",
-    "hideSidebar": "Masquer la barre latérale"
+    "hideSidebar": "Masquer la barre latérale",
+    "pinSidebar": "Épingler la barre latérale"
   },
   "Home": {
     "welcomeTitle": "Bienvenue sur Remnus",

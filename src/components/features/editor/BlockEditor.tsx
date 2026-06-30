@@ -583,17 +583,21 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
 
           if (totalListItems > 0) {
             if (totalListItems === 1 && !hasNonList) {
-              // Single bullet copied → paste its inner content as plain paragraphs.
-              // One list item feels like "text"; multiple feel like a "list" — keep
-              // the wrapping only when the user explicitly selected several items.
+              // Single bullet → paste as plain text (unwrap the list wrapper).
               const innerContent = doc.content[0]?.content?.[0]?.content ?? [];
               if (innerContent.length) {
                 ed.commands.insertContent(innerContent);
                 return true;
               }
             } else {
-              // Multiple list items: when cursor is inside a list, extract the
-              // listItem nodes and insert them as siblings so they don't nest.
+              // Multiple list items and cursor is inside a list item:
+              // split the current item at the cursor and insert the pasted items
+              // between the two halves — the natural "insert at cursor" semantics.
+              //
+              //   cursor at item end   → pasted items become next siblings (most common)
+              //   cursor at item start → pasted items inserted before item's content
+              //   cursor in middle     → item splits; pasted items fill the gap
+              //   cursor in empty item → empty slot replaced; no phantom bullet left
               const { $from } = _view.state.selection;
               let listItemDepth = -1;
               for (let d = $from.depth; d >= 0; d--) {
@@ -602,8 +606,9 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
                   break;
                 }
               }
+
               if (listItemDepth >= 0) {
-                const afterItem = $from.after(listItemDepth);
+                const { schema } = _view.state;
                 const siblings: any[] = [];
                 for (const item of doc.content) {
                   if (LIST_TYPES_SET.has(item.type)) {
@@ -612,8 +617,64 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
                     siblings.push({ type: 'listItem', content: [item] });
                   }
                 }
+
                 if (siblings.length) {
-                  ed.chain().insertContentAt(afterItem, siblings).run();
+                  const siblingNodes = siblings.map((s: any) => schema.nodeFromJSON(s));
+                  const listItemNode = $from.node(listItemDepth);
+                  const itemStart = $from.before(listItemDepth);
+                  const itemEnd = $from.after(listItemDepth);
+
+                  const isEmptyItem =
+                    listItemNode.childCount === 1 &&
+                    listItemNode.firstChild?.type.name === 'paragraph' &&
+                    listItemNode.firstChild?.content.size === 0;
+                  const hasSinglePara =
+                    listItemNode.childCount === 1 &&
+                    listItemNode.firstChild?.type.name === 'paragraph';
+
+                  let newNodes: ReturnType<typeof schema.nodeFromJSON>[];
+
+                  if (isEmptyItem) {
+                    // Empty slot — replace entirely; pasted items fill its position.
+                    newNodes = siblingNodes;
+                  } else if (hasSinglePara) {
+                    // Split at cursor; rebuild the item from the two halves.
+                    const cursorOffset = $from.parentOffset;
+                    const paraContent = $from.parent.content;
+                    const beforeContent = paraContent.cut(0, cursorOffset);
+                    const afterContent = paraContent.cut(cursorOffset);
+                    const paraType = schema.nodes.paragraph;
+                    const listItemType = listItemNode.type;
+                    newNodes = [];
+                    if (beforeContent.size > 0) {
+                      newNodes.push(listItemType.create(
+                        listItemNode.attrs,
+                        paraType.create($from.parent.attrs, beforeContent),
+                        listItemNode.marks,
+                      ));
+                    }
+                    newNodes.push(...siblingNodes);
+                    if (afterContent.size > 0) {
+                      newNodes.push(listItemType.create(
+                        listItemNode.attrs,
+                        paraType.create($from.parent.attrs, afterContent),
+                        listItemNode.marks,
+                      ));
+                    }
+                  } else {
+                    // Complex item (nested lists / multiple children) → insert after.
+                    _view.dispatch(
+                      _view.state.tr.insert(
+                        $from.after(listItemDepth),
+                        Fragment.fromArray(siblingNodes),
+                      ),
+                    );
+                    return true;
+                  }
+
+                  _view.dispatch(
+                    _view.state.tr.replaceWith(itemStart, itemEnd, Fragment.fromArray(newNodes)),
+                  );
                   return true;
                 }
               }

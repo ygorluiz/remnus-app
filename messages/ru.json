@@ -9,7 +9,8 @@
     "tabCloseAll": "Закрыть все",
     "tabUntitled": "Без названия",
     "showSidebar": "Показать боковую панель",
-    "hideSidebar": "Скрыть боковую панель"
+    "hideSidebar": "Скрыть боковую панель",
+    "pinSidebar": "Закрепить боковую панель"
   },
   "Home": {
     "welcomeTitle": "Добро пожаловать в Remnus",

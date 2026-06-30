@@ -9,7 +9,8 @@
     "tabCloseAll": "Close all",
     "tabUntitled": "Untitled",
     "showSidebar": "Show sidebar",
-    "hideSidebar": "Hide sidebar"
+    "hideSidebar": "Hide sidebar",
+    "pinSidebar": "Pin sidebar"
   },
   "Home": {
     "welcomeTitle": "Welcome to Remnus",

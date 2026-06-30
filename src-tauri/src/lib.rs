@@ -81,48 +81,44 @@ fn reset_download_dir(app: tauri::AppHandle, state: State<DownloadConfig>) {
     persist_download_dir(&app, &None);
 }
 
-/// Reveal a downloaded file in the OS file manager (highlights it).
+/// Reveal a downloaded file in the OS file manager.
 ///
-/// On Windows we shell out to `explorer.exe /select,<path>` directly instead of
-/// using `tauri-plugin-opener`'s `reveal_item_in_dir`. That plugin calls
-/// `SHOpenFolderAndSelectItems`, a shell API that requires the calling thread to
-/// be in an STA COM apartment — but Tauri runs commands on async-runtime worker
-/// threads that may be MTA, where the call silently fails (this is why
-/// "Show in folder" did nothing). `explorer.exe` has no apartment requirement.
-/// We use `raw_arg` so the path is passed verbatim (explorer does its own,
-/// non-standard command-line parsing and mis-handles Rust's auto-quoting).
-/// On other platforms the plugin's reveal works fine; we keep it with an
-/// open-the-containing-folder fallback.
+/// On Windows, `SHOpenFolderAndSelectItems` (used by `reveal_item_in_dir`) requires
+/// an STA COM apartment, but Tauri command handlers run on MTA Tokio threads — the
+/// call silently fails. `explorer.exe /select` is equally unreliable on Windows 11:
+/// it routes through the existing Explorer instance via DDE; if that handoff fails
+/// the process spawns and exits without opening any window, but `spawn().is_ok()`
+/// returns true so we would incorrectly report success. Opening the parent folder
+/// directly with `ShellExecuteW` (what `open_path` uses for directories) has no
+/// COM-apartment restriction and always opens Explorer to that folder.
+///
+/// On macOS/Linux `reveal_item_in_dir` works correctly; we fall back to opening
+/// the parent folder if it doesn't.
 #[tauri::command]
 fn reveal_download(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        use std::process::Command;
-        // explorer.exe returns exit code 1 even on success, so we don't wait on it.
-        if Command::new("explorer.exe")
-            .raw_arg(format!("/select,\"{}\"", path))
-            .spawn()
-            .is_ok()
-        {
-            return Ok(());
-        }
-        // fall through to the opener-based path below if spawning failed
-    }
-
-    if app.opener().reveal_item_in_dir(&path).is_ok() {
-        return Ok(());
-    }
-
     let parent = PathBuf::from(&path)
         .parent()
         .map(|p| p.to_path_buf())
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or_else(|| PathBuf::from(&path));
 
-    app.opener()
-        .open_path(parent.to_string_lossy().to_string(), None::<&str>)
-        .map_err(|e| e.to_string())
+    #[cfg(target_os = "windows")]
+    {
+        return app
+            .opener()
+            .open_path(parent.to_string_lossy().to_string(), None::<&str>)
+            .map_err(|e| e.to_string());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if app.opener().reveal_item_in_dir(&path).is_ok() {
+            return Ok(());
+        }
+        app.opener()
+            .open_path(parent.to_string_lossy().to_string(), None::<&str>)
+            .map_err(|e| e.to_string())
+    }
 }
 
 /// Exit the application cleanly. Called from the UpdateBanner after an

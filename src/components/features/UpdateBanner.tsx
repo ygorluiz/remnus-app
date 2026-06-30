@@ -67,6 +67,13 @@ export default function UpdateBanner() {
           setState({ phase: 'ready' });
         }
       });
+
+      // downloadAndInstall resolved — on Windows the NSIS installer has been
+      // launched as a subprocess and is waiting for this process to exit before
+      // it can replace the running executable. Quit immediately so the installer
+      // can proceed; do not wait for the user to click another button.
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('quit_app');
     } catch (err) {
       console.error('[Remnus] Update install failed:', err);
       const message = err instanceof Error ? err.message : String(err);

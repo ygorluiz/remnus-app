@@ -9,7 +9,8 @@
     "tabCloseAll": "Alle schließen",
     "tabUntitled": "Ohne Titel",
     "showSidebar": "Seitenleiste anzeigen",
-    "hideSidebar": "Seitenleiste ausblenden"
+    "hideSidebar": "Seitenleiste ausblenden",
+    "pinSidebar": "Seitenleiste anheften"
   },
   "Home": {
     "welcomeTitle": "Willkommen bei Remnus",

@@ -91,6 +91,18 @@ export function cleanupCopiedMarkdown(md: string): string {
     decodeEntities(label),
   );
 
+  // Indented paragraph → strip the <p data-indent> wrapper, keep inline content.
+  // IndentedParagraph serializes indent>0 paragraphs as HTML blocks so the
+  // indent level round-trips; these should not appear verbatim in clipboard text.
+  out = out.replace(/<p\b[^>]*data-indent="[^"]*"[^>]*>([\s\S]*?)<\/p>/g, '$1');
+
+  // Indented heading → convert back to markdown `##` heading.
+  // CollapsibleHeading serializes indent>0 headings as <h1 data-indent="N">…</h1>.
+  out = out.replace(
+    /<h([1-6])\b[^>]*data-indent="[^"]*"[^>]*>([\s\S]*?)<\/h\1>/g,
+    (_, level, content) => '#'.repeat(Number(level)) + ' ' + content,
+  );
+
   // Strip inline color-mark HTML wrappers. The storage serializer emits
   // <span style="color:…"> (ColorTextStyle) and <mark data-color="…"> (ColorHighlight)
   // so colors round-trip on reload; but these appear LITERALLY when pasted through

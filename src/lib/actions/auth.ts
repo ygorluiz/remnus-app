@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/lib/auth/session';
+import { LAST_PATH_COOKIE } from '@/lib/constants/cookies';
 import { deleteAssetByUrl } from '@/lib/services/assets';
 import { checkCanAddSeatForEmail } from '@/lib/services/billing';
 
@@ -66,9 +67,10 @@ export async function updateMyProfile(input: { name?: string; image?: string | n
 }
 
 export async function logout() {
-  // Clear the persisted workspace selection so the next account doesn't inherit it
+  // Clear session-bound cookies so the next account starts fresh
   const cookieStore = await cookies();
   cookieStore.delete('remnus_workspace_id');
+  cookieStore.delete(LAST_PATH_COOKIE);
   await signOut({ redirectTo: '/login' });
 }
 
