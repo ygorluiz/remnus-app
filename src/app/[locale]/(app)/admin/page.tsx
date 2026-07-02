@@ -6,7 +6,8 @@ import { getDemoFeedback } from '@/lib/actions/demoFeedback';
 import { Shield, Users, TrendingUp, Clock, Activity, Timer, MonitorPlay, Share2, Workflow, MessageCircle, UserPlus, CalendarPlus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import AdminUsersTable from '@/components/features/AdminUsersTable';
-import { SignupTrendChart, AcquisitionSourcesChart, ActivationFunnelChart } from '@/components/features/admin/AdminCharts';
+import { SignupTrendChart, ActivationFunnelChart } from '@/components/features/admin/AdminCharts';
+import AdminTrafficSources from '@/components/features/admin/AdminTrafficSources';
 import { formatDuration } from '@/components/features/admin/format';
 import { getTranslations, getLocale } from 'next-intl/server';
 
@@ -195,13 +196,9 @@ export default async function AdminPage() {
           </section>
 
           <section>
-            <SectionHeader icon={Share2} title={t('acquisitionSources')} hint={t('acquisitionSourcesHint')} />
+            <SectionHeader icon={Share2} title={t('trafficSources')} hint={t('trafficSourcesHint')} />
             <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
-              <AcquisitionSourcesChart
-                data={engagement.acquisitionSources}
-                directLabel={t('channelDirect')}
-                emptyLabel={t('acquisitionSourcesEmpty')}
-              />
+              <AdminTrafficSources />
             </div>
           </section>
         </div>

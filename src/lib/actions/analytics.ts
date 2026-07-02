@@ -8,6 +8,7 @@ import { eq, ne, and, inArray, asc, desc, isNull, sql } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getTranslations } from 'next-intl/server';
 import { isPlanTier, type PlanTier } from '@/lib/billing/plans';
+import { runHogQL } from '@/lib/analytics/posthog-query';
 
 async function assertAdmin() {
   const user = await getCurrentUser();
@@ -36,35 +37,11 @@ export type EngagementOverview = {
   newThisWeek: number;
   newThisMonth: number;
   signupTrend: { date: string; count: number }[]; // last 30 days, oldest → newest
-  // First-touch acquisition channels across all real users, most users first.
-  // `channel` = the `?ref=` tag, else utm_source, else referrer host, else 'direct'.
-  acquisitionSources: { channel: string; count: number }[];
   perUser: Record<string, PerUserActivity>;
   // Demo is excluded from every metric above. These surface it separately:
   demoActiveSessions: number; // distinct demo users active in the last 15 min
   demoTotal: number;          // current ephemeral demo accounts (≈ last 6h)
 };
-
-/**
- * Collapse a user's first-touch attribution into a single channel label.
- * Priority: raw `?ref=` tag → utm_source → referrer host → 'direct'.
- */
-function acquisitionChannel(a: {
-  signupRef: string | null;
-  signupUtmSource: string | null;
-  signupReferrer: string | null;
-}): string {
-  if (a.signupRef) return a.signupRef;
-  if (a.signupUtmSource) return a.signupUtmSource;
-  if (a.signupReferrer) {
-    try {
-      return new URL(a.signupReferrer).hostname.replace(/^www\./, '');
-    } catch {
-      return 'other';
-    }
-  }
-  return 'direct';
-}
 
 const DAY = 24 * 60 * 60;
 
@@ -193,24 +170,6 @@ export async function getEngagementOverview(): Promise<EngagementOverview> {
   }
   const signupTrend = [...buckets.entries()].map(([date, count]) => ({ date, count }));
 
-  // Acquisition channels — first-touch attribution across all real users.
-  const attributionRows = await db
-    .select({
-      signupRef: users.signupRef,
-      signupUtmSource: users.signupUtmSource,
-      signupReferrer: users.signupReferrer,
-    })
-    .from(users)
-    .where(ne(users.role, 'demo'));
-  const channelCounts = new Map<string, number>();
-  for (const row of attributionRows) {
-    const ch = acquisitionChannel(row);
-    channelCounts.set(ch, (channelCounts.get(ch) ?? 0) + 1);
-  }
-  const acquisitionSources = [...channelCounts.entries()]
-    .map(([channel, count]) => ({ channel, count }))
-    .sort((a, b) => b.count - a.count);
-
   // Demo activity — deliberately kept OUT of every metric above; reported on its own.
   const demoActiveCut = nowSec - 15 * 60; // "active" = a heartbeat in the last 15 min
   const [demoActive] = await db
@@ -236,11 +195,86 @@ export async function getEngagementOverview(): Promise<EngagementOverview> {
     newThisWeek: signups?.week ?? 0,
     newThisMonth: signups?.month ?? 0,
     signupTrend,
-    acquisitionSources,
     perUser,
     demoActiveSessions: demoActive?.count ?? 0,
     demoTotal: demoCount?.count ?? 0,
   };
+}
+
+/** Coarse marketing-channel buckets a referring domain rolls up into. */
+export type TrafficChannel = 'direct' | 'organic' | 'social' | 'referral';
+
+export type TrafficSourcesData = {
+  /** Channel-type rollup (Direct / Organic Search / Social / Referral), most visitors first. */
+  channels: { channel: TrafficChannel; visitors: number }[];
+  /** Per-referring-domain detail. `source === '$direct'` means no referrer. */
+  domains: { source: string; visitors: number; views: number }[];
+  days: number;
+  /** False when the PostHog read creds are missing — card shows an "unavailable" state. */
+  available: boolean;
+};
+
+/** Classify a referring domain into a coarse marketing channel. */
+function classifyChannel(domain: string): TrafficChannel {
+  if (domain === '$direct') return 'direct';
+  const d = domain.toLowerCase();
+  const has = (...keys: string[]) => keys.some((k) => d.includes(k));
+  if (has('google', 'bing', 'yahoo', 'duckduckgo', 'yandex', 'baidu', 'ecosia')) return 'organic';
+  if (
+    has(
+      'reddit', 'twitter', 't.co', 'x.com', 'facebook', 'fb.com', 'linkedin', 'lnkd',
+      'youtube', 'youtu.be', 'instagram', 'mastodon', 'bsky', 'threads', 'ycombinator', 'tiktok',
+    )
+  )
+    return 'social';
+  return 'referral';
+}
+
+/**
+ * Where landing (`/`) visitors came from over the last N days, read from PostHog
+ * ($pageview + $referring_domain) — the top-of-funnel counterpart to the
+ * DB-based activation funnel. Covers ALL visitors, not just signups. Admin-only.
+ *
+ * Internal navigations (referrer on our own domain) are filtered out so this
+ * reflects real entry sources. Returns `available: false` when PostHog read creds
+ * aren't configured (local dev / forks) or the query fails.
+ */
+export async function getTrafficSources(days = 30): Promise<TrafficSourcesData> {
+  await assertAdmin();
+  const window = Math.max(1, Math.min(365, Math.floor(days)));
+  const rows = await runHogQL<[string, number, number]>(`
+    SELECT
+      coalesce(nullIf(properties.$referring_domain, ''), '$direct') AS domain,
+      count(DISTINCT person_id) AS visitors,
+      count() AS views
+    FROM events
+    WHERE event = '$pageview'
+      AND timestamp > now() - INTERVAL ${window} DAY
+      AND properties.$pathname = '/'
+      AND coalesce(properties.$referring_domain, '') NOT ILIKE '%remnus%'
+    GROUP BY domain
+    ORDER BY visitors DESC
+    LIMIT 50
+  `);
+  if (rows == null) {
+    return { channels: [], domains: [], days: window, available: false };
+  }
+
+  const channelTotals = new Map<TrafficChannel, number>();
+  const domains = rows.map(([domain, visitors, views]) => {
+    const v = Number(visitors) || 0;
+    const ch = classifyChannel(domain);
+    channelTotals.set(ch, (channelTotals.get(ch) ?? 0) + v);
+    return { source: domain, visitors: v, views: Number(views) || 0 };
+  });
+
+  const order: TrafficChannel[] = ['direct', 'organic', 'social', 'referral'];
+  const channels = order
+    .map((channel) => ({ channel, visitors: channelTotals.get(channel) ?? 0 }))
+    .filter((c) => c.visitors > 0)
+    .sort((a, b) => b.visitors - a.visitors);
+
+  return { channels, domains, days: window, available: true };
 }
 
 /**

@@ -70,58 +70,6 @@ export function SignupTrendChart({ data }: { data: { date: string; count: number
   );
 }
 
-// ── Acquisition sources: horizontal bars ────────────────────────────────────
-export function AcquisitionSourcesChart({
-  data,
-  directLabel,
-  emptyLabel,
-}: {
-  data: { channel: string; count: number }[];
-  directLabel: string;
-  emptyLabel: string;
-}) {
-  const [hover, setHover] = useState<string | null>(null);
-  if (data.length === 0) {
-    return <p className="text-xs text-neutral-500">{emptyLabel}</p>;
-  }
-  const total = data.reduce((s, d) => s + d.count, 0) || 1;
-  const max = Math.max(1, ...data.map((d) => d.count));
-  return (
-    <div className="flex flex-col gap-2.5">
-      {data.map((s) => {
-        const label = s.channel === 'direct' ? directLabel : s.channel;
-        const pct = Math.round((s.count / total) * 100);
-        const active = hover === s.channel;
-        return (
-          <div
-            key={s.channel}
-            className="group flex items-center gap-3"
-            onMouseEnter={() => setHover(s.channel)}
-            onMouseLeave={() => setHover(null)}
-          >
-            <span
-              className={`w-32 shrink-0 truncate text-xs transition-colors ${active ? 'text-neutral-100' : 'text-neutral-300'}`}
-              title={s.channel}
-            >
-              {label}
-            </span>
-            <div className="relative h-5 flex-1 overflow-hidden rounded bg-neutral-850">
-              <div
-                className={`h-full rounded transition-colors duration-100 ${active ? 'bg-blue-400' : 'bg-blue-500/55'}`}
-                style={{ width: `${Math.max(4, Math.round((s.count / max) * 100))}%` }}
-              />
-            </div>
-            <span className="w-20 shrink-0 text-right text-xs tabular-nums text-neutral-400">
-              <span className="font-medium text-neutral-200">{s.count}</span>
-              <span className="text-neutral-500"> · {pct}%</span>
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ── Activation funnel: staged bars with conversion ──────────────────────────
 export function ActivationFunnelChart({
   stages,
