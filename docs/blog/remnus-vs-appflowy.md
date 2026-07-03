@@ -85,4 +85,4 @@ Both are AGPL-3.0 and self-hostable, so this is not an open-source-versus-closed
 
 ---
 
-For the architectural reasoning behind building MCP in from the start rather than adding it later, read [MCP-Native vs MCP-Integrated](/docs/mcp-native-vs-integrated). Curious how Remnus stacks up against a closed-source workspace, or against another AGPL one? See [Remnus vs Notion](/docs/remnus-vs-notion-mcp) and [Remnus vs AFFiNE](/docs/remnus-vs-affine). To see the tool surface in action, connect an agent from the AI Agents panel in your workspace settings.
+For the architectural reasoning behind building MCP in from the start rather than adding it later, read [MCP-Native vs MCP-Integrated](/docs/mcp-native-vs-integrated). Curious how Remnus stacks up against a closed-source workspace, another AGPL one, or a local-first notes app? See [Remnus vs Notion](/docs/remnus-vs-notion-mcp), [Remnus vs AFFiNE](/docs/remnus-vs-affine), and [Remnus vs Obsidian](/docs/remnus-vs-obsidian). To see the tool surface in action, connect an agent from the AI Agents panel in your workspace settings.

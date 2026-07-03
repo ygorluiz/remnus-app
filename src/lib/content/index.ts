@@ -17,6 +17,8 @@ function slugify(text: string): string {
     .toLowerCase()
     .trim()
     .replace(/<[^>]*>/g, '')   // strip any tags from parsed inline
+    .replace(/&#?\w+;/g, '')   // drop HTML entities whole (e.g. "you're" -> "&#39;") so the
+                               // numeric/named part doesn't leak through the \w filter below
     .replace(/[^\w\s-]/g, '')  // \w keeps a-z0-9_ so tool names like query_audit_log survive
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')

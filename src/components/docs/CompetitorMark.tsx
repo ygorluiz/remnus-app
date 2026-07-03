@@ -1,9 +1,9 @@
 // Official brand marks for competitor comparison posts on the /docs blog.
-// All three render in their own real brand color rather than the generic
-// currentColor blue every other /docs post icon uses, so a reader can tell at a
-// glance which product a "Remnus vs X" card is about. Paths are sourced verbatim
-// from Simple Icons (CC0) for Notion/AFFiNE and from AppFlowy's own repo assets
-// for its multi-color flower mark (hex values confirmed against Simple Icons'
+// Each renders in its own real brand color rather than the generic currentColor
+// blue every other /docs post icon uses, so a reader can tell at a glance which
+// product a "Remnus vs X" card is about. Paths are sourced verbatim from Simple
+// Icons (CC0) for Notion/AFFiNE/Obsidian and from AppFlowy's own repo assets for
+// its multi-color flower mark (hex values confirmed against Simple Icons'
 // data/simple-icons.json, not guessed).
 // Used only to identify the product being compared against, not to imply any
 // affiliation or endorsement.
@@ -20,6 +20,7 @@ interface MarkProps {
 // version of Notion's real mark rather than an arbitrary color.
 const NOTION_COLOR = '#cccccc';
 const AFFINE_COLOR = '#1E96EB'; // official AFFiNE brand blue, visible as-is on dark
+const OBSIDIAN_COLOR = '#7C3AED'; // official Obsidian brand purple, visible as-is on dark
 
 export function NotionMark({ size = 18, className }: MarkProps) {
   return (
@@ -51,6 +52,23 @@ export function AffineMark({ size = 18, className }: MarkProps) {
       style={{ flexShrink: 0 }}
     >
       <path d="M11.9948 1.3766c-.5962.0055-1.1835.3117-1.496.8633C9.3218 4.294 1.088 18.5025.1273 20.2343c-.3903.9368.1537 2.0479 1.131 2.3204.4061.1076.8337.0533 1.203.0664 5.3733.005 14.2336-.0065 19.6234 0 .1562.0029.4285-.0014.6583-.0664.709-.1974 1.2348-.8705 1.2558-1.6055.008-.2436-.0369-.4874-.125-.713-.1113-.2414-.1953-.3671-.287-.5312l-.545-.9434L14.321 3.656l-.5449-.9434-.2734-.4726c-.1236-.2046-.2846-.39-.4805-.5352-.3071-.2255-.6696-.3314-1.0274-.3281Zm.006 1.3008c.1467.0004.2936.0735.375.2148.1655.2769.6486 1.1385.8164 1.416 1.8312 3.1736 4.1148 7.1296 6.3047 10.9221L10.3581 5.0895c.329-.5697 1.1259-1.952 1.2676-2.1973v-.002c.0814-.1421.2287-.2133.375-.2128zm-2.213 3.4668 7.5548 7.8459c-.0189-.0085-.0377-.017-.0567-.0254L9.2858 8.5232c.0712-.622.1933-1.2419.3496-1.8555zM8.3698 8.535 4.2213 21.3203c-.5326-.0002-1.2787.0002-1.7598 0-.1099-.0007-.6827.0033-.7579-.004-.2804-.005-.478-.3305-.371-.5878.6398-1.1206 4.1786-7.2439 7.0372-12.1936Zm.8437 1.205 5.5743 3.4318-5.504-2.2774A9.1593 9.1593 0 0 1 9.2135 9.74zm-.8594 1.377-.6972 9.465c-.7194.3027-1.4733.537-2.2403.7247zm1.1524.9083 3.5528 1.2246h-3.086a7.1294 7.1294 0 0 1-.33-.7734c-.0508-.1501-.0956-.3-.1368-.4512zm-.5527.8516c.0161.0437.0318.0873.0488.1308l.834 6.338c-.3456.2621-.7092.496-1.088.707zm1.8652 1.168h2.3653c.18 0 .2928.1935.2031.3496l-1.1836 2.0488a.233.233 0 0 1-.4043 0h-.002l-1.1816-2.0488c-.0904-.1561.0224-.3496.203-.3496zm3.6778.0156a7.161 7.161 0 0 1 .832.0996 7.847 7.847 0 0 1 .463.1094l-2.8419 2.4668zm2.381.58a9.1839 9.1839 0 0 1 1.0566.5274l-5.879 3.1739zm-6.8889.2579 1.543 2.6719a7.1154 7.1154 0 0 1-.5039.67 7.8136 7.8136 0 0 1-.3223.3456zm8.965.9453c.2738.2038.5382.4222.797.6485l.9863 1.0234L10.028 20.168c.0195-.0135.0392-.0274.0586-.041zm2.4473 2.6856c.3799.6581.848 1.4656 1.1934 2.0645.0608.0998.0519.1041.0742.1367.0948.2291-.0458.5041-.2793.5742-.0303.0015-.0577.0146-.0918.0118-.0057.005-.129.0039-.2129.0039-3.7797-.001-8.9869-.0003-13.7893 0z" />
+    </svg>
+  );
+}
+
+export function ObsidianMark({ size = 18, className }: MarkProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={OBSIDIAN_COLOR}
+      role="img"
+      aria-label="Obsidian"
+      className={className}
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M19.355 18.538a68.967 68.959 0 0 0 1.858-2.954.81.81 0 0 0-.062-.9c-.516-.685-1.504-2.075-2.042-3.362-.553-1.321-.636-3.375-.64-4.377a1.707 1.707 0 0 0-.358-1.05l-3.198-4.064a3.744 3.744 0 0 1-.076.543c-.106.503-.307 1.004-.536 1.5-.134.29-.29.6-.446.914l-.31.626c-.516 1.068-.997 2.227-1.132 3.59-.124 1.26.046 2.73.815 4.481.128.011.257.025.386.044a6.363 6.363 0 0 1 3.326 1.505c.916.79 1.744 1.922 2.415 3.5zM8.199 22.569c.073.012.146.02.22.02.78.024 2.095.092 3.16.29.87.16 2.593.64 4.01 1.055 1.083.316 2.198-.548 2.355-1.664.114-.814.33-1.735.725-2.58l-.01.005c-.67-1.87-1.522-3.078-2.416-3.849a5.295 5.295 0 0 0-2.778-1.257c-1.54-.216-2.952.19-3.84.45.532 2.218.368 4.829-1.425 7.531zM5.533 9.938c-.023.1-.056.197-.098.29L2.82 16.059a1.602 1.602 0 0 0 .313 1.772l4.116 4.24c2.103-3.101 1.796-6.02.836-8.3-.728-1.73-1.832-3.081-2.55-3.831zM9.32 14.01c.615-.183 1.606-.465 2.745-.534-.683-1.725-.848-3.233-.716-4.577.154-1.552.7-2.847 1.235-3.95.113-.235.223-.454.328-.664.149-.297.288-.577.419-.86.217-.47.379-.885.46-1.27.08-.38.08-.72-.014-1.043-.095-.325-.297-.675-.68-1.06a1.6 1.6 0 0 0-1.475.36l-4.95 4.452a1.602 1.602 0 0 0-.513.952l-.427 2.83c.672.59 2.328 2.316 3.335 4.711.09.21.175.43.253.653z" />
     </svg>
   );
 }

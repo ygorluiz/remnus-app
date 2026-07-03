@@ -27,7 +27,7 @@ import {
   Bot,
   Scale,
 } from 'lucide-react';
-import { NotionMark, AppFlowyMark, AffineMark } from '@/components/docs/CompetitorMark';
+import { NotionMark, AppFlowyMark, AffineMark, ObsidianMark } from '@/components/docs/CompetitorMark';
 
 // A blog post icon is either a Lucide icon or one of the brand marks above —
 // both render as `<Icon size={n} />`, so they're interchangeable everywhere
@@ -107,6 +107,15 @@ export const BLOG_POSTS: BlogPost[] = [
       "A fact-checked comparison of AFFiNE's mature editor and offline-first design against Remnus's first-party MCP server and open self-hosting.",
     date: '2026-07-03',
     icon: AffineMark,
+  },
+  {
+    slug: 'remnus-vs-obsidian',
+    file: 'remnus-vs-obsidian.md',
+    title: 'Remnus vs Obsidian: Full Comparison',
+    description:
+      "A fact-checked comparison of Obsidian's local-first notes and plugin ecosystem against Remnus's first-party MCP server for team workspaces.",
+    date: '2026-07-03',
+    icon: ObsidianMark,
   },
   {
     slug: 'mcp-native-vs-integrated',

@@ -97,4 +97,4 @@ Neither answer is wrong. They are built for different moments: one for a human w
 
 ---
 
-For the architectural reasoning behind building MCP in from the start rather than adding it later, read [MCP-Native vs MCP-Integrated](/docs/mcp-native-vs-integrated). Comparing self-hosted options instead? See [Remnus vs AppFlowy](/docs/remnus-vs-appflowy) and [Remnus vs AFFiNE](/docs/remnus-vs-affine). To see the tool surface in action, connect an agent from the AI Agents panel in your workspace settings.
+For the architectural reasoning behind building MCP in from the start rather than adding it later, read [MCP-Native vs MCP-Integrated](/docs/mcp-native-vs-integrated). Comparing self-hosted or local-first options instead? See [Remnus vs AppFlowy](/docs/remnus-vs-appflowy), [Remnus vs AFFiNE](/docs/remnus-vs-affine), and [Remnus vs Obsidian](/docs/remnus-vs-obsidian). To see the tool surface in action, connect an agent from the AI Agents panel in your workspace settings.

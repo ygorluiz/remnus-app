@@ -79,4 +79,4 @@ Neither answer is wrong. AFFiNE is the more finished workspace today; Remnus is 
 
 ---
 
-Curious why we built MCP in on day one instead of adding it later? That reasoning is laid out in [MCP-Native vs MCP-Integrated](/docs/mcp-native-vs-integrated). We've run the same comparison against [Notion](/docs/remnus-vs-notion-mcp) and [AppFlowy](/docs/remnus-vs-appflowy) too, if you want the fuller picture. Or skip straight to it: connect an agent from the AI Agents panel in your workspace settings and watch the tools work.
+Curious why we built MCP in on day one instead of adding it later? That reasoning is laid out in [MCP-Native vs MCP-Integrated](/docs/mcp-native-vs-integrated). We've run the same comparison against [Notion](/docs/remnus-vs-notion-mcp), [AppFlowy](/docs/remnus-vs-appflowy), and [Obsidian](/docs/remnus-vs-obsidian) too, if you want the fuller picture. Or skip straight to it: connect an agent from the AI Agents panel in your workspace settings and watch the tools work.
