@@ -2,15 +2,11 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import WikiArticle from '@/components/docs/WikiArticle';
-import { getWikiPage, WIKI_PAGES } from '@/lib/content';
+import { getWikiPage } from '@/lib/content';
 import { wikiMetadata, wikiJsonLd, wikiBreadcrumbJsonLd } from '@/lib/content/seo';
 
 interface Props {
   params: Promise<{ slug: string[] }>;
-}
-
-export function generateStaticParams() {
-  return WIKI_PAGES.filter((p) => p.slug).map((p) => ({ slug: p.slug.split('/') }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

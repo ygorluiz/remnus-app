@@ -5,15 +5,11 @@ import { Clock } from 'lucide-react';
 import DocsProse from '@/components/docs/DocsProse';
 import DocsArticleFooter from '@/components/docs/DocsArticleFooter';
 import BreadcrumbTrail from '@/components/docs/BreadcrumbTrail';
-import { getBlogPost, getAdjacentPosts, BLOG_POSTS } from '@/lib/content';
+import { getBlogPost, getAdjacentPosts } from '@/lib/content';
 import { blogMetadata, blogJsonLd, blogBreadcrumbJsonLd } from '@/lib/content/seo';
 
 interface Props {
   params: Promise<{ slug: string }>;
-}
-
-export function generateStaticParams() {
-  return BLOG_POSTS.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
