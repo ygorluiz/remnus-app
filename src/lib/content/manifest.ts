@@ -12,6 +12,7 @@
 // (see WikiSidebar, which looks icons up locally rather than receiving them
 // as props, since function values can't cross the server→client RSC boundary).
 
+import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
@@ -23,10 +24,15 @@ import {
   Package,
   Lightbulb,
   Wrench,
-  Swords,
   Bot,
   Scale,
 } from 'lucide-react';
+import { NotionMark, AppFlowyMark, AffineMark } from '@/components/docs/CompetitorMark';
+
+// A blog post icon is either a Lucide icon or one of the brand marks above —
+// both render as `<Icon size={n} />`, so they're interchangeable everywhere
+// BlogPost.icon is used (BlogCard, the article header).
+type PostIcon = LucideIcon | ComponentType<{ size?: number; className?: string }>;
 
 // ── Wiki (MCP reference, left-sidebar tree) ────────────────────────────────────
 
@@ -62,7 +68,7 @@ export type BlogPost = {
   description: string;
   /** ISO date (YYYY-MM-DD) — publication date. */
   date: string;
-  icon: LucideIcon;
+  icon: PostIcon;
 };
 
 export const BLOG_POSTS: BlogPost[] = [
@@ -78,11 +84,29 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'remnus-vs-notion-mcp',
     file: 'remnus-vs-notion-mcp.md',
-    title: 'Remnus vs Notion MCP',
+    title: 'Remnus vs Notion: Full Comparison',
     description:
-      'An honest head to head on auth, headless agents, edit granularity, pricing tiers, and who should pick which.',
-    date: '2026-06-23',
-    icon: Swords,
+      'An honest, fact-checked look at Remnus vs Notion: workspace features, MCP authentication, agent tooling, pricing tiers, and audit trails.',
+    date: '2026-07-03',
+    icon: NotionMark,
+  },
+  {
+    slug: 'remnus-vs-appflowy',
+    file: 'remnus-vs-appflowy.md',
+    title: 'Remnus vs AppFlowy: Full Comparison',
+    description:
+      "A fact-checked comparison of two AGPL-3.0 Notion alternatives: AppFlowy's mature editor versus Remnus's first-party MCP server and agent tooling.",
+    date: '2026-07-03',
+    icon: AppFlowyMark,
+  },
+  {
+    slug: 'remnus-vs-affine',
+    file: 'remnus-vs-affine.md',
+    title: 'Remnus vs AFFiNE: Full Comparison',
+    description:
+      "A fact-checked comparison of AFFiNE's mature editor and offline-first design against Remnus's first-party MCP server and open self-hosting.",
+    date: '2026-07-03',
+    icon: AffineMark,
   },
   {
     slug: 'mcp-native-vs-integrated',
