@@ -1,6 +1,6 @@
 # Read Tools
 
-All 7 read tools are available to every token regardless of scope.
+All 8 read tools are available to every token regardless of scope.
 
 ---
 
@@ -148,3 +148,42 @@ Query the MCP agent activity audit log for the current workspace.
 | `limit` | number | | `50` | Maximum results |
 
 **Returns** — array of audit log entries with `tool`, `status`, `targetType`, `targetId`, `createdAt`, `agentName` (the agent's brand id, if set), and `tokenName` (the token's label).
+
+---
+
+## get_changes_since
+
+Get a compact, chronological list of everything that changed in the workspace since a given time or a previous call's cursor — pages/databases edited, database rows edited, and items deleted. Built for **recurring agents** (a daily report, a standup summary, a memory refresh) so they can sync incrementally instead of re-reading the whole workspace on every run.
+
+**Parameters**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `since` | string | | | ISO 8601 timestamp — only return changes after this time. Ignored when `cursor` is provided |
+| `cursor` | string | | | Pagination cursor from a previous response's `nextCursor` — takes priority over `since` for resuming a sync |
+| `limit` | number | | `100` | Maximum changes per page |
+
+**Returns** — `{ changes: [...], hasMore: boolean, nextCursor?: string }`, where each change has:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Item ID (pass to `get_page` or `query_database`) |
+| `type` | string | `page` \| `database` \| `database_row` |
+| `title` | string | Item title (last known title for deleted items) |
+| `changeType` | string | `created` \| `updated` \| `deleted` |
+| `updatedAt` | string | When the change happened (ISO 8601) — for `deleted`, when the deletion happened |
+| `databaseId` | string? | Parent database ID, present for `database_row` entries |
+
+**Bootstrapping a sync** — omit both `since` and `cursor` on the first call to crawl everything (every item comes back as `created`). Save the last page's `nextCursor`, or the `updatedAt` of the most recent change, and pass it back as `cursor`/`since` on the next call to pick up only what changed since.
+
+```json
+{ "changes": [
+  { "id": "…", "type": "page", "title": "Sprint Notes", "changeType": "updated", "updatedAt": "2026-07-04T09:12:00.000Z" },
+  { "id": "…", "type": "database_row", "title": "Fix login bug", "changeType": "created", "updatedAt": "2026-07-04T10:03:00.000Z", "databaseId": "…" },
+  { "id": "…", "type": "page", "title": "Old Draft", "changeType": "deleted", "updatedAt": "2026-07-04T11:20:00.000Z" }
+], "hasMore": false }
+```
+
+**What counts as a change** — a page's own content edit, a database's schema edit, a database row's title/content/property edit, or moving/renaming an item. Deletions are tracked separately as tombstones, so a deleted item still shows up here (with its last known title) even though it no longer exists.
+
+**Note on old data** — a handful of rows created before this app consistently stamped timestamps may have no reliable "last changed" time; those are only ever reported once, on a full crawl (no `since`/`cursor`), and won't reappear on later incremental calls.

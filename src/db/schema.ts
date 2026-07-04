@@ -396,3 +396,18 @@ export const emailLog = sqliteTable('email_log', {
   index('email_log_created_at_idx').on(table.createdAt),
   index('email_log_campaign_id_idx').on(table.campaignId),
 ]);
+
+// Tombstones for hard-deleted pages/databases/rows — powers the MCP
+// get_changes_since delta-sync tool (a "deleted" entry has no surviving row to
+// read updatedAt from). Written best-effort alongside every hard delete path
+// (services/workspace.ts, actions/workspace.ts, actions/page.ts). Migration 0035.
+export const deletedItems = sqliteTable('deleted_items', {
+  id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  itemId:      text('item_id').notNull(),
+  itemType:    text('item_type', { enum: ['page', 'database', 'database_row'] }).notNull(),
+  title:       text('title'),
+  deletedAt:   integer('deleted_at', { mode: 'timestamp' }).notNull(),
+}, (table) => [
+  index('deleted_items_workspace_deleted_idx').on(table.workspaceId, table.deletedAt),
+]);

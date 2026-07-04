@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { deleteWorkspaceItem } from './workspace';
 import { publish } from '@/lib/realtime/publish';
 import { isCloudinaryUrl, deleteCloudinaryImage } from '@/lib/cloudinary';
+import { recordDeletionTombstone } from '@/lib/services/workspace';
 
 // Verify user has access to the workspace that owns this database.
 // Returns { userId, workspaceId } so callers can emit realtime events.
@@ -55,6 +56,7 @@ export async function createPage(
 
   const defaultProps = { title: title, status: 'To Do', ...initialProperties };
 
+  const now = new Date();
   await db.insert(pages).values({
     id,
     databaseId,
@@ -64,6 +66,8 @@ export async function createPage(
     sortOrder: maxSort + 1,
     icon: icon || null,
     iconColor: iconColor || null,
+    createdAt: now,
+    updatedAt: now,
   });
   revalidatePath(`/db/${databaseId}`);
   publish({ scope: 'database', workspaceId, resourceId: databaseId, actorId: userId });
@@ -156,7 +160,9 @@ export async function deletePage(id: string, databaseId: string) {
     await deleteWorkspaceItem(item.id);
   }
 
+  const [row] = await db.select({ title: pages.title }).from(pages).where(eq(pages.id, id)).limit(1);
   await db.delete(pages).where(eq(pages.id, id));
+  await recordDeletionTombstone(workspaceId, id, 'database_row', row?.title ?? '');
   revalidatePath(`/db/${databaseId}`);
   publish({ scope: 'database', workspaceId, resourceId: databaseId, actorId: userId });
 }
@@ -177,6 +183,7 @@ export async function duplicatePage(id: string, databaseId: string) {
   const copiedProps = { ...((sourcePage.properties as Record<string, any>) || {}) };
   if (copiedProps.title) copiedProps.title = `${copiedProps.title} (Copy)`;
 
+  const now = new Date();
   await db.insert(pages).values({
     id: newId,
     databaseId,
@@ -186,6 +193,8 @@ export async function duplicatePage(id: string, databaseId: string) {
     sortOrder: maxSort + 1,
     icon: sourcePage.icon,
     iconColor: sourcePage.iconColor,
+    createdAt: now,
+    updatedAt: now,
   });
 
   revalidatePath(`/db/${databaseId}`);

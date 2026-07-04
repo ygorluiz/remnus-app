@@ -15,6 +15,7 @@ import {
   agentTokens,
   oauthAccessTokens,
   sharedPages,
+  deletedItems,
 } from '@/db/schema';
 import { eq, and, or, like, asc, desc, gte, lte, sql } from 'drizzle-orm';
 
@@ -26,6 +27,21 @@ function encodeCursor(sortOrder: number, id: string): string {
 
 function decodeCursor(cursor: string): { so: number; id: string } {
   return JSON.parse(Buffer.from(cursor, 'base64url').toString());
+}
+
+function encodeChangeCursor(ts: number, id: string): string {
+  return Buffer.from(JSON.stringify({ ts, id })).toString('base64url');
+}
+
+function decodeChangeCursor(cursor: string): { ts: number; id: string } {
+  return JSON.parse(Buffer.from(cursor, 'base64url').toString());
+}
+
+// Legacy rows created before this app consistently passed explicit Date()
+// values can carry CURRENT_TIMESTAMP-as-text (see the createdAt gotcha in
+// AGENTS.md), which surfaces here as an Invalid Date rather than a throw.
+function isValidDate(d: unknown): d is Date {
+  return d instanceof Date && !Number.isNaN(d.getTime());
 }
 
 // ── Select option auto-coloring ───────────────────────────────────────────────
@@ -581,8 +597,7 @@ export async function getWorkspaceDigest(workspaceId: string): Promise<string> {
     for (const item of byParent.get(parentId) ?? []) {
       // Legacy rows can carry CURRENT_TIMESTAMP-as-text → Invalid Date (see the
       // createdAt gotcha in AGENTS.md); omit the date segment for those.
-      const validDate = item.updatedAt instanceof Date && !Number.isNaN(item.updatedAt.getTime());
-      const updated = validDate ? `, updated: ${item.updatedAt.toISOString().slice(0, 10)}` : '';
+      const updated = isValidDate(item.updatedAt) ? `, updated: ${item.updatedAt.toISOString().slice(0, 10)}` : '';
       const extra = item.type === 'database'
         ? `, databaseId: ${item.databaseId}, rows: ${counts.get(item.databaseId!) ?? 0}`
         : '';
@@ -599,6 +614,156 @@ export async function getWorkspaceDigest(workspaceId: string): Promise<string> {
     `Read a page with get_page(id) — use mode:"outline" for a cheap skim — and rows with query_database(databaseId, fields:[…]).\n\n` +
     lines.join('\n')
   );
+}
+
+export type ChangeEntry = {
+  id: string;
+  type: 'page' | 'database' | 'database_row';
+  title: string;
+  changeType: 'created' | 'updated' | 'deleted';
+  updatedAt: string;
+  databaseId?: string;
+};
+
+/**
+ * Compact delta feed: everything that changed in the workspace after `since`
+ * (ISO timestamp) or a previous response's `nextCursor`. Merges three sources
+ * — workspace items (title/content/schema edits), database rows, and delete
+ * tombstones — into one time-ordered, keyset-paginated list, so a recurring
+ * agent (daily report, standup, memory refresh) can sync incrementally
+ * instead of re-reading the whole workspace every run.
+ *
+ * Item/row timestamps are read in bulk and filtered/sorted in memory (like
+ * getWorkspaceDigest) rather than pushed into a SQL WHERE, because legacy rows
+ * can carry CURRENT_TIMESTAMP-as-text (Invalid Date, see the createdAt gotcha
+ * in AGENTS.md) that would otherwise corrupt a raw integer comparison —
+ * isValidDate() guards each one and such rows sort as if last-changed at the
+ * epoch, so they surface once on a full crawl and never spuriously again.
+ * Tombstones are always written with a real Date, so they're filtered in SQL.
+ */
+export async function getChangesSince(
+  workspaceId: string,
+  since?: string,
+  cursor?: string,
+  limit = 100,
+): Promise<{ changes: ChangeEntry[]; hasMore: boolean; nextCursor?: string }> {
+  const cursorData = cursor ? decodeChangeCursor(cursor) : null;
+  let thresholdTs = 0;
+  let thresholdId = '';
+  if (cursorData) {
+    thresholdTs = cursorData.ts;
+    thresholdId = cursorData.id;
+  } else if (since) {
+    const parsed = new Date(since);
+    if (isValidDate(parsed)) thresholdTs = parsed.getTime();
+  }
+
+  type Candidate = {
+    id: string;
+    type: ChangeEntry['type'];
+    title: string;
+    databaseId?: string;
+    effective: Date;
+    created: Date;
+  };
+  const candidates: Candidate[] = [];
+
+  // Source 1: workspace items (pages + databases). Effective change time is
+  // the max across the item row and its content/schema sub-row, since a
+  // content-only or schema-only edit never touches workspace_items.updated_at.
+  const itemRows = await db
+    .select({
+      id: workspaceItems.id,
+      type: workspaceItems.type,
+      title: workspaceItems.title,
+      databaseId: databases.id,
+      createdAt: workspaceItems.createdAt,
+      itemUpdatedAt: workspaceItems.updatedAt,
+      pageUpdatedAt: standalonePages.updatedAt,
+      dbUpdatedAt: databases.updatedAt,
+    })
+    .from(workspaceItems)
+    .leftJoin(standalonePages, eq(standalonePages.itemId, workspaceItems.id))
+    .leftJoin(databases, eq(databases.itemId, workspaceItems.id))
+    .where(eq(workspaceItems.workspaceId, workspaceId));
+
+  for (const r of itemRows) {
+    const stamps = [r.itemUpdatedAt, r.pageUpdatedAt, r.dbUpdatedAt].filter(isValidDate);
+    const effective = stamps.length ? new Date(Math.max(...stamps.map(d => d.getTime()))) : new Date(0);
+    candidates.push({
+      id: r.id,
+      type: r.type,
+      title: r.title,
+      ...(r.databaseId ? { databaseId: r.databaseId } : {}),
+      effective,
+      created: isValidDate(r.createdAt) ? r.createdAt : new Date(0),
+    });
+  }
+
+  // Source 2: database rows (each row is a page), scoped to this workspace via
+  // its databases — same in-memory guard as source 1.
+  const rowRows = await db
+    .select({
+      id: pages.id,
+      title: pages.title,
+      databaseId: pages.databaseId,
+      createdAt: pages.createdAt,
+      updatedAt: pages.updatedAt,
+    })
+    .from(pages)
+    .innerJoin(databases, eq(pages.databaseId, databases.id))
+    .innerJoin(workspaceItems, eq(databases.itemId, workspaceItems.id))
+    .where(eq(workspaceItems.workspaceId, workspaceId));
+
+  for (const r of rowRows) {
+    candidates.push({
+      id: r.id,
+      type: 'database_row',
+      title: r.title,
+      databaseId: r.databaseId,
+      effective: isValidDate(r.updatedAt) ? r.updatedAt : new Date(0),
+      created: isValidDate(r.createdAt) ? r.createdAt : new Date(0),
+    });
+  }
+
+  const changes: ChangeEntry[] = candidates
+    .filter(c => {
+      const t = c.effective.getTime();
+      return t > thresholdTs || (t === thresholdTs && c.id > thresholdId);
+    })
+    .map(c => ({
+      id: c.id,
+      type: c.type,
+      title: c.title,
+      changeType: (c.created.getTime() > thresholdTs ? 'created' : 'updated') as 'created' | 'updated',
+      updatedAt: c.effective.toISOString(),
+      ...(c.databaseId ? { databaseId: c.databaseId } : {}),
+    }));
+
+  // Source 3: deletion tombstones. Always written with a real Date (we control
+  // every insert), so a SQL-level threshold is safe here.
+  const tombstoneRows = await db
+    .select({ id: deletedItems.itemId, type: deletedItems.itemType, title: deletedItems.title, deletedAt: deletedItems.deletedAt })
+    .from(deletedItems)
+    .where(and(eq(deletedItems.workspaceId, workspaceId), gte(deletedItems.deletedAt, new Date(thresholdTs))));
+
+  for (const t of tombstoneRows) {
+    const ts = t.deletedAt.getTime();
+    if (ts === thresholdTs && t.id <= thresholdId) continue;
+    changes.push({ id: t.id, type: t.type, title: t.title ?? '', changeType: 'deleted', updatedAt: t.deletedAt.toISOString() });
+  }
+
+  changes.sort((a, b) => a.updatedAt.localeCompare(b.updatedAt) || a.id.localeCompare(b.id));
+
+  const hasMore = changes.length > limit;
+  const page = hasMore ? changes.slice(0, limit) : changes;
+  const last = page[page.length - 1];
+
+  return {
+    changes: page,
+    hasMore,
+    nextCursor: hasMore && last ? encodeChangeCursor(new Date(last.updatedAt).getTime(), last.id) : undefined,
+  };
 }
 
 export async function getAnyPageById(workspaceId: string, pageId: string) {
@@ -656,6 +821,7 @@ export async function createPageInWorkspace(
       : {};
 
     const id = crypto.randomUUID();
+    const now = new Date();
     await db.insert(pages).values({
       id,
       databaseId: resolvedDbId,
@@ -663,7 +829,9 @@ export async function createPageInWorkspace(
       content: input.content ?? '',
       properties: { title: input.title, ...resolvedProps },
       sortOrder: maxSort + 1,
-      ...(agentCtx ? { agentEditedAt: new Date(), agentTokenId: agentCtx.tokenId } : {}),
+      createdAt: now,
+      updatedAt: now,
+      ...(agentCtx ? { agentEditedAt: now, agentTokenId: agentCtx.tokenId } : {}),
     });
     return { id, type: 'db-row' as const };
   }
@@ -675,6 +843,7 @@ export async function createPageInWorkspace(
 
   const itemId = crypto.randomUUID();
   const pageId = crypto.randomUUID();
+  const now = new Date();
 
   await db.insert(workspaceItems).values({
     id: itemId,
@@ -683,6 +852,8 @@ export async function createPageInWorkspace(
     title: input.title,
     parentId: input.parentId ?? null,
     sortOrder: 0,
+    createdAt: now,
+    updatedAt: now,
     ...(input.iconColor ? { iconColor: input.iconColor } : {}),
   });
 
@@ -690,6 +861,8 @@ export async function createPageInWorkspace(
     id: pageId,
     itemId,
     content: input.content ?? '',
+    createdAt: now,
+    updatedAt: now,
   });
 
   // Auto-share child if parent is shared
@@ -730,14 +903,45 @@ async function autoShareIfParentShared(itemId: string, parentId: string, created
 
 // ── Internal recursive delete ─────────────────────────────────────────────────
 
-async function deleteWorkspaceItemAndDescendants(itemId: string, type: 'page' | 'database') {
+/**
+ * Best-effort tombstone insert so get_changes_since can report a deletion —
+ * a lost tombstone degrades delta-sync freshness, not data integrity, so
+ * failures are swallowed rather than surfaced to the caller of the delete.
+ * Exported so the web-UI delete actions (actions/workspace.ts, actions/page.ts)
+ * can write the same tombstones the MCP delete path does.
+ */
+export async function recordDeletionTombstone(
+  workspaceId: string,
+  itemId: string,
+  itemType: 'page' | 'database' | 'database_row',
+  title: string,
+): Promise<void> {
+  try {
+    await db.insert(deletedItems).values({
+      workspaceId,
+      itemId,
+      itemType,
+      title,
+      deletedAt: new Date(),
+    });
+  } catch {
+    // Swallow — see doc comment above.
+  }
+}
+
+async function deleteWorkspaceItemAndDescendants(
+  workspaceId: string,
+  itemId: string,
+  type: 'page' | 'database',
+  title: string,
+) {
   const children = await db
-    .select({ id: workspaceItems.id, type: workspaceItems.type })
+    .select({ id: workspaceItems.id, type: workspaceItems.type, title: workspaceItems.title })
     .from(workspaceItems)
     .where(eq(workspaceItems.parentId, itemId));
 
   for (const child of children) {
-    await deleteWorkspaceItemAndDescendants(child.id, child.type);
+    await deleteWorkspaceItemAndDescendants(workspaceId, child.id, child.type, child.title);
   }
 
   if (type === 'database') {
@@ -747,23 +951,24 @@ async function deleteWorkspaceItemAndDescendants(itemId: string, type: 'page' | 
   }
 
   await db.delete(workspaceItems).where(eq(workspaceItems.id, itemId));
+  await recordDeletionTombstone(workspaceId, itemId, type, title);
 }
 
 export async function deleteItemFromWorkspace(workspaceId: string, itemId: string) {
   const [item] = await db
-    .select({ workspaceId: workspaceItems.workspaceId, type: workspaceItems.type })
+    .select({ workspaceId: workspaceItems.workspaceId, type: workspaceItems.type, title: workspaceItems.title })
     .from(workspaceItems)
     .where(eq(workspaceItems.id, itemId))
     .limit(1);
 
   if (item) {
     if (item.workspaceId !== workspaceId) throw new Error('Access denied');
-    await deleteWorkspaceItemAndDescendants(itemId, item.type);
+    await deleteWorkspaceItemAndDescendants(workspaceId, itemId, item.type, item.title);
     return { deleted: true, type: item.type as 'page' | 'database' };
   }
 
   const [page] = await db
-    .select({ databaseId: pages.databaseId })
+    .select({ databaseId: pages.databaseId, title: pages.title })
     .from(pages)
     .where(eq(pages.id, itemId))
     .limit(1);
@@ -771,6 +976,7 @@ export async function deleteItemFromWorkspace(workspaceId: string, itemId: strin
   if (!page) throw new Error('Item not found');
   await assertDatabaseInWorkspace(page.databaseId, workspaceId);
   await db.delete(pages).where(eq(pages.id, itemId));
+  await recordDeletionTombstone(workspaceId, itemId, 'database_row', page.title);
   return { deleted: true, type: 'db-row' as const };
 }
 
@@ -837,6 +1043,8 @@ export async function createDatabaseInWorkspace(
     resolvedSchema.unshift({ id: 'title', name: 'Title', type: 'text' });
   }
 
+  const now = new Date();
+
   await db.insert(workspaceItems).values({
     id: itemId,
     workspaceId,
@@ -844,6 +1052,8 @@ export async function createDatabaseInWorkspace(
     title: input.name,
     parentId: input.parentId ?? null,
     sortOrder: 0,
+    createdAt: now,
+    updatedAt: now,
     ...(input.iconColor ? { iconColor: input.iconColor } : {}),
   });
 
@@ -853,6 +1063,8 @@ export async function createDatabaseInWorkspace(
     itemId,
     schema: resolvedSchema,
     views: null,
+    createdAt: now,
+    updatedAt: now,
   });
 
   return { id: itemId, databaseId: dbId };
