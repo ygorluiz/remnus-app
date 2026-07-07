@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, Plus, GripVertical } from 'lucide-react';
+import { X, Plus, GripVertical, Smile } from 'lucide-react';
 import {
   type SelectOption,
   type SelectOptionColor,
@@ -15,6 +15,8 @@ import {
   DEFAULT_STATUS_OPTIONS,
 } from '@/lib/types/properties';
 import { getPropertyIcon, selectCls } from './shared';
+import PageIcon from '../PageIcon';
+import IconPicker from '../IconPicker';
 
 interface PropertiesPanelProps {
   database: any;
@@ -54,6 +56,9 @@ export default function PropertiesPanel({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [colorPickerOpen]);
+
+  const [iconPickerOpen, setIconPickerOpen] = useState<string | null>(null);
+  const iconBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   return (
     <div className="flex flex-col">
@@ -137,6 +142,37 @@ export default function PropertiesPanel({
                     const pickerKey = `${idx}-${optIdx}`;
                     return (
                       <span key={optIdx} className="relative flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 border border-neutral-700/30 rounded" style={{ backgroundColor: c.bg, color: c.text }}>
+                        <button
+                          ref={(el) => { if (el) iconBtnRefs.current.set(pickerKey, el); else iconBtnRefs.current.delete(pickerKey); }}
+                          title="Icon"
+                          onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === pickerKey ? null : pickerKey); }}
+                          className="w-3 h-3 flex items-center justify-center shrink-0 mr-0.5 cursor-pointer opacity-70 hover:opacity-100"
+                        >
+                          {opt.icon
+                            ? <PageIcon icon={opt.icon} iconColor={opt.color} size={11} hideFallback />
+                            : <Smile size={10} />}
+                        </button>
+                        {iconPickerOpen === pickerKey && (
+                          <IconPicker
+                            currentIcon={opt.icon ?? null}
+                            currentIconColor={opt.color ?? 'default'}
+                            onSelect={(newIcon, newIconColor) => {
+                              const newOpts = [...(col.options || [])].map((o: string | SelectOption, i: number) => {
+                                if (i !== optIdx) return o;
+                                const base: SelectOption = { ...normalizeOption(o), icon: newIcon ?? undefined };
+                                // A lucide icon carries its own color choice from the picker — keep
+                                // the chip color in sync so the icon and its background match.
+                                if (newIcon?.startsWith('lucide:') && newIconColor) {
+                                  base.color = newIconColor as SelectOptionColor;
+                                }
+                                return base;
+                              });
+                              onUpdateColumn(idx, { options: newOpts });
+                            }}
+                            onClose={() => setIconPickerOpen(null)}
+                            anchorRef={{ current: iconBtnRefs.current.get(pickerKey) ?? null }}
+                          />
+                        )}
                         <button
                           title="Change color"
                           onClick={(e) => { e.stopPropagation(); setColorPickerOpen(colorPickerOpen === pickerKey ? null : pickerKey); }}

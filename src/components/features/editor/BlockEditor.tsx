@@ -101,6 +101,7 @@ import { BookmarkBlock } from './BookmarkBlockExtension';
 import { FileBlock } from './FileBlockExtension';
 import { PageLink } from './PageLinkNode';
 import { PageMention } from './PageMentionExtension';
+import { EmojiSuggestion } from './EmojiExtension';
 import { FencedCodeBlock } from './CodeBlockExtension';
 import { CollapsibleHeading, HeadingCollapsePlugin } from './HeadingCollapseExtension';
 import { IndentedParagraph, IndentShortcuts, IndentGlobal, MAX_INDENT } from './IndentExtension';
@@ -281,6 +282,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       FileBlock.configure({ workspaceId: workspaceId ?? null }),
       PageLink,
       PageMention,
+      EmojiSuggestion,
       FencedCodeBlock,
       ColorTextStyle,
       Color,

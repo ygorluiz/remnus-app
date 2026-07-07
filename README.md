@@ -22,7 +22,7 @@ Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)
 
 - **Pages** — Markdown editor with slash commands, nested sub-pages, and icons
 - **Databases** — Customizable columns, Table / Kanban / Calendar views, filters, sorts
-- **MCP Server** — 14 tools + 4 resources + 5 prompts, Streamable HTTP + SSE dual transport
+- **MCP Server** — 16 tools + 5 resources + 5 prompts, Streamable HTTP + SSE dual transport
 - **Agent auth** — One-click OAuth 2.1 + PKCE (RFC 7591 dynamic registration) for editors, or scoped read/write personal access tokens for headless agents
 - **Multi-workspace** — Invite members, role-based access (owner / member / viewer)
 - **Desktop app** — Tauri v2 shell for Windows, macOS, Linux
@@ -125,6 +125,8 @@ Swap `--client` for `cursor`, `vscode`, `codex`, `windsurf`, etc. Either way, th
 | `query_database` | read | Query rows with filters and pagination |
 | `list_members` | read | List workspace members with roles |
 | `query_audit_log` | read | Filtered agent activity log |
+| `get_changes_since` | read | Compact, chronological feed of what changed since a timestamp or cursor |
+| `get_related_pages` | read | A page's parent, children, outgoing links, backlinks, and database siblings |
 | `create_page` | write | Create a standalone page or database row |
 | `update_page` | write | Update title, content, or properties |
 | `bulk_update_pages` | write | Update multiple rows in one call |
@@ -132,6 +134,9 @@ Swap `--client` for `cursor`, `vscode`, `codex`, `windsurf`, etc. Either way, th
 | `move_item` | write | Move item to a new parent |
 | `create_database` | write | Create a database with custom schema |
 | `update_database_schema` | write | Add or remove columns |
+| `create_database_view` | write | Add a table/kanban/calendar view |
+| `update_database_view` | write | Rename a view or patch its config |
+| `delete_database_view` | write | Delete a saved view (requires `confirm: true`) |
 
 ## Tech Stack
 

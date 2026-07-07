@@ -116,7 +116,28 @@ export function agentConnectedEmail(name: string | null | undefined, unsubUrl: s
   };
 }
 
-// ── 5. Newsletter (admin-composed markdown) ───────────────────────────────────
+// ── 5. Account deletion confirm (instant, on request — purely transactional) ──
+
+export function accountDeletionConfirmEmail(name: string | null | undefined, confirmUrl: string): EmailContent {
+  const bodyHtml =
+    para(`Hi ${escapeHtml(firstName(name))},`) +
+    para(`We received a request to <strong style="color:${P.soft};">permanently delete</strong> your Remnus account. This link confirms it's really you before anything is removed.`) +
+    para(`Clicking through will permanently delete your profile, subscription, and any workspace where you're the only member — including its pages, databases, and files. Workspaces you share with teammates are left intact; you'll simply be removed from them.`) +
+    para(`This link expires in 30 minutes and can only be used once. If you didn't request this, just ignore this email — nothing will happen and your account stays exactly as it is.`);
+
+  return {
+    subject: 'Confirm account deletion',
+    html: renderEmailLayout({
+      preheader: 'Confirm you want to permanently delete your Remnus account — this link expires in 30 minutes.',
+      heading: 'Confirm account deletion',
+      bodyHtml,
+      cta: { label: 'Permanently delete my account', url: confirmUrl },
+      footerNote: 'You received this email because someone requested deletion of this Remnus account. This link expires in 30 minutes.',
+    }),
+  };
+}
+
+// ── 6. Newsletter (admin-composed markdown) ───────────────────────────────────
 
 // Email clients ignore stylesheets, so the markdown-rendered HTML gets its
 // styles injected inline per tag. Coarse but reliable across clients.

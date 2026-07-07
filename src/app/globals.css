@@ -867,6 +867,17 @@ body.block-marquee-active * {
   cursor: default !important;
 }
 
+/* Suppress native text selection while a custom resize-drag (e.g. the side
+   peek drawer's width handle) is in progress — a preventDefault() on the
+   handle's own mousedown doesn't reliably stop the browser from starting a
+   text selection once the pointer moves over surrounding page content during
+   the drag. */
+body.resize-drag-active,
+body.resize-drag-active * {
+  user-select: none !important;
+  cursor: col-resize !important;
+}
+
 /* ─────────────────────────────────────────────────────────
    Landing hero — "AI agent at work" animation.
    Per-agent storyline: a 24s master loop hands the board to each

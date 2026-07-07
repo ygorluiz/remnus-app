@@ -31,6 +31,6 @@ Always use the `www` host — the apex `remnus.com` redirects to `www.remnus.com
 | [Connect Your Editor](connect-editors.md) | Windsurf, Continue, Antigravity, Cline, Zed & more — ready configs + OAuth |
 | [Authentication](authentication.md) | Bearer tokens, scopes, rate limits |
 | [Read Tools](read-tools.md) | 9 read-only tools |
-| [Write Tools](write-tools.md) | 7 write tools |
+| [Write Tools](write-tools.md) | 10 write tools |
 | [Resources](resources.md) | 5 MCP resource templates |
 | [Prompts](prompts.md) | 5 built-in prompt templates |

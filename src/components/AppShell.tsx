@@ -25,6 +25,7 @@ export default function AppShell({
   demoBanner,
   items,
   isAdmin = false,
+  currentUserId,
   children,
 }: {
   sidebar: ReactNode;
@@ -33,6 +34,7 @@ export default function AppShell({
   items: WorkspaceItemRow[];
   activeWorkspaceId: string;
   isAdmin?: boolean;
+  currentUserId?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -166,7 +168,7 @@ export default function AppShell({
               {children}
             </div>
             <div className="flex-1 min-h-0 flex flex-col" style={showTabHost ? undefined : { display: 'none' }}>
-              <TabHost isAdmin={isAdmin} />
+              <TabHost isAdmin={isAdmin} currentUserId={currentUserId} />
             </div>
           </main>
         </div>

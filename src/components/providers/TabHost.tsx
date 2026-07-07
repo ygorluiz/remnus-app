@@ -12,11 +12,13 @@ import { invalidateTabHref } from '@/components/features/tabs/keys';
 const Pane = memo(function Pane({
   href,
   isAdmin,
+  currentUserId,
   isActive,
   suspended,
 }: {
   href: string;
   isAdmin: boolean;
+  currentUserId?: string;
   isActive: boolean;
   suspended: boolean;
 }) {
@@ -26,7 +28,7 @@ const Pane = memo(function Pane({
       style={{ display: isActive ? 'flex' : 'none' }}
       aria-hidden={!isActive}
     >
-      {suspended ? null : <TabPane href={href} isAdmin={isAdmin} />}
+      {suspended ? null : <TabPane href={href} isAdmin={isAdmin} currentUserId={currentUserId} />}
     </div>
   );
 });
@@ -42,7 +44,7 @@ const Pane = memo(function Pane({
  * Inert on web: `useTabs()` returns null (provider disabled), so this renders
  * nothing and the normal server-rendered route is shown instead.
  */
-export default function TabHost({ isAdmin }: { isAdmin: boolean }) {
+export default function TabHost({ isAdmin, currentUserId }: { isAdmin: boolean; currentUserId?: string }) {
   const tabs = useTabs();
   const activeHref = tabs ? (tabs.tabs.find((t) => t.id === tabs.activeId)?.href ?? null) : null;
   useActivePaneAutoRefresh(activeHref, !!tabs);
@@ -69,6 +71,7 @@ export default function TabHost({ isAdmin }: { isAdmin: boolean }) {
           key={tab.id}
           href={tab.href}
           isAdmin={isAdmin}
+          currentUserId={currentUserId}
           isActive={tab.id === activeId}
           suspended={suspendedIds.has(tab.id)}
         />

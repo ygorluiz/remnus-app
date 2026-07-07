@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect, useTransition, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -33,6 +33,36 @@ import { isTableGroupableColumn } from '@/lib/tableGrouping';
 function uid() {
   return crypto.randomUUID().slice(0, 8);
 }
+
+function formatYYYYMMDD(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Side peek drawer only gets an explicit resizable width at the `sm` breakpoint
+// (640px) and up — below that it's a full-width bottom sheet. Read via
+// useSyncExternalStore (not useEffect+useState) so the client value is
+// available on the very first render, avoiding a one-frame width flash.
+const DESKTOP_VIEWPORT_QUERY = '(min-width: 640px)';
+function subscribeDesktopViewport(onChange: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mql = window.matchMedia(DESKTOP_VIEWPORT_QUERY);
+  mql.addEventListener('change', onChange);
+  return () => mql.removeEventListener('change', onChange);
+}
+function getDesktopViewportSnapshot() {
+  return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(DESKTOP_VIEWPORT_QUERY).matches;
+}
+function getDesktopViewportServerSnapshot() {
+  return false;
+}
+
+const SIDE_PEEK_MIN_WIDTH = 420;
+const SIDE_PEEK_MAX_WIDTH = 1100;
+const SIDE_PEEK_DEFAULT_WIDTH = 772; // previous fixed max-w-2xl (672px) + 100px
+const SIDE_PEEK_WIDTH_STORAGE_KEY = 'remnus_side_peek_width';
 
 function defaultTableView(name = 'Table'): DatabaseView {
   return {
@@ -233,10 +263,12 @@ export default function DatabaseView({
   database,
   initialPages,
   members = [],
+  currentUserId,
 }: {
   database: any;
   initialPages: any[];
   members?: WorkspaceMember[];
+  currentUserId?: string;
 }) {
   const t = useTranslations('Database');
   const tPage = useTranslations('Page');
@@ -273,6 +305,38 @@ export default function DatabaseView({
   const dbButtonRef = useRef<HTMLButtonElement>(null);
   const [dbName, setDbName] = useState<string>(database.name ?? '');
   const savedDbName = useRef<string>(database.name ?? '');
+
+  // Side peek drawer width — resizable, persisted across sessions.
+  const isDesktopViewport = useSyncExternalStore(subscribeDesktopViewport, getDesktopViewportSnapshot, getDesktopViewportServerSnapshot);
+  const [sidePeekWidth, setSidePeekWidth] = useState(SIDE_PEEK_DEFAULT_WIDTH);
+  useEffect(() => {
+    const saved = Number(localStorage.getItem(SIDE_PEEK_WIDTH_STORAGE_KEY));
+    if (saved && !isNaN(saved)) {
+      setSidePeekWidth(Math.min(SIDE_PEEK_MAX_WIDTH, Math.max(SIDE_PEEK_MIN_WIDTH, saved)));
+    }
+  }, []);
+  const handleSidePeekResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.body.classList.add('resize-drag-active');
+    const startX = e.clientX;
+    const startWidth = sidePeekWidth;
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      // The drawer is anchored to the right edge, so dragging left grows it.
+      const deltaX = startX - moveEvent.clientX;
+      setSidePeekWidth(Math.min(SIDE_PEEK_MAX_WIDTH, Math.max(SIDE_PEEK_MIN_WIDTH, startWidth + deltaX)));
+    };
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.classList.remove('resize-drag-active');
+      setSidePeekWidth((w) => {
+        localStorage.setItem(SIDE_PEEK_WIDTH_STORAGE_KEY, String(w));
+        return w;
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   useEffect(() => {
     if (dbName === savedDbName.current) return;
@@ -442,7 +506,7 @@ export default function DatabaseView({
     }
   };
 
-  const handleAddRow = (initialProperties?: Record<string, any>) => {
+  const handleAddRow = (initialProperties?: Record<string, any>, opts?: { openAfterCreate?: boolean }) => {
     const filterProps = getDefaultPropertiesFromFilters(config.filters || [], schema || []);
     const mergedProperties = { ...filterProps, ...initialProperties };
 
@@ -483,6 +547,7 @@ export default function DatabaseView({
         setLocalPages((prev) =>
           prev.map((p) => (p.id === tempId ? { ...p, id: realId } : p))
         );
+        if (opts?.openAfterCreate) handlePageClick(realId);
       } catch {
         setLocalPages((prev) => prev.filter((p) => p.id !== tempId));
       } finally {
@@ -493,6 +558,20 @@ export default function DatabaseView({
         });
       }
     });
+  };
+
+  // The header "New" button (unlike each view's own inline add-row trigger)
+  // has no surrounding context — no day cell, no kanban column — so without a
+  // date it was landing rows nowhere obvious (invisible on a Calendar view
+  // until opened directly). Prefill today's date when the schema has one
+  // (the active Calendar view's own dateCol, else the first date/datetime
+  // column) and always open the new row right after creation.
+  const handleHeaderNewClick = () => {
+    const dateColId = calendarConfig
+      ? calendarConfig.dateCol
+      : schema.find((c: any) => c.type === 'date' || c.type === 'datetime')?.id;
+    const initialProperties = dateColId ? { [dateColId]: formatYYYYMMDD(new Date()) } : undefined;
+    handleAddRow(initialProperties, { openAfterCreate: true });
   };
 
   const handleDeletePage = async (pageId: string) => {
@@ -872,7 +951,7 @@ export default function DatabaseView({
               }
             }}
             placeholder={tPage('untitled')}
-            className="w-full bg-transparent text-white font-bold text-2xl sm:text-3xl focus:outline-none placeholder:text-neutral-700 tracking-tight leading-none py-1"
+            className="w-full bg-transparent text-neutral-100 font-bold text-2xl sm:text-3xl focus:outline-none placeholder:text-neutral-700 tracking-tight leading-none py-1"
           />
         </div>
       </div>
@@ -925,7 +1004,7 @@ export default function DatabaseView({
 
           {/* New Page button — hidden on mobile (available via bottom nav) */}
           <button
-            onClick={handleAddRow}
+            onClick={handleHeaderNewClick}
             disabled={pendingPageIds.size > 0}
             className="hidden sm:flex items-center gap-1.5 bg-neutral-100 text-neutral-900 hover:bg-white px-4 py-1.5 transition-colors text-sm font-medium disabled:opacity-50 ml-1 cursor-pointer rounded"
           >
@@ -1016,7 +1095,7 @@ export default function DatabaseView({
               cardBgCol={kanbanConfig.cardBgCol}
               groupColBg={kanbanConfig.groupColBg ?? false}
               onUpdatePageProperties={handleUpdatePageProperties}
-              onCreatePage={handleAddRow}
+              onCreatePage={(initialProperties) => handleAddRow(initialProperties, { openAfterCreate: true })}
               defaultPageIcon={config.defaultPageIcon}
               defaultPageIconColor={config.defaultPageIconColor}
               onPageIconChange={handlePageIconChange}
@@ -1025,6 +1104,7 @@ export default function DatabaseView({
           ) : calendarConfig ? (
             <CalendarView
               database={database}
+              currentUserId={currentUserId}
               pages={processedPages}
               dateCol={calendarConfig.dateCol}
               viewMode={calendarConfig.viewMode}
@@ -1040,7 +1120,7 @@ export default function DatabaseView({
               showPropertyLabels={calendarConfig.showPropertyLabels ?? true}
               propertyTextClamp={calendarConfig.propertyTextClamp ?? 'truncate'}
               onUpdatePageProperties={handleUpdatePageProperties}
-              onCreatePage={handleAddRow}
+              onCreatePage={(initialProperties) => handleAddRow(initialProperties, { openAfterCreate: true })}
               defaultPageIcon={config.defaultPageIcon}
               defaultPageIconColor={config.defaultPageIconColor}
               onPageIconChange={handlePageIconChange}
@@ -1246,7 +1326,17 @@ export default function DatabaseView({
 
           {/* Side Peek Drawer */}
           {(config.openBehavior ?? 'center') === 'side' && (
-            <div className="absolute z-50 flex flex-col overflow-hidden bg-neutral-850 inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t border-neutral-800 sm:left-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:w-full sm:max-w-2xl sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l sm:modal-shadow animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
+            <div
+              className="absolute z-50 flex flex-col overflow-hidden bg-neutral-850 inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t border-neutral-800 sm:left-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l sm:modal-shadow animate-in slide-in-from-bottom sm:slide-in-from-right duration-300"
+              style={isDesktopViewport ? { width: sidePeekWidth, maxWidth: '95vw' } : undefined}
+            >
+              {isDesktopViewport && (
+                <div
+                  onMouseDown={handleSidePeekResizeStart}
+                  className="absolute left-0 top-0 bottom-0 w-1.5 -ml-0.5 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500/70 transition-colors z-20"
+                  title={t('resizePanel')}
+                />
+              )}
               {/* Peek Sticky Header */}
               <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                 <div className="flex items-center gap-3">

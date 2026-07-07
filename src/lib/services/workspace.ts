@@ -410,13 +410,13 @@ export async function getDatabaseSchema(workspaceId: string, databaseId: string)
   const resolvedId = await assertDatabaseInWorkspace(databaseId, workspaceId);
 
   const [dbRecord] = await db
-    .select({ schema: databases.schema, name: databases.name })
+    .select({ schema: databases.schema, name: databases.name, views: databases.views })
     .from(databases)
     .where(eq(databases.id, resolvedId))
     .limit(1);
 
   if (!dbRecord) throw new Error('Database not found');
-  return { name: dbRecord.name, schema: dbRecord.schema };
+  return { name: dbRecord.name, schema: dbRecord.schema, views: seedDefaultViews(dbRecord.views as any[] | null) };
 }
 
 export async function queryDatabaseRows(
@@ -1337,6 +1337,132 @@ export async function updateDatabaseSchemaById(
     .where(eq(databases.id, resolvedId));
 
   return { updated: true, schema: newSchema };
+}
+
+function resolveColumnRef(schema: any[], ref: string | undefined): any | undefined {
+  if (!ref) return undefined;
+  return schema.find((c: any) => c.id === ref) ?? schema.find((c: any) => c.name?.toLowerCase() === ref.toLowerCase());
+}
+
+// The client (DatabaseView.tsx) never persists the implicit default Table view
+// it shows for a database with no saved `views` — so a fresh database reads back
+// `views: null`. Seed that same default before appending, so the first
+// MCP-created view lands alongside a Table view exactly like a human adding a
+// second view through the UI would, instead of silently replacing it.
+function seedDefaultViews(existing: any[] | null | undefined): any[] {
+  if (Array.isArray(existing) && existing.length > 0) return existing;
+  return [{
+    id: crypto.randomUUID().slice(0, 8),
+    name: 'Table',
+    config: { type: 'table', columnOrder: [], hiddenColumns: [], filters: [], sorts: [], openBehavior: 'center' },
+  }];
+}
+
+export async function createDatabaseView(
+  workspaceId: string,
+  databaseId: string,
+  input: { name: string; type: 'table' | 'kanban' | 'calendar'; groupByCol?: string; dateCol?: string; icon?: string; iconColor?: string },
+) {
+  const resolvedId = await assertDatabaseInWorkspace(databaseId, workspaceId);
+
+  const [dbRecord] = await db
+    .select({ schema: databases.schema, views: databases.views })
+    .from(databases)
+    .where(eq(databases.id, resolvedId))
+    .limit(1);
+  if (!dbRecord) throw new Error('Database not found');
+
+  const schema: any[] = dbRecord.schema ?? [];
+  let config: Record<string, any>;
+
+  if (input.type === 'table') {
+    config = { type: 'table', columnOrder: [], hiddenColumns: [], filters: [], sorts: [], openBehavior: 'center' };
+  } else if (input.type === 'kanban') {
+    const groupCol = resolveColumnRef(schema, input.groupByCol)
+      ?? schema.find((c: any) => c.type === 'status') ?? schema.find((c: any) => c.type === 'select');
+    if (!groupCol) throw new Error('A kanban view needs a select or status column to group by. Add one first, or pass groupByCol.');
+    config = { type: 'kanban', groupByCol: groupCol.id, groupOrder: [], filters: [], sorts: [], openBehavior: 'center' };
+  } else if (input.type === 'calendar') {
+    const dateColumn = resolveColumnRef(schema, input.dateCol)
+      ?? schema.find((c: any) => c.type === 'date' || c.type === 'datetime');
+    if (!dateColumn) throw new Error('A calendar view needs a date or datetime column. Add one first, or pass dateCol.');
+    config = { type: 'calendar', dateCol: dateColumn.id, viewMode: 'month', filters: [], sorts: [], openBehavior: 'center' };
+  } else {
+    throw new Error(`Unknown view type: ${input.type}`);
+  }
+
+  const newView = {
+    id: crypto.randomUUID().slice(0, 8),
+    name: input.name,
+    config,
+    ...(input.icon ? { icon: input.icon } : {}),
+    ...(input.iconColor ? { iconColor: input.iconColor } : {}),
+  };
+  const nextViews = [...seedDefaultViews(dbRecord.views as any[] | null), newView];
+
+  await db.update(databases).set({ views: nextViews, updatedAt: new Date() }).where(eq(databases.id, resolvedId));
+  return { created: true, view: newView };
+}
+
+export async function updateDatabaseView(
+  workspaceId: string,
+  databaseId: string,
+  viewId: string,
+  patch: { name?: string; icon?: string; iconColor?: string; config?: Record<string, any> },
+) {
+  const resolvedId = await assertDatabaseInWorkspace(databaseId, workspaceId);
+
+  const [dbRecord] = await db
+    .select({ views: databases.views })
+    .from(databases)
+    .where(eq(databases.id, resolvedId))
+    .limit(1);
+  if (!dbRecord) throw new Error('Database not found');
+
+  const views = seedDefaultViews(dbRecord.views as any[] | null);
+  const idx = views.findIndex((v: any) => v.id === viewId);
+  if (idx === -1) throw new Error(`View not found: ${viewId}`);
+
+  const current = views[idx];
+  const nextView = {
+    ...current,
+    ...(patch.name !== undefined ? { name: patch.name } : {}),
+    ...(patch.icon !== undefined ? { icon: patch.icon } : {}),
+    ...(patch.iconColor !== undefined ? { iconColor: patch.iconColor } : {}),
+    // The view type is fixed at creation — a patch can only tweak fields within it.
+    config: patch.config ? { ...current.config, ...patch.config, type: current.config.type } : current.config,
+  };
+  const nextViews = [...views];
+  nextViews[idx] = nextView;
+
+  await db.update(databases).set({ views: nextViews, updatedAt: new Date() }).where(eq(databases.id, resolvedId));
+  return { updated: true, view: nextView };
+}
+
+export async function deleteDatabaseView(
+  workspaceId: string,
+  databaseId: string,
+  viewId: string,
+  confirm: boolean,
+) {
+  const resolvedId = await assertDatabaseInWorkspace(databaseId, workspaceId);
+
+  const [dbRecord] = await db
+    .select({ views: databases.views })
+    .from(databases)
+    .where(eq(databases.id, resolvedId))
+    .limit(1);
+  if (!dbRecord) throw new Error('Database not found');
+
+  const views = seedDefaultViews(dbRecord.views as any[] | null);
+  const target = views.find((v: any) => v.id === viewId);
+  if (!target) throw new Error(`View not found: ${viewId}`);
+  if (views.length <= 1) throw new Error('Cannot delete the only remaining view — a database must keep at least one.');
+  if (!confirm) throw new Error(`This will permanently delete the view "${target.name}". Set confirm: true to proceed.`);
+
+  const nextViews = views.filter((v: any) => v.id !== viewId);
+  await db.update(databases).set({ views: nextViews, updatedAt: new Date() }).where(eq(databases.id, resolvedId));
+  return { deleted: true };
 }
 
 async function resolvePropertiesBySchema(

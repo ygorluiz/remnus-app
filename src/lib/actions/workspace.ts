@@ -11,8 +11,10 @@ import { getTranslations } from 'next-intl/server';
 import { publish } from '@/lib/realtime/publish';
 import { isCloudinaryUrl, deleteCloudinaryImage } from '@/lib/cloudinary';
 import { checkCanCreateWorkspace } from '@/lib/services/billing';
-import { recordDeletionTombstone } from '@/lib/services/workspace';
+import { recordDeletionTombstone, getRelatedPages } from '@/lib/services/workspace';
 import { syncPageLinks, removePageLinksFor } from '@/lib/services/pageLinks';
+
+export type { RelatedPageRef } from '@/lib/services/workspace';
 
 export interface CreateDatabaseOptions {
   schema?: SchemaColumn[];
@@ -320,6 +322,14 @@ export async function getAllWorkspaceItems(): Promise<WorkspaceItemRow[]> {
     .orderBy(asc(workspaceItems.sortOrder), asc(workspaceItems.createdAt));
 
   return rows.map((r) => ({ ...r, databaseId: r.databaseId ?? null }));
+}
+
+// Page's knowledge-graph neighborhood (parent, children, links, siblings) —
+// web-facing wrapper around the cookie-free service used by the get_related_pages
+// MCP tool, for the in-app backlinks panel.
+export async function getPageRelations(workspaceId: string, pageId: string) {
+  await assertWorkspaceAccess(workspaceId);
+  return getRelatedPages(workspaceId, pageId);
 }
 
 // If parent is shared, automatically share the new child with the same settings.

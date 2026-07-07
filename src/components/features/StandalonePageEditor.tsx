@@ -11,6 +11,7 @@ import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import SaveStatus, { type SaveState } from './SaveStatus';
 import ShareModal from '@/components/share/ShareModal';
+import PageBacklinksPanel from './PageBacklinksPanel';
 import { useTabNav } from '@/components/providers/TabsContext';
 import { tabKeys } from './tabs/keys';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
@@ -288,7 +289,7 @@ export default function StandalonePageEditor({
               }
             }}
             placeholder={t('untitled')}
-            className="w-full bg-transparent text-white font-bold text-2xl sm:text-4xl focus:outline-none placeholder:text-neutral-700 tracking-tight py-1"
+            className="w-full bg-transparent text-neutral-100 font-bold text-2xl sm:text-4xl focus:outline-none placeholder:text-neutral-700 tracking-tight py-1"
           />
         </div>
       </div>
@@ -304,6 +305,8 @@ export default function StandalonePageEditor({
         initialSubItems={subItems}
         onImmediateSave={saveContent}
       />
+
+      <PageBacklinksPanel workspaceId={item.workspaceId} pageId={item.id} />
     </div>
   );
 }

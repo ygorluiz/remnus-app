@@ -21,7 +21,7 @@ import { tabKeys } from './keys';
  *
  * `href` is normalized: `/page/<id>` · `/db/<id>` · `/db/<id>/<pageId>`.
  */
-export default function TabPane({ href, isAdmin }: { href: string; isAdmin: boolean }) {
+export default function TabPane({ href, isAdmin, currentUserId }: { href: string; isAdmin: boolean; currentUserId?: string }) {
   const parts = href.split('?')[0].split('#')[0].split('/').filter(Boolean);
 
   // Key by id so an in-place navigation within the SAME tab (e.g. /db/x → /db/z)
@@ -34,7 +34,7 @@ export default function TabPane({ href, isAdmin }: { href: string; isAdmin: bool
     return <DatabaseRowPane key={`row:${parts[1]}:${parts[2]}`} dbId={parts[1]} pageId={parts[2]} isAdmin={isAdmin} />;
   }
   if (parts[0] === 'db' && parts[1]) {
-    return <DatabasePane key={`db:${parts[1]}`} dbId={parts[1]} />;
+    return <DatabasePane key={`db:${parts[1]}`} dbId={parts[1]} currentUserId={currentUserId} />;
   }
   return <PaneFallback />;
 }
@@ -83,7 +83,7 @@ function StandalonePagePane({ itemId, isAdmin }: { itemId: string; isAdmin: bool
 }
 
 // ── /db/<id> ─────────────────────────────────────────────────────────────────
-function DatabasePane({ dbId }: { dbId: string }) {
+function DatabasePane({ dbId, currentUserId }: { dbId: string; currentUserId?: string }) {
   const dbQ = useQuery({
     queryKey: tabKeys.database(dbId),
     queryFn: () => getDatabase(dbId),
@@ -104,7 +104,7 @@ function DatabasePane({ dbId }: { dbId: string }) {
 
   return (
     <div className="flex-1 overflow-hidden bg-neutral-850 flex flex-col">
-      <DatabaseView database={dbQ.data} initialPages={pagesQ.data ?? []} members={membersQ.data ?? []} />
+      <DatabaseView database={dbQ.data} initialPages={pagesQ.data ?? []} members={membersQ.data ?? []} currentUserId={currentUserId} />
     </div>
   );
 }

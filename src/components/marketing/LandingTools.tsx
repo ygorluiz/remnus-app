@@ -9,6 +9,8 @@ const TOOLS = [
   { scope: 'read',  tool: 'query_database',          descKey: 'bridgeToolsDescQueryDatabase' },
   { scope: 'read',  tool: 'list_members',            descKey: 'bridgeToolsDescListMembers' },
   { scope: 'read',  tool: 'query_audit_log',         descKey: 'bridgeToolsDescQueryAuditLog' },
+  { scope: 'read',  tool: 'get_changes_since',       descKey: 'bridgeToolsDescGetChangesSince' },
+  { scope: 'read',  tool: 'get_related_pages',       descKey: 'bridgeToolsDescGetRelatedPages' },
   { scope: 'write', tool: 'create_page',             descKey: 'bridgeToolsDescCreatePage' },
   { scope: 'write', tool: 'update_page',             descKey: 'bridgeToolsDescUpdatePage' },
   { scope: 'write', tool: 'bulk_update_pages',       descKey: 'bridgeToolsDescBulkUpdate' },
@@ -20,6 +22,7 @@ const TOOLS = [
 
 const RESOURCES = [
   { uri: 'remnus://workspace/{id}/schema', mimeType: 'application/json', descKey: 'bridgeResourcesDescWorkspace' },
+  { uri: 'remnus://workspace/{id}/digest', mimeType: 'text/markdown',    descKey: 'bridgeResourcesDescDigest' },
   { uri: 'remnus://page/{id}',             mimeType: 'text/markdown',     descKey: 'bridgeResourcesDescPage' },
   { uri: 'remnus://database/{id}/schema',  mimeType: 'application/json', descKey: 'bridgeResourcesDescDatabase' },
   { uri: 'remnus://audit-log/recent',      mimeType: 'application/json', descKey: 'bridgeResourcesDescAuditLog' },

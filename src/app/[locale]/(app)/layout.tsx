@@ -84,6 +84,7 @@ export default async function AppGroupLayout({
           items={items}
           activeWorkspaceId={activeWorkspace?.id ?? ''}
           isAdmin={session.user.role === 'admin'}
+          currentUserId={currentUser.id}
           sidebar={
             <WorkspaceSidebar
               key="workspace-sidebar"

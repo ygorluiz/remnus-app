@@ -385,7 +385,7 @@ export const emailLog = sqliteTable('email_log', {
   id:         text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId:     text('user_id').references(() => users.id, { onDelete: 'set null' }),
   email:      text('email').notNull(),
-  kind:       text('kind', { enum: ['welcome', 'inactivity', 'agent_nudge', 'agent_connected', 'newsletter', 'test'] }).notNull(),
+  kind:       text('kind', { enum: ['welcome', 'inactivity', 'agent_nudge', 'agent_connected', 'account_deletion', 'newsletter', 'test'] }).notNull(),
   campaignId: text('campaign_id').references(() => emailCampaigns.id, { onDelete: 'set null' }),
   subject:    text('subject').notNull(),
   status:     text('status', { enum: ['sent', 'failed'] }).notNull(),
@@ -435,4 +435,19 @@ export const pageLinks = sqliteTable('page_links', {
   index('page_links_from_idx').on(table.fromId),
   index('page_links_to_idx').on(table.toId),
   uniqueIndex('page_links_from_to_kind_idx').on(table.fromId, table.toId, table.linkKind),
+]);
+
+// Short-lived, single-use, DB-backed (not stateless-HMAC like the unsubscribe
+// token — a destructive action needs an expiry + a way to mark it consumed)
+// confirmation token for GDPR self-service account deletion. requestAccountDeletion()
+// mints one + emails a confirm link; confirmAccountDeletion() re-validates
+// (unused, unexpired, session matches userId) before actually deleting. Migration 0038.
+export const accountDeletionTokens = sqliteTable('account_deletion_tokens', {
+  token:     text('token').primaryKey(),
+  userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  usedAt:    integer('used_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+}, (table) => [
+  index('account_deletion_tokens_user_id_idx').on(table.userId),
 ]);

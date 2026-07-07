@@ -2,13 +2,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2, Monitor, ChevronDown, Check } from 'lucide-react';
+import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2, Monitor, ChevronDown, Check, AlertTriangle, Mail } from 'lucide-react';
 import AvatarCropModal from './AvatarCropModal';
 import FlagIcon from './FlagIcon';
 import ImportTab from './workspace-settings/ImportTab';
 import DesktopTab from './workspace-settings/DesktopTab';
 import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
 import { updateMyProfile } from '@/lib/actions/auth';
+import { requestAccountDeletion } from '@/lib/actions/account';
 import { getMyTier } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
 import BillingModal from './BillingModal';
@@ -410,6 +411,120 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
   );
 }
 
+// ── Danger zone: GDPR self-service account deletion ─────────────────────────────
+
+function DeleteAccountSection({ email }: { email?: string | null }) {
+  const t = useTranslations('UserSettings');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const canConfirm = confirmText.trim().toUpperCase() === 'DELETE';
+
+  async function handleRequest() {
+    if (!canConfirm || sending) return;
+    setSending(true);
+    setError('');
+    const result = await requestAccountDeletion();
+    setSending(false);
+    if (result?.error) {
+      setError(result.error);
+    } else {
+      setSent(true);
+    }
+  }
+
+  function closeConfirm() {
+    if (sending) return;
+    setShowConfirm(false);
+    setConfirmText('');
+    setError('');
+    setSent(false);
+  }
+
+  return (
+    <div className="border border-red-500/20 bg-red-500/5 p-4 rounded-lg space-y-3">
+      <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider">{t('dangerZoneTitle')}</h4>
+      <p className="text-xs text-neutral-400 leading-relaxed">{t('deleteAccountHint')}</p>
+      <button
+        onClick={() => setShowConfirm(true)}
+        className="text-xs bg-red-400 hover:bg-red-500 text-white font-semibold py-1.5 px-3 rounded-md transition-colors cursor-pointer"
+      >
+        {t('deleteAccountButton')}
+      </button>
+
+      {showConfirm && (
+        <>
+          <div className="fixed inset-0 z-300 bg-black/60" onClick={closeConfirm} />
+          <div className="fixed z-300 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-sm bg-neutral-850 border border-neutral-800 rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            {sent ? (
+              <>
+                <div className="flex items-start gap-2.5">
+                  <Mail size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-100 mb-1.5">{t('deleteAccountEmailSentTitle')}</p>
+                    <p className="text-xs text-neutral-400 leading-relaxed">{t('deleteAccountEmailSentBody', { email: email || '' })}</p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeConfirm}
+                    className="px-4 py-2 text-xs font-medium text-neutral-400 hover:text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer"
+                  >
+                    {t('deleteAccountCancel')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-100 mb-1.5">{t('deleteAccountConfirmTitle')}</p>
+                    <p className="text-xs text-neutral-400 leading-relaxed">{t('deleteAccountConfirmBody')}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">
+                    {t('deleteAccountConfirmInputLabel')}
+                  </label>
+                  <input
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleRequest(); }}
+                    placeholder="DELETE"
+                    autoFocus
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-md text-neutral-100 px-3 py-2 text-sm outline-none focus:border-red-500/60 transition-colors"
+                  />
+                </div>
+                {error && <p className="text-xs text-red-400 leading-relaxed">{error}</p>}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={closeConfirm}
+                    disabled={sending}
+                    className="px-4 py-2 text-xs font-medium text-neutral-400 hover:text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {t('deleteAccountCancel')}
+                  </button>
+                  <button
+                    onClick={handleRequest}
+                    disabled={!canConfirm || sending}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-red-500/80 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    {sending ? t('deleteAccountSending') : t('deleteAccountRequestButton')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function UserSettingsModal({ currentUser, onClose }: UserSettingsModalProps) {
   const t = useTranslations('UserSettings');
   const tBilling = useTranslations('Billing');
@@ -611,6 +726,8 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
                     </div>
                   </div>
                 </div>
+
+                {!isDemo && <DeleteAccountSection email={currentUser.email} />}
           </div>
           )}
 

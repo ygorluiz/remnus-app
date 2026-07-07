@@ -126,13 +126,14 @@ export function registerReadTools(server: McpServer, ctx: TokenContext) {
   server.registerTool(
     'get_database_schema',
     {
-      description: 'Get only the column schema of a database, without fetching any rows. Use this to inspect column names, types, and select options before querying.',
+      description: 'Get the column schema and saved views of a database, without fetching any rows. Use this to inspect column names/types/options before querying, or view ids/configs before calling create_database_view / update_database_view / delete_database_view.',
       inputSchema: {
         databaseId: z.string().describe('Database ID (from list_workspace or search)'),
       },
       outputSchema: z.object({
         name: z.string().describe('Database name'),
         schema: z.array(z.any()).nullable().describe('Column definitions (id, name, type, options)'),
+        views: z.array(z.any()).describe('Saved views (id, name, config — table/kanban/calendar), always at least one'),
       }).passthrough(),
       annotations: { title: 'Get database schema', readOnlyHint: true, openWorldHint: false },
     },

@@ -65,7 +65,7 @@ Get the content of a workspace page or database row. Auto-detects the type — n
 
 ## get_database_schema
 
-Get only the column schema of a database, without fetching rows. Use this before `query_database` to learn column names and IDs.
+Get the column schema and saved views of a database, without fetching rows. Use this before `query_database` to learn column names and IDs, or before `create_database_view` / `update_database_view` / `delete_database_view` to see existing view ids and config shape.
 
 **Parameters**
 
@@ -73,7 +73,7 @@ Get only the column schema of a database, without fetching rows. Use this before
 |---|---|---|---|
 | `databaseId` | string | ✓ | Database ID (from `list_workspace` or `search_workspace`) |
 
-**Returns** — `{ name, schema: [{ id, name, type, options? }] }`
+**Returns** — `{ name, schema: [{ id, name, type, options? }], views: [{ id, name, config, icon?, iconColor? }] }` (`views` always has at least one entry — a database with no saved views implicitly has a default Table view).
 
 ---
 

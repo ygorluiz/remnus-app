@@ -8,6 +8,9 @@ import {
   moveItemInWorkspace,
   createDatabaseInWorkspace,
   updateDatabaseSchemaById,
+  createDatabaseView,
+  updateDatabaseView,
+  deleteDatabaseView,
   getAnyPageById,
 } from '@/lib/services/workspace';
 import { publish } from '@/lib/realtime/publish';
@@ -270,6 +273,119 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         return { content: [{ type: 'text' as const, text }], structuredContent: result };
       } catch (err) {
         await logActivity(ctx, 'update_database_schema', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
+      }
+    },
+  );
+
+  const viewSchema = z.object({
+    id: z.string().describe('View ID'),
+    name: z.string().describe('View name'),
+    config: z.record(z.string(), z.any()).describe('View configuration (shape depends on config.type)'),
+    icon: z.string().optional(),
+    iconColor: z.string().optional(),
+  }).passthrough();
+
+  server.registerTool(
+    'create_database_view',
+    {
+      description: 'Add a new saved view (table, kanban, or calendar) to a database. Kanban groups by a select/status column (auto-picks one if omitted); calendar places cards by a date/datetime column (auto-picks one if omitted). Use get_database_schema first to see column ids/names.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID (from list_workspace or search)'),
+        name: z.string().describe('Name for the new view (e.g. "By Assignee")'),
+        type: z.enum(['table', 'kanban', 'calendar']).describe('View type'),
+        groupByCol: z.string().optional().describe('Kanban only: select/status column id or name to group by. Auto-picks the first status/select column if omitted.'),
+        dateCol: z.string().optional().describe('Calendar only: date/datetime column id or name to place cards on. Auto-picks the first date/datetime column if omitted.'),
+        icon: z.string().optional().describe('Emoji, "lucide:Name", or image URL for the view tab'),
+        iconColor: z.string().optional().describe('Theme color for a lucide icon'),
+      },
+      outputSchema: z.object({
+        created: z.boolean(),
+        view: viewSchema,
+      }).passthrough(),
+      annotations: { title: 'Create database view', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ databaseId, name, type, groupByCol, dateCol, icon, iconColor }) => {
+      if (ctx.scope !== 'write') {
+        await logActivity(ctx, 'create_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: READ_ONLY_ERROR }], isError: true };
+      }
+      try {
+        const result = await createDatabaseView(ctx.workspaceId, databaseId, { name, type, groupByCol, dateCol, icon, iconColor });
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'create_database_view', 'success', 'database', databaseId, text);
+        publish({ scope: 'database', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
+      } catch (err) {
+        await logActivity(ctx, 'create_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
+      }
+    },
+  );
+
+  server.registerTool(
+    'update_database_view',
+    {
+      description: 'Rename a database view, change its icon, or patch fields within its existing config (filters, sorts, groupByCol, dateCol, cardProperties, etc — merged into the current config). The view\'s type (table/kanban/calendar) cannot be changed; create a new view instead. Use get_database_schema to find view ids and current config shape.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID (from list_workspace or search)'),
+        viewId: z.string().describe('View ID (from get_database_schema)'),
+        name: z.string().optional().describe('New view name'),
+        icon: z.string().optional().describe('Emoji, "lucide:Name", or image URL'),
+        iconColor: z.string().optional().describe('Theme color for a lucide icon'),
+        config: z.record(z.string(), z.any()).optional().describe('Partial config fields to merge in, e.g. { "groupByCol": "col_abc123" } or { "filters": [...] }'),
+      },
+      outputSchema: z.object({
+        updated: z.boolean(),
+        view: viewSchema,
+      }).passthrough(),
+      annotations: { title: 'Update database view', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ databaseId, viewId, name, icon, iconColor, config }) => {
+      if (ctx.scope !== 'write') {
+        await logActivity(ctx, 'update_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: READ_ONLY_ERROR }], isError: true };
+      }
+      try {
+        const result = await updateDatabaseView(ctx.workspaceId, databaseId, viewId, { name, icon, iconColor, config });
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'update_database_view', 'success', 'database', databaseId, text);
+        publish({ scope: 'database', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
+      } catch (err) {
+        await logActivity(ctx, 'update_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
+      }
+    },
+  );
+
+  server.registerTool(
+    'delete_database_view',
+    {
+      description: 'Delete a saved view from a database. Requires confirm: true. A database must always keep at least one view.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID (from list_workspace or search)'),
+        viewId: z.string().describe('View ID (from get_database_schema)'),
+        confirm: z.boolean().optional().default(false).describe('Set to true to confirm deletion.'),
+      },
+      outputSchema: z.object({
+        deleted: z.boolean(),
+      }).passthrough(),
+      annotations: { title: 'Delete database view', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ databaseId, viewId, confirm }) => {
+      if (ctx.scope !== 'write') {
+        await logActivity(ctx, 'delete_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: READ_ONLY_ERROR }], isError: true };
+      }
+      try {
+        const result = await deleteDatabaseView(ctx.workspaceId, databaseId, viewId, confirm ?? false);
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'delete_database_view', 'success', 'database', databaseId, text);
+        publish({ scope: 'database', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
+      } catch (err) {
+        await logActivity(ctx, 'delete_database_view', 'error', 'database', databaseId);
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
       }
     },

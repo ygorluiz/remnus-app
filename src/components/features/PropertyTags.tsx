@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import {
   type SelectOption,
@@ -9,6 +11,24 @@ import {
   getOptionColorByValue,
 } from '@/lib/types/properties';
 import { useMember, type WorkspaceMember } from './MembersContext';
+import PageIcon from './PageIcon';
+
+// ── Select / multi-select option icon ───────────────────────────────────────
+
+/** The option's configured icon (emoji/lucide/upload), tinted by its chip color. Null when unset. */
+export function OptionIcon({
+  value,
+  options,
+  size = 12,
+}: {
+  value: string;
+  options?: (string | SelectOption)[];
+  size?: number;
+}) {
+  const opt = (options ?? []).map(normalizeOption).find((o) => o.value === value);
+  if (!opt?.icon) return null;
+  return <PageIcon icon={opt.icon} iconColor={opt.color} size={size} hideFallback className="shrink-0" />;
+}
 
 // ── Status ───────────────────────────────────────────────────────────────────
 
@@ -100,7 +120,7 @@ export function UserAvatar({
 }) {
   const dim = { width: size, height: size };
   if (member?.image) {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return (
       <img
         src={member.image}
@@ -129,6 +149,78 @@ export function UserChip({ userId, avatarSize = 16 }: { userId: string; avatarSi
     <span className="inline-flex items-center gap-1.5 max-w-full align-middle text-xs text-neutral-100">
       <UserAvatar member={member} size={avatarSize} />
       <span className="truncate">{member ? member.name || member.email : t('unknownUser')}</span>
+    </span>
+  );
+}
+
+/**
+ * Avatar-only stack for `user`/`multi_user` cells (no name text) — used on
+ * calendar cards where space is tight. The viewer's own avatar (when among
+ * the assignees) gets a ring in the theme's accent color (`--color-blue-500`,
+ * which is redefined per `[data-theme]` block in globals.css, so it's already
+ * theme-aware for free). Hovering the whole stack shows one tooltip listing
+ * every assignee's avatar + name, stacked — not per-avatar tooltips.
+ */
+export function UserAvatarStack({
+  value,
+  currentUserId,
+  size = 16,
+}: {
+  value: unknown;
+  currentUserId?: string | null;
+  size?: number;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const ids = Array.isArray(value) ? (value as string[]) : value ? [String(value)] : [];
+  if (ids.length === 0) return null;
+
+  const handleEnter = () => {
+    const rect = anchorRef.current?.getBoundingClientRect();
+    if (rect) setCoords({ top: rect.top - 6, left: rect.left });
+    setHovered(true);
+  };
+
+  return (
+    <div
+      ref={anchorRef}
+      className="relative inline-flex items-center gap-1"
+      onMouseEnter={handleEnter}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {ids.map((id) => (
+        <StackedAvatar key={id} userId={id} isSelf={!!currentUserId && id === currentUserId} size={size} />
+      ))}
+      {hovered && coords && createPortal(
+        <div
+          className="fixed z-9999 -translate-y-full bg-neutral-900 border border-neutral-800 rounded-md shadow-xl py-1.5 px-2 flex flex-col gap-1.5 pointer-events-none"
+          style={{ top: coords.top, left: coords.left }}
+        >
+          {ids.map((id) => <TooltipRow key={id} userId={id} />)}
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+function StackedAvatar({ userId, isSelf, size }: { userId: string; isSelf: boolean; size: number }) {
+  const member = useMember(userId);
+  return (
+    <span className={`shrink-0 rounded-full ${isSelf ? 'p-0.5 border-2 border-blue-500' : ''}`}>
+      <UserAvatar member={member} size={size} />
+    </span>
+  );
+}
+
+function TooltipRow({ userId }: { userId: string }) {
+  const t = useTranslations('Database');
+  const member = useMember(userId);
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-neutral-100 whitespace-nowrap">
+      <UserAvatar member={member} size={16} />
+      {member ? member.name || member.email : t('unknownUser')}
     </span>
   );
 }

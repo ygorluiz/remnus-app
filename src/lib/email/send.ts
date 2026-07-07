@@ -16,7 +16,7 @@ import { db } from '@/db';
 import { emailLog, users } from '@/db/schema';
 import { SITE_URL } from './theme';
 
-export type EmailKind = 'welcome' | 'inactivity' | 'agent_nudge' | 'agent_connected' | 'newsletter' | 'test';
+export type EmailKind = 'welcome' | 'inactivity' | 'agent_nudge' | 'agent_connected' | 'account_deletion' | 'newsletter' | 'test';
 
 // ── Transport (lazy singleton) ────────────────────────────────────────────────
 
@@ -94,7 +94,10 @@ export interface MailableUser {
 export function canReceiveEmail(user: MailableUser, kind: EmailKind): boolean {
   if (!user.email || user.role === 'demo') return false;
   if (user.emailSuppressed) return false;
-  if (user.emailUnsubscribedAt && kind !== 'welcome') return false;
+  // welcome + account_deletion are purely transactional — an unsubscribe from
+  // marketing mail must never block a security-critical confirmation the user
+  // themselves just requested.
+  if (user.emailUnsubscribedAt && kind !== 'welcome' && kind !== 'account_deletion') return false;
   return true;
 }
 

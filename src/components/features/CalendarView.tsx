@@ -10,12 +10,13 @@ import { useContextMenu, type MenuItem } from './ContextMenu';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import AgentEditBadge from './AgentEditBadge';
-import { StatusChip, UserChip, UserTags } from './PropertyTags';
+import { StatusChip, UserAvatarStack, OptionIcon } from './PropertyTags';
 import { updatePageIcon } from '@/lib/actions/page';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface CalendarViewProps {
   database: any;
+  currentUserId?: string;
   pages: any[];
   dateCol: string;
   viewMode: 'month' | 'week';
@@ -98,6 +99,7 @@ const WEEKDAYS_MON = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
 export default function CalendarView({
   database,
+  currentUserId,
   pages,
   dateCol,
   viewMode,
@@ -134,7 +136,6 @@ export default function CalendarView({
 
   // Card dragging states
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
-  const [isCardDragReady, setIsCardDragReady] = useState(false);
   const [dragOverDayStr, setDragOverDayStr] = useState<string | null>(null);
   const [activeMenuCardId, setActiveMenuCardId] = useState<string | null>(null);
   const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
@@ -359,7 +360,6 @@ export default function CalendarView({
                   }
                   setDragOverDayStr(null);
                   setDraggedCardId(null);
-                  setIsCardDragReady(false);
                 }}
                 className={`relative border-r border-b border-neutral-800/80 p-1 lg:p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
                   isDragOver
@@ -419,7 +419,7 @@ export default function CalendarView({
                       key={page.id}
                       onClick={() => onCardClick(page.id)}
                       onContextMenu={(e) => cardMenu.open(e, buildCardMenu(page.id))}
-                      draggable={isCardDragReady}
+                      draggable={true}
                       onDragStart={(e) => {
                         e.stopPropagation();
                         setDraggedCardId(page.id);
@@ -427,8 +427,7 @@ export default function CalendarView({
                         e.dataTransfer.effectAllowed = 'move';
                       }}
                       onDragEnd={() => {
-                        setDraggedCardId(page.id);
-                        setIsCardDragReady(false);
+                        setDraggedCardId(null);
                       }}
                       className={`relative py-1 lg:py-2.5 px-1 lg:px-2 cursor-pointer transition-colors group flex flex-col select-none overflow-hidden rounded ${
                         draggedCardId === page.id ? 'opacity-25' : ''
@@ -458,8 +457,6 @@ export default function CalendarView({
                             e.dataTransfer.setData('text/plain', page.id);
                             e.dataTransfer.effectAllowed = 'move';
                           }}
-                          onMouseDown={() => setIsCardDragReady(true)}
-                          onMouseLeave={() => setIsCardDragReady(false)}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (activeMenuCardId === page.id) {
@@ -575,23 +572,23 @@ export default function CalendarView({
                             if (c.type === 'select' && typeof val === 'string') {
                               const sc = getOptionColorByValue(c.options || [], val);
                               display = (
-                                <span className="text-[9px] px-1.5 py-px rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-px rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                  <OptionIcon value={val} options={c.options} size={9} />
                                   {val}
                                 </span>
                               );
                             } else if (c.type === 'status' && typeof val === 'string') {
                               display = <StatusChip value={val} options={c.options} iconSize={10} />;
-                            } else if (c.type === 'user') {
-                              display = <UserChip userId={String(val)} avatarSize={14} />;
-                            } else if (c.type === 'multi_user' && Array.isArray(val)) {
-                              display = <UserTags value={val} avatarSize={14} wrap={propertyTextClamp === 'wrap'} />;
+                            } else if (c.type === 'user' || c.type === 'multi_user') {
+                              display = <UserAvatarStack value={val} currentUserId={currentUserId} size={16} />;
                             } else if (c.type === 'multi_select' && Array.isArray(val)) {
                               display = (
                                 <span className={`flex gap-0.5 ${propertyTextClamp === 'wrap' ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>
                                   {val.map((optVal: string) => {
                                     const mc = getOptionColorByValue(c.options || [], optVal);
                                     return (
-                                      <span key={optVal} className="text-[9px] px-1.5 py-px rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                      <span key={optVal} className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-px rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                        <OptionIcon value={optVal} options={c.options} size={9} />
                                         {optVal}
                                       </span>
                                     );

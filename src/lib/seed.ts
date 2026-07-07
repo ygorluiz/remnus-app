@@ -1,5 +1,6 @@
 import { db } from '@/db';
 import { workspaces, workspaceItems, standalonePages, databases, pages, workspaceMembers, agentTokens, agentActivity } from '@/db/schema';
+import { syncPageLinks } from '@/lib/services/pageLinks';
 
 export async function createSeedWorkspace(userId: string, userName?: string | null) {
   const workspaceName = userName ? `${userName} Workspace` : 'Personal Workspace';
@@ -452,6 +453,7 @@ async function createRichWorkspaceData(
   const howBuiltItem = crypto.randomUUID();           // child page of Start Here; id needed for the inline link below
   const productSpecItem = crypto.randomUUID();
   const howBuiltCb = `<div data-cb-id="${howBuiltItem}" data-cb-dbid="" data-cb-type="page" data-cb-title="How This Was Built" data-cb-icon="🛠️" data-cb-iconcolor="" data-cb-link=""></div>`;
+  const startHereContent = START_HERE_CONTENT.replace('{{HOW_BUILT_CB}}', howBuiltCb);
 
   // ── Sprint Board database ───────────────────────────────────────────────────
 
@@ -596,7 +598,7 @@ async function createRichWorkspaceData(
       ? [db.insert(agentTokens).values({ id: demoTokenId, workspaceId: ws1, name: 'Claude AI Agent', agentName: 'claude-code', tokenPrefix: 'rmns-demo', tokenHash: 'demo-seed-not-valid', scope: 'write', createdBy: userId, createdAt: h(-48), lastUsedAt: h(-1) })]
       : []),
     db.insert(workspaceItems).values({ id: startHereItem, workspaceId: ws1, type: 'page', title: 'Start Here', sortOrder: 0, icon: '⭐', iconColor: 'default', createdAt: now, updatedAt: now }),
-    db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: startHereItem, content: START_HERE_CONTENT.replace('{{HOW_BUILT_CB}}', howBuiltCb), createdAt: now, updatedAt: now }),
+    db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: startHereItem, content: startHereContent, createdAt: now, updatedAt: now }),
     db.insert(workspaceItems).values({ id: productSpecItem, workspaceId: ws1, type: 'page', title: 'Product Spec', sortOrder: 1, icon: '🎨', iconColor: 'default', createdAt: now, updatedAt: now }),
     db.insert(standalonePages).values({ id: crypto.randomUUID(), itemId: productSpecItem, content: PRODUCT_SPEC_CONTENT, createdAt: now, updatedAt: now }),
     db.insert(workspaceItems).values({ id: howBuiltItem, workspaceId: ws1, type: 'page', title: 'How This Was Built', parentId: startHereItem, sortOrder: 0, icon: '🛠️', iconColor: 'default', createdAt: now, updatedAt: now }),
@@ -608,6 +610,12 @@ async function createRichWorkspaceData(
   ];
 
   await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
+
+  // Seed content is inserted directly (not through the action-layer write paths),
+  // so it bypasses their syncPageLinks() call — without this, the "Start Here" ->
+  // "How This Was Built" child-block link never enters the page_links graph and
+  // get_related_pages/the backlinks panel stay empty on every freshly seeded workspace.
+  await syncPageLinks(ws1, startHereItem, 'page', startHereContent);
 }
 
 export async function createDemoSeedData(userId: string, userName?: string | null) {

@@ -7,13 +7,14 @@ import { useTranslations } from 'next-intl';
 import { useZoom } from '@/components/providers/ZoomProvider';
 import InlineCellEditor from './InlineCellEditor';
 import { useContextMenu, type MenuItem } from './ContextMenu';
-import { StatusChip, UserChip, UserTags } from './PropertyTags';
+import { StatusChip, UserChip, UserTags, OptionIcon } from './PropertyTags';
 import { GripHorizontal, GripVertical, Settings, Trash2, Type, List, Hash, AlignLeft, Calendar, Clock, Tags, CircleDashed, User, Users, Plus, Copy, EyeOff, ArrowUp, ArrowDown, Filter, X, RotateCcw, CheckSquare, Square, ExternalLink, ArrowUpRight, Maximize2, Link2 } from 'lucide-react';
 import type { ViewFilter, ViewSort, FilterOperator } from '@/lib/types/views';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import AgentEditBadge from './AgentEditBadge';
 import { updatePageIcon } from '@/lib/actions/page';
+import { updateDatabaseSchema } from '@/lib/actions/database';
 import { ConfirmDialog } from './ConfirmDialog';
 
 // ── Coarse-pointer (touch) detection via useSyncExternalStore ───────────────────
@@ -304,6 +305,19 @@ export default function TableLayout({
     if (!page) return;
     const nextProps = { ...page.properties, [colId]: newVal };
     onUpdatePageProperties(pageId, nextProps);
+  };
+
+  // Persists a newly-typed select/multi_select option onto the column's schema
+  // (server revalidates `/db/[id]`, so `database.schema` picks it up shortly after).
+  const handleCreateOption = (colId: string, value: string) => {
+    const col = schema.find((c) => c.id === colId);
+    if (!col) return;
+    const existing = (col.options || []).map((o: string | SelectOption) => normalizeOption(o).value);
+    if (existing.includes(value)) return;
+    const nextSchema = schema.map((c) =>
+      c.id === colId ? { ...c, options: [...(c.options || []), { value, color: 'default' }] } : c
+    );
+    updateDatabaseSchema(database.id, nextSchema);
   };
 
   // Column DnD
@@ -629,6 +643,11 @@ export default function TableLayout({
                             value={val}
                             onSave={(newVal) => handleCellSave(page.id, col.id, newVal)}
                             onClose={() => setEditingCell(null)}
+                            onCreateOption={
+                              col.type === 'select' || col.type === 'multi_select'
+                                ? (v) => handleCreateOption(col.id, v)
+                                : undefined
+                            }
                           />
                         ) : col.id === 'title' ? (
                           <div className="flex items-center gap-2 overflow-hidden">
@@ -668,7 +687,7 @@ export default function TableLayout({
                                 e.stopPropagation();
                                 setEditingCell({ pageId: page.id, colId: col.id });
                               }}
-                              className="font-medium text-neutral-100 hover:text-white cursor-text hover:underline truncate"
+                              className="font-medium text-neutral-100 cursor-text hover:underline truncate"
                             >
                               {val || tPage('untitled')}
                             </span>
@@ -685,7 +704,8 @@ export default function TableLayout({
                           val ? (() => {
                             const c = getOptionColorByValue(col.options || [], val);
                             return (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+                              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+                                <OptionIcon value={val} options={col.options} />
                                 {val}
                               </span>
                             );
@@ -698,7 +718,8 @@ export default function TableLayout({
                               val.map((optVal: string) => {
                                 const c = getOptionColorByValue(col.options || [], optVal);
                                 return (
-                                  <span key={optVal} className="text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                                  <span key={optVal} className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: c.bg, color: c.text }}>
+                                    <OptionIcon value={optVal} options={col.options} />
                                     {optVal}
                                   </span>
                                 );
