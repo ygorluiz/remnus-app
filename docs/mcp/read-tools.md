@@ -1,6 +1,6 @@
 # Read Tools
 
-All 8 read tools are available to every token regardless of scope.
+All 9 read tools are available to every token regardless of scope.
 
 ---
 
@@ -187,3 +187,43 @@ Get a compact, chronological list of everything that changed in the workspace si
 **What counts as a change** — a page's own content edit, a database's schema edit, a database row's title/content/property edit, or moving/renaming an item. Deletions are tracked separately as tombstones, so a deleted item still shows up here (with its last known title) even though it no longer exists.
 
 **Note on old data** — a handful of rows created before this app consistently stamped timestamps may have no reliable "last changed" time; those are only ever reported once, on a full crawl (no `since`/`cursor`), and won't reappear on later incremental calls.
+
+---
+
+## get_related_pages
+
+Get a page's knowledge-graph neighborhood in one compact call: its parent, child pages, outgoing links (pages its body references), backlinks (pages whose bodies reference it), and — for database rows — sibling rows in the same database. Titles and IDs only, no page bodies, so orienting around a page costs a fraction of re-reading it and its neighbors; follow up with `get_page` on the ones that matter.
+
+The link graph is derived from page content: inline `@`-mention links and child blocks (both embedded sub-pages and "Link to page" references) are extracted on every save, so the graph is always current — no separate indexing step.
+
+**Parameters**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `pageId` | string | ✓ | | Page ID — a standalone page, database, or database row (same IDs `get_page` accepts) |
+
+**Returns** — `{ page, parent, children, outgoingLinks, backlinks, siblings }`:
+
+| Field | Type | Description |
+|---|---|---|
+| `page` | object | The subject — `{ id, title, type }` |
+| `parent` | object? | Parent item (for a database row, the database it belongs to); `null` at workspace root |
+| `children` | array | Items nested under this page in the sidebar tree |
+| `outgoingLinks` | array | Pages this page's body references (children already listed above are excluded) |
+| `backlinks` | array | Pages whose bodies reference this page (the parent is excluded) |
+| `siblings` | object? | `{ total, items: [{ id, title }] }` — other rows in the same database (first 10); only for database rows, `null` otherwise |
+
+Every entry in `parent`/`children`/`outgoingLinks`/`backlinks` is `{ id, title, type, databaseId?, linkKind? }` — `type` is `page` \| `database` \| `database_row`, `databaseId` is present on database entries (pass it to `query_database` / `get_database_schema`), and `linkKind` says how the reference was made (`page_link` = inline `@`-mention, `child_block` = embedded or linked block).
+
+```json
+{
+  "page": { "id": "…", "title": "Auth Refactor Plan", "type": "page" },
+  "parent": { "id": "…", "title": "Engineering", "type": "page" },
+  "children": [ { "id": "…", "title": "Session Notes", "type": "page" } ],
+  "outgoingLinks": [ { "id": "…", "title": "Login Bug", "type": "database_row", "linkKind": "page_link" } ],
+  "backlinks": [ { "id": "…", "title": "Sprint Board", "type": "database", "databaseId": "…", "linkKind": "child_block" } ],
+  "siblings": null
+}
+```
+
+**Typical use** — after `search_workspace` or `get_changes_since` surfaces a page, call `get_related_pages` before reading bodies: it tells you what context exists around the page (specs it links to, tasks that reference it, its place in the tree) so you only `get_page` the neighbors you actually need.

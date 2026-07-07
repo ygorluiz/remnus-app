@@ -12,6 +12,7 @@ import { publish } from '@/lib/realtime/publish';
 import { isCloudinaryUrl, deleteCloudinaryImage } from '@/lib/cloudinary';
 import { checkCanCreateWorkspace } from '@/lib/services/billing';
 import { recordDeletionTombstone } from '@/lib/services/workspace';
+import { syncPageLinks, removePageLinksFor } from '@/lib/services/pageLinks';
 
 export interface CreateDatabaseOptions {
   schema?: SchemaColumn[];
@@ -388,6 +389,7 @@ export async function createStandalonePage(
     updatedAt: now,
   });
 
+  if (options?.initialContent) await syncPageLinks(workspaceId, itemId, 'page', options.initialContent);
   if (parentId) autoShareIfParentShared(itemId, parentId, workspaceId, userId);
 
   revalidatePath('/', 'layout');
@@ -456,6 +458,8 @@ export async function updateStandalonePageContent(itemId: string, content: strin
   await db.update(standalonePages)
     .set({ content, updatedAt: new Date() })
     .where(eq(standalonePages.itemId, itemId));
+
+  if (item[0]) await syncPageLinks(item[0].workspaceId, itemId, 'page', content);
 }
 
 export async function updateWorkspaceItemTitle(itemId: string, title: string) {
@@ -566,6 +570,7 @@ async function deleteWorkspaceItemRecursive(workspaceId: string, itemId: string,
 
   await db.delete(workspaceItems).where(eq(workspaceItems.id, itemId));
   await recordDeletionTombstone(workspaceId, itemId, type, title);
+  await removePageLinksFor(itemId);
 }
 
 async function getWorkspaceIdForParent(parentId: string): Promise<string | null> {
@@ -648,6 +653,7 @@ export async function duplicateWorkspaceItem(itemId: string) {
       createdAt: now,
       updatedAt: now,
     });
+    if (sp[0]?.content) await syncPageLinks(workspaceId, newItemId, 'page', sp[0].content);
     revalidatePath('/', 'layout');
     publish({ scope: 'sidebar', workspaceId, actorId: userId });
     return { type: 'page' as const, itemId: newItemId };
@@ -668,8 +674,9 @@ export async function duplicateWorkspaceItem(itemId: string) {
 
     const existingPages = await db.select().from(pages).where(eq(pages.databaseId, dbRow[0].id));
     for (const p of existingPages) {
+      const newRowId = crypto.randomUUID();
       await db.insert(pages).values({
-        id: crypto.randomUUID(),
+        id: newRowId,
         databaseId: newDbId,
         title: p.title,
         content: p.content,
@@ -680,6 +687,7 @@ export async function duplicateWorkspaceItem(itemId: string) {
         createdAt: now,
         updatedAt: now,
       });
+      if (p.content) await syncPageLinks(workspaceId, newRowId, 'database_row', p.content);
     }
 
     revalidatePath('/', 'layout');

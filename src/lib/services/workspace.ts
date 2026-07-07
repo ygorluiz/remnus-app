@@ -16,8 +16,10 @@ import {
   oauthAccessTokens,
   sharedPages,
   deletedItems,
+  pageLinks,
 } from '@/db/schema';
-import { eq, and, or, like, asc, desc, gte, lte, sql } from 'drizzle-orm';
+import { eq, ne, and, or, like, asc, desc, gte, lte, sql, inArray } from 'drizzle-orm';
+import { syncPageLinks, removePageLinksFor } from './pageLinks';
 
 // ── Cursor pagination utilities ───────────────────────────────────────────────
 
@@ -783,6 +785,216 @@ export async function getAnyPageById(workspaceId: string, pageId: string) {
   return getDatabasePageById(workspaceId, pageId);
 }
 
+// ── Related pages (link graph) ────────────────────────────────────────────────
+
+export type RelatedPageRef = {
+  id: string;
+  title: string;
+  type: 'page' | 'database' | 'database_row';
+  databaseId?: string;
+  linkKind?: 'page_link' | 'child_block';
+};
+
+/**
+ * One-call neighborhood view of a page: parent, children, outgoing links,
+ * backlinks (from the page_links graph), and — for database rows — sibling
+ * rows in the same database. All referenced ids are usable with get_page /
+ * query_database, so an agent can walk the graph without re-reading bodies.
+ */
+export async function getRelatedPages(workspaceId: string, pageId: string) {
+  // Resolve the subject — workspace item first, then database row.
+  const [item] = await db
+    .select({
+      id: workspaceItems.id,
+      workspaceId: workspaceItems.workspaceId,
+      type: workspaceItems.type,
+      title: workspaceItems.title,
+      parentId: workspaceItems.parentId,
+    })
+    .from(workspaceItems)
+    .where(eq(workspaceItems.id, pageId))
+    .limit(1);
+
+  let subject: { id: string; title: string; type: 'page' | 'database' | 'database_row'; parentId: string | null };
+  let rowDatabaseId: string | null = null; // subject is a row of this database
+  let itemDatabaseId: string | null = null; // subject is a database item; its databases.id
+
+  if (item) {
+    if (item.workspaceId !== workspaceId) throw new Error('Access denied');
+    subject = { id: item.id, title: item.title, type: item.type, parentId: item.parentId };
+    if (item.type === 'database') {
+      const [d] = await db
+        .select({ id: databases.id })
+        .from(databases)
+        .where(eq(databases.itemId, item.id))
+        .limit(1);
+      itemDatabaseId = d?.id ?? null;
+    }
+  } else {
+    const [row] = await db
+      .select({ id: pages.id, title: pages.title, databaseId: pages.databaseId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+      .limit(1);
+    if (!row) throw new Error('Page not found');
+    await assertDatabaseInWorkspace(row.databaseId, workspaceId);
+    subject = { id: row.id, title: row.title, type: 'database_row', parentId: null };
+    rowDatabaseId = row.databaseId;
+  }
+
+  // Parent — for a row it's the owning database; for an item it's parentId,
+  // which can point at another item OR at a database row (rows can nest items).
+  let parent: RelatedPageRef | null = null;
+  if (subject.type === 'database_row') {
+    const [p] = await db
+      .select({ id: workspaceItems.id, title: workspaceItems.title, dbId: databases.id })
+      .from(databases)
+      .innerJoin(workspaceItems, eq(databases.itemId, workspaceItems.id))
+      .where(eq(databases.id, rowDatabaseId!))
+      .limit(1);
+    if (p) parent = { id: p.id, title: p.title, type: 'database', databaseId: p.dbId };
+  } else if (subject.parentId) {
+    const [p] = await db
+      .select({ id: workspaceItems.id, title: workspaceItems.title, type: workspaceItems.type, workspaceId: workspaceItems.workspaceId })
+      .from(workspaceItems)
+      .where(eq(workspaceItems.id, subject.parentId))
+      .limit(1);
+    if (p && p.workspaceId === workspaceId) {
+      parent = { id: p.id, title: p.title, type: p.type };
+    } else if (!p) {
+      const [pr] = await db
+        .select({ id: pages.id, title: pages.title, ws: workspaceItems.workspaceId })
+        .from(pages)
+        .innerJoin(databases, eq(pages.databaseId, databases.id))
+        .innerJoin(workspaceItems, eq(databases.itemId, workspaceItems.id))
+        .where(eq(pages.id, subject.parentId))
+        .limit(1);
+      if (pr && pr.ws === workspaceId) parent = { id: pr.id, title: pr.title, type: 'database_row' };
+    }
+  }
+
+  const children: RelatedPageRef[] = (
+    await db
+      .select({ id: workspaceItems.id, title: workspaceItems.title, type: workspaceItems.type })
+      .from(workspaceItems)
+      .where(and(eq(workspaceItems.parentId, subject.id), eq(workspaceItems.workspaceId, workspaceId)))
+      .orderBy(asc(workspaceItems.sortOrder), asc(workspaceItems.id))
+      .limit(100)
+  ).map(c => ({ id: c.id, title: c.title, type: c.type }));
+
+  const outgoingRows = await db
+    .select({ toId: pageLinks.toId, linkKind: pageLinks.linkKind })
+    .from(pageLinks)
+    .where(and(eq(pageLinks.fromId, subject.id), eq(pageLinks.workspaceId, workspaceId)))
+    .limit(100);
+
+  // A database target may be stored under either id form (databases.id from a
+  // /db/<dbId> href, workspace item id from a childBlock) — match both.
+  const subjectIds = itemDatabaseId ? [subject.id, itemDatabaseId] : [subject.id];
+  const backlinkRows = await db
+    .select({ fromId: pageLinks.fromId, linkKind: pageLinks.linkKind })
+    .from(pageLinks)
+    .where(and(inArray(pageLinks.toId, subjectIds), eq(pageLinks.workspaceId, workspaceId)))
+    .limit(100);
+
+  // Resolve stored link ids (any of the three id forms) to workspace-scoped
+  // refs. Dangling ids (deleted targets) and foreign-workspace ids drop out.
+  const resolveMany = async (ids: string[]): Promise<Map<string, RelatedPageRef>> => {
+    const out = new Map<string, RelatedPageRef>();
+    if (ids.length === 0) return out;
+
+    const items = await db
+      .select({ id: workspaceItems.id, title: workspaceItems.title, type: workspaceItems.type })
+      .from(workspaceItems)
+      .where(and(inArray(workspaceItems.id, ids), eq(workspaceItems.workspaceId, workspaceId)));
+    for (const i of items) out.set(i.id, { id: i.id, title: i.title, type: i.type });
+
+    const dbItemIds = items.filter(i => i.type === 'database').map(i => i.id);
+    if (dbItemIds.length) {
+      const dbs = await db
+        .select({ id: databases.id, itemId: databases.itemId })
+        .from(databases)
+        .where(inArray(databases.itemId, dbItemIds));
+      for (const d of dbs) {
+        const ref = d.itemId ? out.get(d.itemId) : undefined;
+        if (ref) ref.databaseId = d.id;
+      }
+    }
+
+    let missing = ids.filter(id => !out.has(id));
+    if (missing.length) {
+      const dbRows = await db
+        .select({ dbId: databases.id, itemId: workspaceItems.id, title: workspaceItems.title })
+        .from(databases)
+        .innerJoin(workspaceItems, eq(databases.itemId, workspaceItems.id))
+        .where(and(inArray(databases.id, missing), eq(workspaceItems.workspaceId, workspaceId)));
+      for (const d of dbRows) out.set(d.dbId, { id: d.itemId, title: d.title, type: 'database', databaseId: d.dbId });
+    }
+
+    missing = ids.filter(id => !out.has(id));
+    if (missing.length) {
+      const rowRows = await db
+        .select({ id: pages.id, title: pages.title })
+        .from(pages)
+        .innerJoin(databases, eq(pages.databaseId, databases.id))
+        .innerJoin(workspaceItems, eq(databases.itemId, workspaceItems.id))
+        .where(and(inArray(pages.id, missing), eq(workspaceItems.workspaceId, workspaceId)));
+      for (const r of rowRows) out.set(r.id, { id: r.id, title: r.title, type: 'database_row' });
+    }
+
+    return out;
+  };
+
+  const refMap = await resolveMany([
+    ...new Set([...outgoingRows.map(r => r.toId), ...backlinkRows.map(r => r.fromId)]),
+  ]);
+
+  // Children are already reported under `children`; the parent embedding this
+  // page is already reported as `parent` — skip both to keep categories disjoint.
+  const childIds = new Set(children.map(c => c.id));
+  const outgoingLinks: RelatedPageRef[] = [];
+  const seenOut = new Set<string>();
+  for (const r of outgoingRows) {
+    const ref = refMap.get(r.toId);
+    if (!ref || ref.id === subject.id || childIds.has(ref.id) || seenOut.has(ref.id)) continue;
+    seenOut.add(ref.id);
+    outgoingLinks.push({ ...ref, linkKind: r.linkKind });
+  }
+
+  const backlinks: RelatedPageRef[] = [];
+  const seenBack = new Set<string>();
+  for (const r of backlinkRows) {
+    const ref = refMap.get(r.fromId);
+    if (!ref || ref.id === subject.id || (parent && ref.id === parent.id) || seenBack.has(ref.id)) continue;
+    seenBack.add(ref.id);
+    backlinks.push({ ...ref, linkKind: r.linkKind });
+  }
+
+  let siblings: { total: number; items: { id: string; title: string }[] } | null = null;
+  if (subject.type === 'database_row' && rowDatabaseId) {
+    const [cnt] = await db
+      .select({ n: sql<number>`count(*)` })
+      .from(pages)
+      .where(eq(pages.databaseId, rowDatabaseId));
+    const sibRows = await db
+      .select({ id: pages.id, title: pages.title })
+      .from(pages)
+      .where(and(eq(pages.databaseId, rowDatabaseId), ne(pages.id, subject.id)))
+      .orderBy(asc(pages.sortOrder), asc(pages.id))
+      .limit(10);
+    siblings = { total: Math.max(0, Number(cnt?.n ?? 1) - 1), items: sibRows };
+  }
+
+  return {
+    page: { id: subject.id, title: subject.title, type: subject.type },
+    parent,
+    children,
+    outgoingLinks,
+    backlinks,
+    siblings,
+  };
+}
+
 export async function bulkUpdatePages(
   workspaceId: string,
   updates: { pageId: string; title?: string; content?: string; properties?: Record<string, unknown> }[],
@@ -833,6 +1045,7 @@ export async function createPageInWorkspace(
       updatedAt: now,
       ...(agentCtx ? { agentEditedAt: now, agentTokenId: agentCtx.tokenId } : {}),
     });
+    if (input.content) await syncPageLinks(workspaceId, id, 'database_row', input.content);
     return { id, type: 'db-row' as const };
   }
 
@@ -864,6 +1077,8 @@ export async function createPageInWorkspace(
     createdAt: now,
     updatedAt: now,
   });
+
+  if (input.content) await syncPageLinks(workspaceId, itemId, 'page', input.content);
 
   // Auto-share child if parent is shared
   if (input.parentId) {
@@ -952,6 +1167,7 @@ async function deleteWorkspaceItemAndDescendants(
 
   await db.delete(workspaceItems).where(eq(workspaceItems.id, itemId));
   await recordDeletionTombstone(workspaceId, itemId, type, title);
+  await removePageLinksFor(itemId);
 }
 
 export async function deleteItemFromWorkspace(workspaceId: string, itemId: string) {
@@ -977,6 +1193,7 @@ export async function deleteItemFromWorkspace(workspaceId: string, itemId: strin
   await assertDatabaseInWorkspace(page.databaseId, workspaceId);
   await db.delete(pages).where(eq(pages.id, itemId));
   await recordDeletionTombstone(workspaceId, itemId, 'database_row', page.title);
+  await removePageLinksFor(itemId);
   return { deleted: true, type: 'db-row' as const };
 }
 
@@ -1176,6 +1393,7 @@ export async function updatePageById(
         .update(standalonePages)
         .set({ content: patch.content, updatedAt: new Date() })
         .where(eq(standalonePages.itemId, itemId));
+      await syncPageLinks(workspaceId, itemId, 'page', patch.content);
     }
     return { updated: true };
   }
@@ -1203,5 +1421,6 @@ export async function updatePageById(
   }
 
   await db.update(pages).set(updateData).where(eq(pages.id, itemId));
+  if (patch.content !== undefined) await syncPageLinks(workspaceId, itemId, 'database_row', patch.content);
   return { updated: true };
 }

@@ -8,6 +8,7 @@ import { deleteWorkspaceItem } from './workspace';
 import { publish } from '@/lib/realtime/publish';
 import { isCloudinaryUrl, deleteCloudinaryImage } from '@/lib/cloudinary';
 import { recordDeletionTombstone } from '@/lib/services/workspace';
+import { syncPageLinks, removePageLinksFor } from '@/lib/services/pageLinks';
 
 // Verify user has access to the workspace that owns this database.
 // Returns { userId, workspaceId } so callers can emit realtime events.
@@ -147,8 +148,10 @@ export async function getPage(id: string) {
 
 export async function updatePageContent(id: string, content: string) {
   const page = await db.select({ databaseId: pages.databaseId }).from(pages).where(eq(pages.id, id)).limit(1);
-  if (page[0]) await assertDatabaseAccess(page[0].databaseId);
+  let workspaceId: string | null = null;
+  if (page[0]) ({ workspaceId } = await assertDatabaseAccess(page[0].databaseId));
   await db.update(pages).set({ content, updatedAt: new Date() }).where(eq(pages.id, id));
+  if (workspaceId) await syncPageLinks(workspaceId, id, 'database_row', content);
 }
 
 export async function deletePage(id: string, databaseId: string) {
@@ -163,6 +166,7 @@ export async function deletePage(id: string, databaseId: string) {
   const [row] = await db.select({ title: pages.title }).from(pages).where(eq(pages.id, id)).limit(1);
   await db.delete(pages).where(eq(pages.id, id));
   await recordDeletionTombstone(workspaceId, id, 'database_row', row?.title ?? '');
+  await removePageLinksFor(id);
   revalidatePath(`/db/${databaseId}`);
   publish({ scope: 'database', workspaceId, resourceId: databaseId, actorId: userId });
 }
@@ -197,6 +201,7 @@ export async function duplicatePage(id: string, databaseId: string) {
     updatedAt: now,
   });
 
+  if (sourcePage.content) await syncPageLinks(workspaceId, newId, 'database_row', sourcePage.content);
   revalidatePath(`/db/${databaseId}`);
   publish({ scope: 'database', workspaceId, resourceId: databaseId, actorId: userId });
   return newId;
