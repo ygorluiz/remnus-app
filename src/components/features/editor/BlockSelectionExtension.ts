@@ -488,6 +488,14 @@ export const BlockSelection = Extension.create({
           const onMouseDown = (event: MouseEvent) => {
             if (event.button !== 0 || event.shiftKey) return;
             if (isInteractiveTarget(event.target)) return;
+            // Ignore mousedowns that belong to a custom drag affordance (e.g. the
+            // side-peek width resize handle). Its handle sits in the editor's left
+            // margin, which qualifies as a marquee "empty zone", so without this a
+            // resize drag would spuriously start a block-selection marquee. The
+            // marquee listener can be attached high up (documentElement) when the
+            // editor's scroll parent isn't settled at mount, so a stopPropagation on
+            // the handle alone isn't reliable — guard here too.
+            if ((event.target as HTMLElement | null)?.closest?.('[data-no-block-marquee]')) return;
 
             // Skip if the editor is hidden (e.g. in a display:none keep-alive tab pane).
             // offsetParent is null for elements with display:none or inside one.

@@ -580,7 +580,7 @@ export default function CalendarView({
                             } else if (c.type === 'status' && typeof val === 'string') {
                               display = <StatusChip value={val} options={c.options} iconSize={10} />;
                             } else if (c.type === 'user' || c.type === 'multi_user') {
-                              display = <UserAvatarStack value={val} currentUserId={currentUserId} size={16} />;
+                              display = <UserAvatarStack value={val} currentUserId={currentUserId} size={18} />;
                             } else if (c.type === 'multi_select' && Array.isArray(val)) {
                               display = (
                                 <span className={`flex gap-0.5 ${propertyTextClamp === 'wrap' ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>

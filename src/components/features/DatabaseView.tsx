@@ -317,6 +317,9 @@ export default function DatabaseView({
   }, []);
   const handleSidePeekResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
+    // Stop the mousedown from reaching the peek editor's block-selection marquee
+    // listener (belt-and-suspenders alongside the [data-no-block-marquee] guard).
+    e.stopPropagation();
     document.body.classList.add('resize-drag-active');
     const startX = e.clientX;
     const startWidth = sidePeekWidth;
@@ -1332,6 +1335,7 @@ export default function DatabaseView({
             >
               {isDesktopViewport && (
                 <div
+                  data-no-block-marquee
                   onMouseDown={handleSidePeekResizeStart}
                   className="absolute left-0 top-0 bottom-0 w-1.5 -ml-0.5 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500/70 transition-colors z-20"
                   title={t('resizePanel')}

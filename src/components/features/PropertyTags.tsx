@@ -155,16 +155,22 @@ export function UserChip({ userId, avatarSize = 16 }: { userId: string; avatarSi
 
 /**
  * Avatar-only stack for `user`/`multi_user` cells (no name text) — used on
- * calendar cards where space is tight. The viewer's own avatar (when among
- * the assignees) gets a ring in the theme's accent color (`--color-blue-500`,
- * which is redefined per `[data-theme]` block in globals.css, so it's already
- * theme-aware for free). Hovering the whole stack shows one tooltip listing
- * every assignee's avatar + name, stacked — not per-avatar tooltips.
+ * calendar cards where space is tight. Avatars **overlap** (GitHub/Notion-style
+ * stack) via a negative margin, each carrying a thin ring in the card colour so
+ * neighbours read as separate. The viewer's own avatar (when among the
+ * assignees) gets a ring in the theme's accent colour (`--color-blue-500`,
+ * redefined per `[data-theme]` block in globals.css → theme-aware for free) and
+ * is lifted above its neighbours so the accent ring never gets clipped.
+ *
+ * The accent/separator is a **`ring` (box-shadow), never a `border`** so it does
+ * NOT grow the avatar's box — a bordered self-avatar used to be a few px taller
+ * than its siblings and stretched the whole calendar card. Hovering the stack
+ * shows one tooltip listing every assignee's avatar + name.
  */
 export function UserAvatarStack({
   value,
   currentUserId,
-  size = 16,
+  size = 18,
 }: {
   value: unknown;
   currentUserId?: string | null;
@@ -185,12 +191,12 @@ export function UserAvatarStack({
   return (
     <div
       ref={anchorRef}
-      className="relative inline-flex items-center gap-1"
+      className="relative inline-flex items-center"
       onMouseEnter={handleEnter}
       onMouseLeave={() => setHovered(false)}
     >
-      {ids.map((id) => (
-        <StackedAvatar key={id} userId={id} isSelf={!!currentUserId && id === currentUserId} size={size} />
+      {ids.map((id, i) => (
+        <StackedAvatar key={id} userId={id} isSelf={!!currentUserId && id === currentUserId} size={size} first={i === 0} />
       ))}
       {hovered && coords && createPortal(
         <div
@@ -205,10 +211,14 @@ export function UserAvatarStack({
   );
 }
 
-function StackedAvatar({ userId, isSelf, size }: { userId: string; isSelf: boolean; size: number }) {
+function StackedAvatar({ userId, isSelf, size, first }: { userId: string; isSelf: boolean; size: number; first: boolean }) {
   const member = useMember(userId);
   return (
-    <span className={`shrink-0 rounded-full ${isSelf ? 'p-0.5 border-2 border-blue-500' : ''}`}>
+    <span
+      className={`shrink-0 rounded-full ${first ? '' : '-ml-1.5'} ${
+        isSelf ? 'ring-2 ring-blue-500 relative z-10' : 'ring-2 ring-neutral-900'
+      }`}
+    >
       <UserAvatar member={member} size={size} />
     </span>
   );
