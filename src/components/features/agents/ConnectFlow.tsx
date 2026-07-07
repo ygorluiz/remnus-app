@@ -189,7 +189,7 @@ function StepChoose({
 
 // ── Step 2: connect (OAuth primary + advanced PAT) ────────────────────────────
 function StepConnect({
-  t, editor, mcpUrl, onNext, onBack, mintTargets, detected, onAutoConnected,
+  t, editor, mcpUrl, onNext, onBack, mintTargets, detected, autoConnectReady, onAutoConnected,
 }: {
   t: ReturnType<typeof useTranslations>;
   editor: EditorId;
@@ -199,13 +199,21 @@ function StepConnect({
   mintTargets: MintTarget[];
   /** Whether Tauri found this editor on this device (desktop shell only). */
   detected?: boolean;
+  /**
+   * Whether the desktop shell's `agent_connect.rs` commands are confirmed
+   * present (a successful `detect_installed_agents` call already landed) — NOT
+   * just whether we're running in Tauri. The frontend ships instantly on every
+   * web deploy, but these Rust commands only exist once the user has actually
+   * updated their installed desktop app, so `isTauri` alone would show the
+   * auto-connect button to users on an older build and fail when clicked.
+   */
+  autoConnectReady?: boolean;
   /** Called with the editor's label right after a successful auto-connect, before advancing to the test step. */
   onAutoConnected?: (toolLabel: string) => void;
 }) {
   const [os, setOs] = useState<OS>('mac');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showManual, setShowManual] = useState(false);
-  const isTauri = useIsTauri();
   const meta = EDITORS.find(e => e.id === editor)!;
   const oauthReady = OAUTH_READY[editor];
   // Editors Remnus can connect for the user directly from the desktop shell:
@@ -215,7 +223,7 @@ function StepConnect({
   // When true, auto-connect is the primary path and everything manual
   // (walkthrough animation, OAuth/config instructions, advanced token section)
   // collapses behind a "connect it yourself" toggle instead of always showing.
-  const autoAvailable = isTauri && autoConnectEligible;
+  const autoAvailable = !!autoConnectReady && autoConnectEligible;
 
   // ── Inline token minting state ──
   const [selectedWs, setSelectedWs] = useState(mintTargets[0]?.id ?? '');
@@ -777,6 +785,13 @@ export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [], bare = 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [editor, setEditor] = useState<EditorId | null>(null);
   const [detected, setDetected] = useState<Record<string, boolean> | null>(null);
+  // True only once a real `agent_connect.rs` command call has actually
+  // succeeded — NOT just "we're in Tauri". The frontend deploys instantly on
+  // every web push, but these Rust commands only exist in the compiled binary
+  // once the user has updated their installed desktop app; without this check
+  // a user on an older build would see the auto-connect button and have it
+  // fail on click instead of just not seeing it.
+  const [autoConnectReady, setAutoConnectReady] = useState(false);
   // Set right before auto-advancing from a successful auto-connect — shows a
   // completion banner on the test step instead of a plain, unexplained jump.
   const [autoConnectedTool, setAutoConnectedTool] = useState<string | null>(null);
@@ -799,9 +814,12 @@ export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [], bare = 
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const rows = await invoke<{ id: string; detected: boolean }[]>('detect_installed_agents');
-        if (!cancelled) setDetected(Object.fromEntries(rows.map(r => [r.id, r.detected])));
+        if (cancelled) return;
+        setDetected(Object.fromEntries(rows.map(r => [r.id, r.detected])));
+        setAutoConnectReady(true); // the call succeeded — this build has agent_connect.rs
       } catch {
-        // not in the desktop shell, or detection failed — no badges, manual flow unaffected
+        // not in the desktop shell, or an older build without agent_connect.rs —
+        // no badges, no auto-connect button, manual flow unaffected
       }
     })();
     return () => { cancelled = true; };
@@ -837,6 +855,7 @@ export default function ConnectFlow({ mcpUrl, onClose, mintTargets = [], bare = 
           onBack={() => setStep(1)}
           mintTargets={mintTargets}
           detected={!!detected?.[editor]}
+          autoConnectReady={autoConnectReady}
           onAutoConnected={setAutoConnectedTool}
         />
       )}
