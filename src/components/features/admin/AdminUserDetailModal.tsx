@@ -3,11 +3,11 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   X, Shield, Globe, Mail, Calendar, Clock, Activity, Layers, FileText, Database, HardDrive, CreditCard, Sparkles,
-  Bot, Key, Zap, Crown,
+  Bot, Key, Zap, Crown, Trash2,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { getUserDetail, type UserDetail } from '@/lib/actions/analytics';
-import { setUserRole } from '@/lib/actions/auth';
+import { setUserRole, adminDeleteUser } from '@/lib/actions/auth';
 import { adminSetUserPlan } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
 import { formatDate, formatDuration, formatRelative, formatBytes, formatTokens } from './format';
@@ -39,6 +39,9 @@ export default function AdminUserDetailModal({
   const [isPending, startTransition] = useTransition();
   const [planPending, startPlanTransition] = useTransition();
   const [planError, setPlanError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePending, startDeleteTransition] = useTransition();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     // Modal mounts fresh per open (keyed by userId in the parent), so the
@@ -100,6 +103,19 @@ export default function AdminUserDetailModal({
     });
   };
 
+  const handleDelete = () => {
+    setDeleteError(null);
+    startDeleteTransition(async () => {
+      const res = await adminDeleteUser(userId);
+      if (res?.error) {
+        setDeleteError(res.error);
+        return;
+      }
+      router.refresh();
+      onClose();
+    });
+  };
+
   const acct = detail?.account;
   const isSelf = userId === currentUserId;
 
@@ -131,13 +147,50 @@ export default function AdminUserDetailModal({
               {acct?.email && <div className="text-xs text-neutral-500 truncate">{acct.email}</div>}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800 shrink-0"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            {!isSelf && !loading && detail && (
+              confirmingDelete ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deletePending}
+                    className="text-[11px] font-medium text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
+                  >
+                    {deletePending ? t('deleting') : t('confirm')}
+                  </button>
+                  <span className="text-neutral-700">·</span>
+                  <button
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={deletePending}
+                    className="text-[11px] text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  className="p-1 text-neutral-500 hover:text-red-400 transition-colors rounded hover:bg-neutral-800"
+                  title={t('delete')}
+                >
+                  <Trash2 size={15} />
+                </button>
+              )
+            )}
+            <button
+              onClick={onClose}
+              className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
+
+        {deleteError && (
+          <div className="px-6 py-2 text-[11px] text-red-400 bg-red-500/5 border-b border-neutral-800 shrink-0">
+            {deleteError}
+          </div>
+        )}
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6 space-y-6">

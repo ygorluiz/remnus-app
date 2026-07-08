@@ -1,12 +1,11 @@
 'use client';
-import { useMemo, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 import {
   Shield, Calendar, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
-  Mail, Globe, Trash2, Search, Clock, Activity, HardDrive, Bot, Laptop,
+  Mail, Globe, Search, Clock, Activity, HardDrive, Bot, Laptop, CreditCard,
 } from 'lucide-react';
-import { adminDeleteUser } from '@/lib/actions/auth';
 import type { PerUserActivity } from '@/lib/actions/analytics';
+import type { PlanTier } from '@/lib/billing/plans';
 import { useTranslations, useLocale } from 'next-intl';
 import { formatDate, formatDuration, formatRelative, formatBytes } from './admin/format';
 import AdminUserDetailModal from './admin/AdminUserDetailModal';
@@ -18,13 +17,15 @@ type UserRow = {
   image: string | null;
   role: string;
   createdAt: Date | string | number | null;
+  tier: PlanTier;
   authType: 'google' | 'github' | 'email' | 'unknown';
 };
 
-type SortKey = 'name' | 'email' | 'authType' | 'role' | 'createdAt' | 'lastActive' | 'totalSeconds' | 'storageBytes' | 'mcpCalls';
+type SortKey = 'name' | 'email' | 'authType' | 'createdAt' | 'lastActive' | 'totalSeconds' | 'storageBytes' | 'mcpCalls' | 'tier';
 type SortDir = 'asc' | 'desc';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const TIER_RANK: Record<PlanTier, number> = { free: 0, startup: 1, professional: 2, enterprise: 3 };
 
 export default function AdminUsersTable({
   users,
@@ -37,12 +38,9 @@ export default function AdminUsersTable({
 }) {
   const t = useTranslations('Admin');
   const locale = useLocale();
-  const router = useRouter();
-  const [, startTransition] = useTransition();
 
   const [page, setPage] = useState(0);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
@@ -79,7 +77,7 @@ export default function AdminUsersTable({
           case 'name': va = (a.name ?? '').toLowerCase(); vb = (b.name ?? '').toLowerCase(); break;
           case 'email': va = (a.email ?? '').toLowerCase(); vb = (b.email ?? '').toLowerCase(); break;
           case 'authType': va = a.authType; vb = b.authType; break;
-          case 'role': va = a.role; vb = b.role; break;
+          case 'tier': va = TIER_RANK[a.tier]; vb = TIER_RANK[b.tier]; break;
           case 'createdAt': va = new Date(a.createdAt ?? 0).getTime() || 0; vb = new Date(b.createdAt ?? 0).getTime() || 0; break;
           case 'lastActive': va = activity[a.id]?.lastActive ?? 0; vb = activity[b.id]?.lastActive ?? 0; break;
           case 'totalSeconds': va = activity[a.id]?.totalSeconds ?? 0; vb = activity[b.id]?.totalSeconds ?? 0; break;
@@ -95,27 +93,17 @@ export default function AdminUsersTable({
   }, [users, activity, search, roleFilter, authFilter, sortKey, sortDir]);
 
   const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages - 1);
-  const slice = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
-  const from = total === 0 ? 0 : safePage * PAGE_SIZE + 1;
-  const to = Math.min((safePage + 1) * PAGE_SIZE, total);
+  const slice = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
+  const from = total === 0 ? 0 : safePage * pageSize + 1;
+  const to = Math.min((safePage + 1) * pageSize, total);
 
   const toggleSort = (key: SortKey) => {
     setPage(0);
     if (sortKey !== key) { setSortKey(key); setSortDir('asc'); return; }
     if (sortDir === 'asc') { setSortDir('desc'); return; }
     setSortKey(null); // third click clears sort
-  };
-
-  const handleDelete = (id: string) => {
-    setDeletingId(id);
-    startTransition(async () => {
-      await adminDeleteUser(id);
-      setConfirmDeleteId(null);
-      setDeletingId(null);
-      router.refresh();
-    });
   };
 
   const selectCls = 'bg-neutral-900 border border-neutral-800 rounded-md text-xs text-neutral-300 px-2 py-1.5 focus:outline-none focus:border-blue-500';
@@ -154,24 +142,23 @@ export default function AdminUsersTable({
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-neutral-800 bg-neutral-900/60">
+                <th className="w-10 px-4 py-2.5 text-left text-xs font-medium text-neutral-500">#</th>
                 <Th sk="name" label={t('colName')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <Th sk="email" label={t('colEmail')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <Th sk="authType" label={t('colSignIn')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden md:table-cell w-28" />
-                <Th sk="role" label={t('colRole')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="w-24" />
+                <Th sk="tier" label={t('colPlan')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden md:table-cell w-28" />
                 <Th sk="lastActive" label={t('colLastActive')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell w-32" />
                 <Th sk="totalSeconds" label={t('colTotalTime')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell w-28" />
                 <Th sk="mcpCalls" label={t('colMcpCalls')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell w-24" />
                 <Th sk="storageBytes" label={t('colStorage')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden lg:table-cell w-24" />
                 <Th sk="createdAt" label={t('colJoined')} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="hidden md:table-cell w-36" />
-                <th className="w-24 px-4 py-2.5" />
               </tr>
             </thead>
             <tbody>
-              {slice.map((u) => {
+              {slice.map((u, i) => {
                 const isSelf = u.id === currentUserId;
-                const isConfirming = confirmDeleteId === u.id;
-                const isDeleting = deletingId === u.id;
                 const act = activity[u.id];
+                const rowNumber = safePage * pageSize + i + 1;
 
                 return (
                   <tr
@@ -179,6 +166,7 @@ export default function AdminUsersTable({
                     onClick={() => setDetailUserId(u.id)}
                     className="border-b border-neutral-800/50 hover:bg-neutral-800/20 transition-colors last:border-0 cursor-pointer"
                   >
+                    <td className="px-4 py-3 text-xs tabular-nums text-neutral-600">{rowNumber}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         {u.image ? (
@@ -189,12 +177,18 @@ export default function AdminUsersTable({
                             {(u.name ?? u.email ?? '?').slice(0, 1).toUpperCase()}
                           </div>
                         )}
+                        {u.role === 'admin' && (
+                          <span title={t('roleAdmin')} className="shrink-0 inline-flex text-blue-400">
+                            <Shield size={12} />
+                          </span>
+                        )}
                         <span className="text-neutral-200 font-medium truncate">{u.name ?? <span className="text-neutral-600 italic">—</span>}</span>
                         {act?.usesDesktop && (
                           <span title={t('desktopBadgeTooltip')} className="shrink-0 inline-flex">
                             <Laptop size={11} className="text-blue-400" />
                           </span>
                         )}
+                        {isSelf && <span className="shrink-0 text-[10px] text-neutral-600">({t('youBadge')})</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -220,16 +214,14 @@ export default function AdminUsersTable({
                         <span className="text-xs text-neutral-600">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      {u.role === 'admin' ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
-                          <Shield size={9} />
-                          {t('roleAdmin')}
-                        </span>
-                      ) : u.role === 'demo' ? (
-                        <span className="text-xs text-amber-500/80">{t('roleDemo')}</span>
+                    <td className="hidden md:table-cell px-4 py-3">
+                      {u.tier === 'free' ? (
+                        <span className="text-xs text-neutral-500">{t('planTier_free')}</span>
                       ) : (
-                        <span className="text-xs text-neutral-500">{t('roleUser')}</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
+                          <CreditCard size={9} />
+                          {t(`planTier_${u.tier}`)}
+                        </span>
                       )}
                     </td>
                     <td className="hidden lg:table-cell px-4 py-3">
@@ -262,38 +254,6 @@ export default function AdminUsersTable({
                         {formatDate(u.createdAt, locale)}
                       </div>
                     </td>
-
-                    {/* Delete / confirm — clicks must not open the detail modal */}
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {isSelf ? (
-                        <span className="text-[10px] text-neutral-700">{t('youBadge')}</span>
-                      ) : isConfirming ? (
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => handleDelete(u.id)}
-                            disabled={isDeleting}
-                            className="text-[11px] font-medium text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
-                          >
-                            {isDeleting ? t('deleting') : t('confirm')}
-                          </button>
-                          <span className="text-neutral-700">·</span>
-                          <button
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="text-[11px] text-neutral-500 hover:text-neutral-300 transition-colors"
-                          >
-                            {t('cancel')}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmDeleteId(u.id)}
-                          className="p-1 text-neutral-600 hover:text-red-400 transition-colors"
-                          title={t('delete')}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </td>
                   </tr>
                 );
               })}
@@ -301,30 +261,46 @@ export default function AdminUsersTable({
           </table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-2.5 border-t border-neutral-800 bg-neutral-900/40">
-              <span className="text-xs text-neutral-500">
-                {from}–{to} {t('ofTotal')} {total}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={safePage === 0}
-                  className="p-1 text-neutral-400 hover:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <span className="text-xs text-neutral-500 px-1">
-                  {safePage + 1} / {totalPages}
+          {total > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-neutral-800 bg-neutral-900/40">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-neutral-500">
+                  {from}–{to} {t('ofTotal')} {total}
                 </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={safePage >= totalPages - 1}
-                  className="p-1 text-neutral-400 hover:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight size={14} />
-                </button>
+                <label className="flex items-center gap-1.5 text-xs text-neutral-500">
+                  {t('rowsPerPage')}
+                  <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
+                    className={selectCls}
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={safePage === 0}
+                    className="p-1 text-neutral-400 hover:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs text-neutral-500 px-1">
+                    {safePage + 1} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={safePage >= totalPages - 1}
+                    className="p-1 text-neutral-400 hover:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </>

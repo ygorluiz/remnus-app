@@ -2,7 +2,7 @@
 import { signOut, update } from '@/auth';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { users, workspaces, workspaceMembers, workspaceInvites, accounts, sessions, userSessions, agentTokens } from '@/db/schema';
+import { users, workspaces, workspaceMembers, workspaceInvites, accounts, sessions, userSessions, agentTokens, subscriptions } from '@/db/schema';
 import { eq, ne, and, sql, isNull } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { LAST_PATH_COOKIE } from '@/lib/constants/cookies';
 import { deleteAssetByUrl } from '@/lib/services/assets';
 import { checkCanAddSeatForEmail } from '@/lib/services/billing';
+import { isPlanTier, type PlanTier } from '@/lib/billing/plans';
 
 /**
  * Update the signed-in user's own display name and/or avatar.
@@ -240,6 +241,14 @@ export async function getAllUsers() {
     providerMap.get(acc.userId)!.push(acc.provider);
   }
 
+  // Subscription tier — belongs to the user as a billing owner. No row → implicit Free
+  // (mirrors getUserDetail's per-user subscription resolution).
+  const subRows = await db.select({ ownerUserId: subscriptions.ownerUserId, tier: subscriptions.tier }).from(subscriptions);
+  const tierMap = new Map<string, PlanTier>();
+  for (const r of subRows) {
+    if (isPlanTier(r.tier)) tierMap.set(r.ownerUserId, r.tier);
+  }
+
   return userRows.map((u) => ({
     id: u.id,
     name: u.name,
@@ -247,6 +256,7 @@ export async function getAllUsers() {
     image: u.image,
     role: u.role,
     createdAt: u.createdAt,
+    tier: tierMap.get(u.id) ?? ('free' as const),
     authType: providerMap.get(u.id)?.includes('google')
       ? ('google' as const)
       : providerMap.get(u.id)?.includes('github')

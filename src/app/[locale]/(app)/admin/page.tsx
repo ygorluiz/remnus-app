@@ -4,10 +4,10 @@ import { getAllUsers } from '@/lib/actions/auth';
 import { getEngagementOverview, getActivationFunnel } from '@/lib/actions/analytics';
 import { getDemoFeedback } from '@/lib/actions/demoFeedback';
 import Link from 'next/link';
-import { Shield, Users, TrendingUp, Clock, Activity, Timer, MonitorPlay, Share2, Workflow, MessageCircle, UserPlus, CalendarPlus, Mail, Laptop, Download } from 'lucide-react';
+import { Shield, Users, TrendingUp, MonitorPlay, Share2, Workflow, MessageCircle, Mail, Laptop, Download } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import AdminUsersTable from '@/components/features/AdminUsersTable';
-import { SignupTrendChart, ActivationFunnelChart } from '@/components/features/admin/AdminCharts';
+import { SignupTrendChart } from '@/components/features/admin/AdminCharts';
 import AdminTrafficSources from '@/components/features/admin/AdminTrafficSources';
 import AdminDesktopStats from '@/components/features/admin/AdminDesktopStats';
 import { formatDuration } from '@/components/features/admin/format';
@@ -21,52 +21,92 @@ function safeDate(val: Date | string | number | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-type Accent = 'blue' | 'green' | 'amber' | 'neutral';
-
-const ACCENT_CLS: Record<Accent, string> = {
-  blue: 'text-blue-400 bg-blue-500/12',
-  green: 'text-green-400 bg-green-500/12',
-  amber: 'text-amber-400 bg-amber-500/12',
-  neutral: 'text-neutral-400 bg-neutral-800',
-};
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  accent = 'neutral',
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number | string;
-  sub?: string;
-  accent?: Accent;
-}) {
-  return (
-    <div className="group flex min-w-0 flex-col gap-3 rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-4 transition-colors hover:border-neutral-700">
-      <div className="flex items-center gap-2.5">
-        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${ACCENT_CLS[accent]}`}>
-          <Icon size={15} />
-        </div>
-        <span className="text-[10.5px] font-medium uppercase leading-tight tracking-wider text-neutral-500">
-          {label}
-        </span>
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <div className="text-2xl font-semibold leading-none tabular-nums text-neutral-100">{value}</div>
-        {sub && <div className="text-[11px] text-neutral-500">{sub}</div>}
-      </div>
-    </div>
-  );
-}
-
 function SectionHeader({ icon: Icon, title, hint }: { icon: LucideIcon; title: string; hint?: string }) {
   return (
     <div className="mb-3 flex items-center gap-2">
       <Icon size={15} className="text-neutral-400" />
       <h2 className="text-sm font-medium text-neutral-300">{title}</h2>
       {hint && <span className="ml-1 text-xs text-neutral-600">{hint}</span>}
+    </div>
+  );
+}
+
+// ── Hero KPI cluster ──────────────────────────────────────────────────────
+// Three headline tiles (users, active users, engagement) sized for the metrics
+// that matter right now, plus one compact multi-row tile bundling the
+// currently-low-signal stats (demo sessions, desktop usage) instead of giving
+// them equal weight to the headline numbers.
+
+function HeroTile({ label, value, unit, sub, children }: {
+  label: string;
+  value: number | string;
+  unit?: string;
+  sub?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5 rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-neutral-500">{label}</span>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-3xl font-semibold leading-none tracking-tight tabular-nums text-neutral-100">{value}</span>
+        {unit && <span className="text-sm font-medium text-neutral-500">{unit}</span>}
+      </div>
+      {children}
+      {sub && <span className="text-[11.5px] text-neutral-500">{sub}</span>}
+    </div>
+  );
+}
+
+function SignalRow({ icon: Icon, label, value, meta }: { icon: LucideIcon; label: string; value: number | string; meta?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+      <span className="flex items-center gap-2 text-[11.5px] text-neutral-400">
+        <Icon size={13} className="text-neutral-600" />
+        {label}
+      </span>
+      <span className="text-sm font-semibold tabular-nums text-neutral-200">
+        {value}
+        {meta && <span className="ml-1.5 text-[10.5px] font-medium text-neutral-600">{meta}</span>}
+      </span>
+    </div>
+  );
+}
+
+// ── Activation funnel — compact 3-row list (stacked under User Acquisition) ─
+function ActivationFunnelList({ stages }: { stages: { label: string; count: number }[] }) {
+  const base = Math.max(1, stages[0]?.count ?? 0);
+  return (
+    <div className="flex flex-col">
+      {stages.map((s, i) => {
+        const prev = i === 0 ? null : stages[i - 1].count;
+        const conv = prev == null ? null : prev === 0 ? 0 : Math.round((s.count / prev) * 100);
+        const widthPct = Math.max(4, Math.round((s.count / base) * 100));
+        return (
+          <div
+            key={s.label}
+            className={`flex flex-col gap-1.5 py-2.5 ${i < stages.length - 1 ? 'border-b border-neutral-800/70' : 'pb-0.5'} ${i === 0 ? 'pt-0.5' : ''}`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-neutral-300">{s.label}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-sm font-semibold tabular-nums text-neutral-100">{s.count}</span>
+                {conv != null && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                      conv >= 50 ? 'bg-green-500/12 text-green-400' : conv >= 25 ? 'bg-amber-500/12 text-amber-400' : 'bg-red-500/12 text-red-400'
+                    }`}
+                  >
+                    {conv}%
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-neutral-850">
+              <div className="h-full rounded-full bg-blue-500" style={{ width: `${widthPct}%` }} />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -101,7 +141,7 @@ function DemoFeedbackSection({
     ['negative', data.negative],
   ];
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
+    <div className="flex flex-1 flex-col gap-4 rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
       <div className="flex flex-wrap items-center gap-2">
         {counts.map(([key, n]) => (
           <span
@@ -161,6 +201,8 @@ export default async function AdminPage() {
     return db - da;
   });
 
+  const activePct = userList.length > 0 ? Math.round((engagement.wau / userList.length) * 100) : 0;
+
   return (
     <div className="flex h-full flex-1 flex-col overflow-auto bg-neutral-850">
       {/* Header */}
@@ -184,68 +226,94 @@ export default async function AdminPage() {
       </div>
 
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-9 px-8 py-7">
-        {/* Stats row */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9">
-          <StatCard icon={Users} accent="blue" label={t('totalUsers')} value={userList.length} />
-          <StatCard icon={UserPlus} accent="blue" label={t('newThisWeek')} value={engagement.newThisWeek} sub={t('last7Days')} />
-          <StatCard icon={CalendarPlus} accent="blue" label={t('newThisMonth')} value={engagement.newThisMonth} sub={t('last30Days')} />
-          <StatCard icon={Activity} accent="green" label={t('activeUsers')} value={engagement.wau} sub={t('last7Days')} />
-          <StatCard icon={Timer} accent="neutral" label={t('avgSession')} value={formatDuration(engagement.avgSessionSeconds)} sub={t('perSession')} />
-          <StatCard icon={Clock} accent="neutral" label={t('totalTime')} value={formatDuration(engagement.totalSeconds)} sub={t('allUsers')} />
-          <StatCard icon={MonitorPlay} accent="amber" label={t('activeDemoSessions')} value={engagement.demoActiveSessions} sub={t('demoTotalSub', { count: engagement.demoTotal })} />
-          <StatCard icon={Laptop} accent="blue" label={t('desktopUsersStat')} value={engagement.desktopUsersTotal} />
-          <StatCard icon={Download} accent="green" label={t('desktopActiveStat')} value={engagement.desktopUsersActive30d} sub={t('last30Days')} />
+        {/* Hero KPI cluster */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[1.15fr_1fr_1fr_1.05fr]">
+          <HeroTile
+            label={t('totalUsers')}
+            value={userList.length}
+            sub={t('newUsersSub', { week: engagement.newThisWeek, month: engagement.newThisMonth })}
+          />
+
+          <HeroTile
+            label={t('activeUsers')}
+            value={engagement.wau}
+            unit={`/ ${userList.length}`}
+            sub={t('weeklyActiveSub', { pct: activePct })}
+          >
+            <div className="h-1.25 overflow-hidden rounded-full border border-neutral-800 bg-neutral-850">
+              <div className="h-full rounded-full bg-blue-500" style={{ width: `${activePct}%` }} />
+            </div>
+          </HeroTile>
+
+          <HeroTile
+            label={t('avgSession')}
+            value={formatDuration(engagement.avgSessionSeconds)}
+            sub={t('engagementSub', { time: formatDuration(engagement.totalSeconds) })}
+          />
+
+          <div className="flex flex-col justify-center divide-y divide-neutral-800/70 rounded-xl border border-neutral-800 bg-neutral-900">
+            <SignalRow
+              icon={MonitorPlay}
+              label={t('activeDemoSessions')}
+              value={engagement.demoActiveSessions}
+              meta={t('demoTotalSub', { count: engagement.demoTotal })}
+            />
+            <SignalRow icon={Laptop} label={t('desktopUsersStat')} value={engagement.desktopUsersTotal} />
+            <SignalRow icon={Download} label={t('desktopActiveStat')} value={engagement.desktopUsersActive30d} />
+          </div>
         </div>
 
-        {/* Acquisition trend + sources */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <section>
-            <SectionHeader icon={TrendingUp} title={t('acquisitionTrend')} hint={t('last30Days')} />
-            <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
-              <SignupTrendChart data={engagement.signupTrend} />
-            </div>
-          </section>
+        {/* Acquisition trend + activation funnel / traffic sources */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.15fr_1fr] lg:items-stretch">
+          <div className="flex flex-col gap-6">
+            <section className="flex flex-1 flex-col">
+              <SectionHeader icon={TrendingUp} title={t('acquisitionTrend')} hint={t('last30Days')} />
+              <div className="flex flex-1 flex-col rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
+                <SignupTrendChart data={engagement.signupTrend} />
+              </div>
+            </section>
 
-          <section>
+            <section className="flex flex-1 flex-col">
+              <SectionHeader icon={Workflow} title={t('activationFunnel')} hint={t('activationFunnelHint')} />
+              <div className="flex flex-1 flex-col rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
+                <ActivationFunnelList
+                  stages={[
+                    { label: t('funnelSignup'), count: funnel.signups },
+                    { label: t('funnelConnected'), count: funnel.connected },
+                    { label: t('funnelActivated'), count: funnel.activated },
+                  ]}
+                />
+              </div>
+            </section>
+          </div>
+
+          <section className="flex flex-col">
             <SectionHeader icon={Share2} title={t('trafficSources')} hint={t('trafficSourcesHint')} />
-            <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
+            <div className="flex flex-1 flex-col rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
               <AdminTrafficSources />
             </div>
           </section>
         </div>
 
-        {/* Activation funnel */}
-        <section>
-          <SectionHeader icon={Workflow} title={t('activationFunnel')} hint={t('activationFunnelHint')} />
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
-            <ActivationFunnelChart
-              stages={[
-                { label: t('funnelSignup'), count: funnel.signups },
-                { label: t('funnelConnected'), count: funnel.connected },
-                { label: t('funnelActivated'), count: funnel.activated },
-              ]}
+        {/* Desktop / Tauri + demo feedback */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
+          <section className="flex flex-col">
+            <SectionHeader icon={Laptop} title={t('desktopSection')} hint={t('desktopSectionHint')} />
+            <div className="flex flex-1 flex-col rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
+              <AdminDesktopStats />
+            </div>
+          </section>
+
+          <section className="flex flex-col">
+            <SectionHeader icon={MessageCircle} title={t('demoFeedbackSection')} hint={t('demoFeedbackHint')} />
+            <DemoFeedbackSection
+              data={demoFeedback}
+              locale={locale}
+              totalLabel={t('demoFeedbackTotal')}
+              emptyLabel={t('demoFeedbackEmpty')}
             />
-          </div>
-        </section>
-
-        {/* Desktop / Tauri */}
-        <section>
-          <SectionHeader icon={Laptop} title={t('desktopSection')} hint={t('desktopSectionHint')} />
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900 px-5 py-4">
-            <AdminDesktopStats />
-          </div>
-        </section>
-
-        {/* Demo feedback */}
-        <section>
-          <SectionHeader icon={MessageCircle} title={t('demoFeedbackSection')} hint={t('demoFeedbackHint')} />
-          <DemoFeedbackSection
-            data={demoFeedback}
-            locale={locale}
-            totalLabel={t('demoFeedbackTotal')}
-            emptyLabel={t('demoFeedbackEmpty')}
-          />
-        </section>
+          </section>
+        </div>
 
         {/* Users section */}
         <section className="pb-6">
