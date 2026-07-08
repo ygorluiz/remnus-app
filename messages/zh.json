@@ -166,6 +166,7 @@
     "channelOrganicSearch": "自然搜索",
     "channelSocial": "社交",
     "channelReferral": "引荐",
+    "trafficCampaignsTitle": "推广标签 (?ref / utm_source)",
     "desktopUsersStat": "桌面端用户",
     "desktopActiveStat": "活跃桌面端（30天）",
     "desktopSection": "桌面端 / Tauri",
