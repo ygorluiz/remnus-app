@@ -16,7 +16,7 @@ import { db } from '@/db';
 import { emailLog, users } from '@/db/schema';
 import { SITE_URL } from './theme';
 
-export type EmailKind = 'welcome' | 'inactivity' | 'agent_nudge' | 'agent_connected' | 'account_deletion' | 'newsletter' | 'test';
+export type EmailKind = 'welcome' | 'inactivity' | 'agent_nudge' | 'agent_connected' | 'account_deletion' | 'contact' | 'newsletter' | 'test';
 
 // ── Transport (lazy singleton) ────────────────────────────────────────────────
 
@@ -125,6 +125,8 @@ export interface SendEmailOptions {
   campaignId?: string | null;
   /** When set, adds List-Unsubscribe + one-click headers (marketing sends). */
   unsubUserId?: string | null;
+  /** Overrides the default reply-to (MAIL_REPLY_TO/from address) — e.g. a contact-form visitor's own address, so a human can just hit reply. */
+  replyTo?: string | null;
 }
 
 /**
@@ -132,7 +134,7 @@ export interface SendEmailOptions {
  * failure is logged (status 'failed') and returned. When mail env is missing
  * the send becomes a console-warning no-op (nothing logged).
  */
-export async function sendEmail({ to, userId, kind, subject, html, campaignId, unsubUserId }: SendEmailOptions): Promise<{ ok: boolean; error?: string }> {
+export async function sendEmail({ to, userId, kind, subject, html, campaignId, unsubUserId, replyTo }: SendEmailOptions): Promise<{ ok: boolean; error?: string }> {
   if (!isMailConfigured()) {
     console.warn(`[mail] skipped ${kind} to ${to} — MAIL_FROM_EMAIL/SES_REGION not configured`);
     return { ok: false, error: 'not_configured' };
@@ -148,7 +150,7 @@ export async function sendEmail({ to, userId, kind, subject, html, campaignId, u
     await transport().sendMail({
       from: `"${fromName}" <${fromEmail}>`,
       to,
-      replyTo: process.env.MAIL_REPLY_TO || fromEmail,
+      replyTo: replyTo || process.env.MAIL_REPLY_TO || fromEmail,
       subject,
       html,
       ...(oneClickUrl

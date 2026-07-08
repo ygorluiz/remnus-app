@@ -137,7 +137,33 @@ export function accountDeletionConfirmEmail(name: string | null | undefined, con
   };
 }
 
-// ── 6. Newsletter (admin-composed markdown) ───────────────────────────────────
+// ── 6. Contact form (instant, on submit — sent TO the team, not a user) ───────
+
+export function contactFormEmail(name: string, email: string, message: string): EmailContent {
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const bodyHtml =
+    para(`New message from the <strong style="color:${P.soft};">/contact</strong> form:`) +
+    card(
+      `<p style="margin:0 0 10px;color:${P.body};font-size:13px;line-height:1.6;"><strong style="color:${P.soft};">Name:</strong> ${safeName}</p>` +
+      `<p style="margin:0 0 14px;color:${P.body};font-size:13px;line-height:1.6;"><strong style="color:${P.soft};">Email:</strong> ${safeEmail}</p>` +
+      `<p style="margin:0;color:${P.body};font-size:14px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(message)}</p>`
+    ) +
+    para(`Reply to this email to respond directly to ${safeName}.`);
+
+  return {
+    subject: `Contact form: ${name}`,
+    html: renderEmailLayout({
+      preheader: `${name} <${email}> sent a message via the contact form.`,
+      heading: 'New contact form message',
+      bodyHtml,
+      cta: { label: `Reply to ${name}`, url: `mailto:${email}` },
+      footerNote: 'Sent from the Remnus contact form.',
+    }),
+  };
+}
+
+// ── 7. Newsletter (admin-composed markdown) ───────────────────────────────────
 
 // Email clients ignore stylesheets, so the markdown-rendered HTML gets its
 // styles injected inline per tag. Coarse but reliable across clients.

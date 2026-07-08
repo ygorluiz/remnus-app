@@ -389,7 +389,7 @@ export const emailLog = sqliteTable('email_log', {
   id:         text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId:     text('user_id').references(() => users.id, { onDelete: 'set null' }),
   email:      text('email').notNull(),
-  kind:       text('kind', { enum: ['welcome', 'inactivity', 'agent_nudge', 'agent_connected', 'account_deletion', 'newsletter', 'test'] }).notNull(),
+  kind:       text('kind', { enum: ['welcome', 'inactivity', 'agent_nudge', 'agent_connected', 'account_deletion', 'contact', 'newsletter', 'test'] }).notNull(),
   campaignId: text('campaign_id').references(() => emailCampaigns.id, { onDelete: 'set null' }),
   subject:    text('subject').notNull(),
   status:     text('status', { enum: ['sent', 'failed'] }).notNull(),
