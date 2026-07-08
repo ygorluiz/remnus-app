@@ -187,7 +187,10 @@
     "demoFeedbackTotal": "条回复",
     "demoFeedbackEmpty": "暂无文字反馈。",
     "trendTotalLabel": "过去 30 天的注册",
-    "trendTooltipSignups": "次注册"
+    "trendTooltipSignups": "次注册",
+    "widthNarrow": "窄",
+    "widthWide": "宽",
+    "widthFull": "整页"
   },
   "Workspace": {
     "planBilling": "套餐与计费",

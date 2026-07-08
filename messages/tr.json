@@ -187,7 +187,10 @@
     "demoFeedbackTotal": "yanıt",
     "demoFeedbackEmpty": "Henüz yazılı geri bildirim yok.",
     "trendTotalLabel": "son 30 günde kayıt",
-    "trendTooltipSignups": "kayıt"
+    "trendTooltipSignups": "kayıt",
+    "widthNarrow": "Dar",
+    "widthWide": "Geniş",
+    "widthFull": "Tam"
   },
   "Workspace": {
     "planBilling": "Plan ve Faturalama",

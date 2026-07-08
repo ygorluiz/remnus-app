@@ -187,7 +187,10 @@
     "demoFeedbackTotal": "Antworten",
     "demoFeedbackEmpty": "Noch kein schriftliches Feedback.",
     "trendTotalLabel": "Registrierungen in den letzten 30 Tagen",
-    "trendTooltipSignups": "Registrierungen"
+    "trendTooltipSignups": "Registrierungen",
+    "widthNarrow": "Schmal",
+    "widthWide": "Breit",
+    "widthFull": "Vollständig"
   },
   "Workspace": {
     "planBilling": "Plan & Abrechnung",

@@ -187,7 +187,10 @@
     "demoFeedbackTotal": "responses",
     "demoFeedbackEmpty": "No written feedback yet.",
     "trendTotalLabel": "signups in the last 30 days",
-    "trendTooltipSignups": "signups"
+    "trendTooltipSignups": "signups",
+    "widthNarrow": "Narrow",
+    "widthWide": "Wide",
+    "widthFull": "Full"
   },
   "Workspace": {
     "planBilling": "Plan & Billing",

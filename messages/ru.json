@@ -187,7 +187,10 @@
     "demoFeedbackTotal": "ответов",
     "demoFeedbackEmpty": "Пока нет письменных отзывов.",
     "trendTotalLabel": "регистраций за последние 30 дней",
-    "trendTooltipSignups": "регистраций"
+    "trendTooltipSignups": "регистраций",
+    "widthNarrow": "Узкая",
+    "widthWide": "Широкая",
+    "widthFull": "Полная"
   },
   "Workspace": {
     "planBilling": "Тариф и оплата",
