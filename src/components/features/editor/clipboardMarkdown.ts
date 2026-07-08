@@ -179,6 +179,26 @@ export function cellSelectionToCleanMarkdown(editor: any, cellSelection: any): s
 }
 
 /**
+ * A copy of exactly one table cell always slices down to this exact shape —
+ * one `tableRow` containing one `tableCell`/`tableHeader` — regardless of
+ * which Selection subclass produced it (a single-cell CellSelection is the
+ * common case, via triple-click or a drag that grazed the cell border, but
+ * this is a structural check rather than an `instanceof` one so it also
+ * catches any other path that lands on the same shape). A real multi-cell
+ * copy has more than one cell and/or more than one row, so it's untouched.
+ */
+function unwrapSingleCellTableFragment(json: any[]): any[] | null {
+  if (json.length !== 1) return null;
+  const row = json[0];
+  if (!row || row.type !== 'tableRow') return null;
+  const cells = row.content ?? [];
+  if (cells.length !== 1) return null;
+  const cell = cells[0];
+  if (cell?.type !== 'tableCell' && cell?.type !== 'tableHeader') return null;
+  return cell.content ?? [];
+}
+
+/**
  * Serialize a ProseMirror fragment to clipboard-friendly markdown. Loose inline
  * (text) nodes — e.g. a partial selection inside one paragraph — are wrapped in
  * a paragraph so the markdown manager always receives a valid document.
@@ -191,6 +211,12 @@ export function fragmentToCleanMarkdown(editor: any, fragment: Fragment): string
 
   let json: any = fragment.toJSON() ?? [];
   if (!Array.isArray(json)) json = [json];
+
+  const singleCellContent = unwrapSingleCellTableFragment(json);
+  if (singleCellContent) {
+    const md = contentToCleanMarkdown(editor, singleCellContent);
+    if (md != null) return md;
+  }
 
   const listWrap = wrappingListNode(editor);
   if (listWrap && json.length && json.every((n: any) => LIST_ITEM_TYPE_NAMES.has(n?.type))) {
