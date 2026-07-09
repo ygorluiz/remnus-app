@@ -36,7 +36,7 @@ function transport(): Transporter {
     region,
     ...(accessKeyId && secretAccessKey ? { credentials: { accessKeyId, secretAccessKey } } : {}),
   });
-  transportCache = nodemailer.createTransport({ SES: { sesClient, SendEmailCommand } });
+  transportCache = nodemailer.createTransport({ sesClient, SendEmailCommand } as any);
   return transportCache;
 }
 
