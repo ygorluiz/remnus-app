@@ -25,7 +25,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-const VALID_THEMES = new Set(['remnus', 'dracula', 'tokyo-night', 'nord', 'catppuccin']);
+const VALID_THEMES = new Set(['remnus', 'carbon', 'dracula', 'tokyo-night', 'nord', 'catppuccin']);
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();

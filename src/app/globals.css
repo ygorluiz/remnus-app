@@ -103,6 +103,36 @@
   }
 }
 
+/* ── Carbon (refined monochrome) ───────────────────────────────────────────── */
+[data-theme="carbon"] {
+  --background: #121212;
+  --foreground: #ffffff;
+  --color-neutral-950: #121212;
+  --color-neutral-900: #181818;
+  --color-neutral-850: #131313;
+  --color-neutral-800: #242424;
+  --color-neutral-700: #323232;
+  --color-neutral-600: #505050;
+  --color-neutral-500: #767676;
+  --color-neutral-400: #8f8f8f;
+  --color-neutral-300: #a8a8a8;
+  --color-neutral-200: #c8c8c8;
+  --color-neutral-100: #e3e3e3;
+  --color-neutral-50:  #ffffff;
+  --color-blue-300: #91a5bf;
+  --color-blue-400: #7e92ad;
+  --color-blue-500: #6b7f9a;
+  --color-blue-600: #5a6e88;
+  --color-red-400:  #bf6b6b;
+  --color-red-500:  #aa5555;
+  --color-green-400: #7aa86a;
+  --color-green-500: #6a965a;
+  --color-amber-400: #c9a86a;
+  --color-amber-500: #b89755;
+  --color-dim:    #5e6073;
+  --color-dimmer: #3a3c48;
+}
+
 /* ── Dracula ──────────────────────────────────────────────────────────────── */
 [data-theme="dracula"] {
   --background: #13141b;

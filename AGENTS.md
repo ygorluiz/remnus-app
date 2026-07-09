@@ -99,6 +99,19 @@ When working on project tasks, agents MUST use the **remnus-mcp** server to inte
 
 Tokens defined via `@theme` overrides in `src/app/globals.css`.
 
+### Theme Palette (`src/lib/themes.ts`)
+
+| Theme        | Type   | Swatches                     |
+| ------------ | ------ | ---------------------------- |
+| Remnus       | Dark   | `#1d1f23` `#282c34` `#445c95` |
+| Carbon       | Dark   | `#121212` `#181818` `#6b7f9a` |
+| Dracula      | Dark   | `#282a36` `#21222c` `#bd93f9` |
+| Tokyo Night  | Dark   | `#1a1b26` `#16161e` `#7aa2f7` |
+| Nord         | Dark   | `#2e3440` `#3b4252` `#88c0d0` |
+| Catppuccin   | Light  | `#ffffff` `#f7f8fa` `#2563eb` |
+
+Each theme defines `[data-theme="..."]` CSS overrides in `globals.css` mapping the full neutral-* scale + semantic colors. Adding a new theme requires edits to both `src/lib/themes.ts` (entry + `AppTheme` type) and `globals.css` (CSS block).
+
 ## UI & Design Aesthetics
 
 - **Flat and borderless:** Settings panels, drawers, sidebars — always `rounded-none`, no shadows.
