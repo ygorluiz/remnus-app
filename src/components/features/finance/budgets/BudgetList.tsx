@@ -35,7 +35,7 @@ export default function BudgetList({
   const { data: categories } = useCategories(workspaceId);
   const deleteBudget = useDeleteBudget();
 
-  const catMap = new Map((categories ?? []).map((c: FinanceCategoryRow) => [c.id, c]));
+  const catMap = new Map<string, FinanceCategoryRow>((categories ?? []).map((c: FinanceCategoryRow) => [c.id, c]));
 
   if (isLoading) {
     return (

@@ -56,7 +56,7 @@ export default function TransactionList({
   const { data, isLoading } = useTransactions(workspaceId, filters, pageSize);
   const deleteTransaction = useDeleteTransaction();
 
-  const transactions = data?.transactions ?? [];
+  const transactions: FinanceTransactionRow[] = data?.transactions ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
 
