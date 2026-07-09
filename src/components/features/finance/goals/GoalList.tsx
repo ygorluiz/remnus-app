@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Target, Circle, CheckCircle, PauseCircle } from 'lucide-react';
 import { useGoals, useUpdateGoal, useDeleteGoal } from '@/hooks/finance/useGoals';
+import type { FinanceGoalRow } from '@/lib/actions/finance/goals';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -41,7 +42,7 @@ export default function GoalList({ workspaceId, onAdd }: { workspaceId: string; 
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {(goals ?? []).map(goal => {
+        {(goals ?? []).map((goal: FinanceGoalRow) => {
           const percent = goal.targetAmountCents > 0
             ? Math.min(100, Math.round((goal.currentAmountCents / goal.targetAmountCents) * 100))
             : 0;

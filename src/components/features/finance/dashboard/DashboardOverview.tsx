@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { TrendingUp, TrendingDown, Wallet, PiggyBank } from 'lucide-react';
 import { useAccounts } from '@/hooks/finance/useAccounts';
+import type { FinanceAccountRow } from '@/lib/actions/finance/accounts';
 
 function formatCents(cents: number): string {
   const abs = Math.abs(cents);
@@ -22,14 +23,14 @@ export default function DashboardOverview({ workspaceId }: { workspaceId: string
     );
   }
 
-  const totalBalance = (accounts ?? []).reduce((sum, a) =>
+  const totalBalance = (accounts ?? []).reduce((sum: number, a: FinanceAccountRow) =>
     a.includeInTotal ? sum + a.currentBalanceCents : sum, 0,
   );
-  const totalIncome = (accounts ?? []).reduce((sum, a) =>
+  const totalIncome = (accounts ?? []).reduce((sum: number, a: FinanceAccountRow) =>
     a.currentBalanceCents > 0 ? sum + a.currentBalanceCents : sum, 0,
   );
-  const checkingAccounts = (accounts ?? []).filter(a => a.type === 'checking' || a.type === 'wallet');
-  const savingsAccounts = (accounts ?? []).filter(a => a.type === 'savings');
+  const checkingAccounts = (accounts ?? []).filter((a: FinanceAccountRow) => a.type === 'checking' || a.type === 'wallet');
+  const savingsAccounts = (accounts ?? []).filter((a: FinanceAccountRow) => a.type === 'savings');
 
   return (
     <div className="space-y-4">
@@ -54,7 +55,7 @@ export default function DashboardOverview({ workspaceId }: { workspaceId: string
             <span className="text-[11px] text-neutral-500">{t('checkingAccounts')}</span>
           </div>
           <p className="text-lg font-bold text-neutral-50">
-            {formatCents(checkingAccounts.reduce((s, a) => s + a.currentBalanceCents, 0))}
+            {formatCents(checkingAccounts.reduce((s: number, a: FinanceAccountRow) => s + a.currentBalanceCents, 0))}
           </p>
           <p className="text-[10px] text-neutral-600">{checkingAccounts.length} {t('accounts')}</p>
         </div>
@@ -67,7 +68,7 @@ export default function DashboardOverview({ workspaceId }: { workspaceId: string
             <span className="text-[11px] text-neutral-500">{t('savingsAccounts')}</span>
           </div>
           <p className="text-lg font-bold text-neutral-50">
-            {formatCents(savingsAccounts.reduce((s, a) => s + a.currentBalanceCents, 0))}
+            {formatCents(savingsAccounts.reduce((s: number, a: FinanceAccountRow) => s + a.currentBalanceCents, 0))}
           </p>
           <p className="text-[10px] text-neutral-600">{savingsAccounts.length} {t('accounts')}</p>
         </div>
@@ -77,7 +78,7 @@ export default function DashboardOverview({ workspaceId }: { workspaceId: string
       <div>
         <p className="text-xs font-semibold text-neutral-400 mb-2 uppercase tracking-wider">{t('allAccounts')}</p>
         <div className="space-y-1">
-          {(accounts ?? []).map(account => {
+          {(accounts ?? []).map((account: FinanceAccountRow) => {
             const sign = account.currentBalanceCents >= 0 ? '+' : '';
             return (
               <div

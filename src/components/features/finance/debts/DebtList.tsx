@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Landmark, TrendingDown } from 'lucide-react';
 import { useDebts, useDeleteDebt } from '@/hooks/finance/useDebts';
+import type { FinanceDebtRow } from '@/lib/actions/finance/debts';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -16,8 +17,8 @@ export default function DebtList({ workspaceId, onAdd }: { workspaceId: string; 
 
   if (isLoading) return <div className="flex items-center justify-center py-12 text-neutral-500 text-sm">{t('loading')}</div>;
 
-  const totalRemaining = (debts ?? []).reduce((s, d) => s + d.remainingAmountCents, 0);
-  const totalOriginal = (debts ?? []).reduce((s, d) => s + d.totalAmountCents, 0);
+  const totalRemaining = (debts ?? []).reduce((s: number, d: FinanceDebtRow) => s + d.remainingAmountCents, 0);
+  const totalOriginal = (debts ?? []).reduce((s: number, d: FinanceDebtRow) => s + d.totalAmountCents, 0);
 
   return (
     <div>
@@ -35,7 +36,7 @@ export default function DebtList({ workspaceId, onAdd }: { workspaceId: string; 
       </div>
 
       <div className="space-y-2">
-        {(debts ?? []).map(debt => {
+        {(debts ?? []).map((debt: FinanceDebtRow) => {
           const paidPct = debt.totalAmountCents > 0
             ? Math.round(((debt.totalAmountCents - debt.remainingAmountCents) / debt.totalAmountCents) * 100)
             : 0;

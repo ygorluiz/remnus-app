@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { useCreateCard, useUpdateCard } from '@/hooks/finance/useCards';
 import { useAccounts } from '@/hooks/finance/useAccounts';
 import type { FinanceCardRow } from '@/lib/actions/finance/cards';
+import type { FinanceAccountRow } from '@/lib/actions/finance/accounts';
 
 const BRANDS = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'other'] as const;
 
@@ -167,7 +168,7 @@ export default function CardForm({
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-50 focus:outline-none focus:border-blue-500/60"
             >
               <option value="">{t('noLinkedAccount')}</option>
-              {(accounts ?? []).map(acc => (
+              {(accounts ?? []).map((acc: FinanceAccountRow) => (
                 <option key={acc.id} value={acc.id}>{acc.name}</option>
               ))}
             </select>

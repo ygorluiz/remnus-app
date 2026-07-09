@@ -58,7 +58,7 @@ export default function CardList({
     );
   }
 
-  const totalLimit = (cards ?? []).reduce((s, c) => s + c.creditLimitCents, 0);
+  const totalLimit = (cards ?? []).reduce((s: number, c: FinanceCardRow) => s + c.creditLimitCents, 0);
 
   return (
     <div>
@@ -79,7 +79,7 @@ export default function CardList({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {(cards ?? []).map(card => {
+        {(cards ?? []).map((card: FinanceCardRow) => {
           const cycleInfo = daysUntil(card.closingDay, card.dueDay);
           return (
             <div
