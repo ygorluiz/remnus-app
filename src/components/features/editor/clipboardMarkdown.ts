@@ -1,4 +1,4 @@
-import type { Fragment } from '@tiptap/pm/model';
+import type { Fragment } from 'prosemirror-model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Clipboard markdown serialization.

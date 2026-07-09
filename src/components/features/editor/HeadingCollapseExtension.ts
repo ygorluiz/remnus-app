@@ -1,8 +1,8 @@
 import Heading from '@tiptap/extension-heading';
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import type { Node as PMNode } from '@tiptap/pm/model';
+import { Plugin, PluginKey } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
+import type { Node as PMNode } from 'prosemirror-model';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import HeadingView from './HeadingView';
 import { MAX_INDENT } from './IndentExtension';

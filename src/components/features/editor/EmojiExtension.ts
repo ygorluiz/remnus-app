@@ -1,7 +1,7 @@
 'use client';
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
-import { PluginKey } from '@tiptap/pm/state';
+import { PluginKey } from 'prosemirror-state';
 import Suggestion from '@tiptap/suggestion';
 import tippy, { type Instance } from 'tippy.js';
 import EmojiList from './EmojiList';

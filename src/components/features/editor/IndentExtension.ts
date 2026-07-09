@@ -1,6 +1,6 @@
 import { Extension } from '@tiptap/core';
 import Paragraph from '@tiptap/extension-paragraph';
-import { NodeSelection } from '@tiptap/pm/state';
+import { NodeSelection } from 'prosemirror-state';
 
 export const MAX_INDENT = 6;
 
