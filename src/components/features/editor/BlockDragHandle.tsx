@@ -8,6 +8,7 @@ import {
   deleteBlockSelection,
   blockSelectionKey,
 } from './BlockSelectionExtension';
+import { nodesToCleanMarkdown } from './clipboardMarkdown';
 import {
   GripVertical, MoreVertical, ArrowUp, ArrowDown, ChevronsDownUp, Trash2, Copy, CopyPlus, Scissors, Check, ChevronRight,
   Pilcrow, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code2,
@@ -191,7 +192,7 @@ export default function BlockDragHandle({ editor }: Props) {
   );
   const zoom = useZoom();
   const zoomRef = useRef(zoom);
-  // eslint-disable-next-line react-hooks/refs
+   
   zoomRef.current = zoom;
   const [handle, setHandle] = useState<Handle | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -211,7 +212,7 @@ export default function BlockDragHandle({ editor }: Props) {
   const rafRef = useRef<number | null>(null);
   const dragRafRef = useRef<number | null>(null);
   const handleRef = useRef<Handle | null>(null);
-  // eslint-disable-next-line react-hooks/refs
+   
   handleRef.current = handle;
 
   const BLOCK_LABELS: Record<BlockType, string> = {
@@ -448,7 +449,7 @@ export default function BlockDragHandle({ editor }: Props) {
     return () => { editor.off('blur', hide); };
   }, [editor, menuOpen, isCoarse]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+   
   useEffect(() => { if (!menuOpen) { setSubOpen(false); setMenuAnchor(null); setTarget(null); } }, [menuOpen]);
 
   const closeMenu = () => { setMenuOpen(false); setMenuAnchor(null); setTarget(null); setHandle(null); };
@@ -556,7 +557,6 @@ export default function BlockDragHandle({ editor }: Props) {
 
   // ── Target-aware primitives (no menu side-effects) ──
   const copyTarget = (tgt: Target) => {
-    const manager = (editor as any).markdown ?? (editor as any).storage?.markdown?.manager;
     let text: string | null = null;
     try {
       if (tgt.kind === 'blocks') {
@@ -566,7 +566,7 @@ export default function BlockDragHandle({ editor }: Props) {
         text = editor.state.doc.textBetween(tgt.from, tgt.to, '\n', '\n');
       } else {
         const node = editor.state.doc.nodeAt(tgt.pos);
-        if (node) text = manager?.serialize ? manager.serialize({ type: 'doc', content: [node.toJSON()] }) : node.textContent;
+        if (node) text = nodesToCleanMarkdown(editor, [node]);
       }
     } catch { /* best-effort */ }
     if (text != null) void navigator.clipboard?.writeText(text).catch(() => {});
@@ -722,9 +722,9 @@ export default function BlockDragHandle({ editor }: Props) {
   // or multi-block); a single block already has Delete.
   const showCut = targetKind === 'range' || targetKind === 'blocks';
   const currentTurnInto = turnOptions.find((o) => o.active)?.icon ?? <Pilcrow size={14} />;
-  // eslint-disable-next-line react-hooks/refs
+   
   const vh = window.innerHeight / zoomRef.current;
-  // eslint-disable-next-line react-hooks/refs
+   
   const vw = window.innerWidth / zoomRef.current;
   // Right-click → menu at the cursor; grip click → menu just below the grip.
   const menuTop = Math.min(menuAnchor ? menuAnchor.y : handle.top + 26, vh - 200);
@@ -754,8 +754,12 @@ export default function BlockDragHandle({ editor }: Props) {
       </button>
       )}
 
-      {/* Custom drop indicator — replaces ProseMirror dropcursor for all our drags */}
-      {dropIndicator && createPortal(
+      {/* Custom drop indicator — replaces ProseMirror dropcursor for all our drags.
+          Rendered INLINE (not portaled to body) so its `position: fixed` resolves
+          against the same transformed containing block as the grip/menu — its
+          coords are already zoom-corrected (`/z`). Portaling to body would put it
+          outside the ZoomProvider transform and shift the line under desktop zoom. */}
+      {dropIndicator && (
         <div
           style={{
             position: 'fixed',
@@ -774,8 +778,7 @@ export default function BlockDragHandle({ editor }: Props) {
             pointerEvents: 'none',
             zIndex: 99,
           }}
-        />,
-        document.body,
+        />
       )}
 
       {menuOpen && (

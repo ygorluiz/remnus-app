@@ -13,17 +13,17 @@ export default function NotFoundRedirect() {
   const [remaining, setRemaining] = useState(Math.ceil(REDIRECT_AFTER_MS / 1000));
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          router.replace('/app');
-        }
-        return prev - 1;
-      });
+    if (remaining <= 0) {
+      router.replace('/app');
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setRemaining(prev => prev - 1);
     }, 1000);
-    return () => clearInterval(interval);
-  }, [router]);
+
+    return () => clearTimeout(timer);
+  }, [remaining, router]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-neutral-850 text-neutral-100">

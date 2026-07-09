@@ -39,29 +39,30 @@ export default function ZoomProvider({ children }: { children: React.ReactNode }
     return () => window.removeEventListener('remnus-zoom-changed', handler);
   }, []);
 
-  if (zoom === 1) {
-    return (
-      <ZoomContext.Provider value={1}>
-        <div className="h-screen overflow-hidden">{children}</div>
-      </ZoomContext.Provider>
-    );
-  }
-
+  // `zoom` starts at 1 and resolves to the stored value AFTER mount (effect).
+  // The rendered tree shape must NOT change between those two renders — otherwise
+  // the children move between DOM depths and React remounts the entire app, which
+  // (racing the first navigation) crashed Next's client Router with "Rendered
+  // more hooks than during the previous render" on Tauri's first open. So we
+  // ALWAYS render the same outer+inner div structure; only the inner style and
+  // the context value change. At zoom === 1 the inner div carries NO transform,
+  // so it creates no containing block and `position: fixed` still resolves to the
+  // viewport exactly as before.
   const inv = `${(100 / zoom).toFixed(4)}%`;
+  const innerStyle: React.CSSProperties =
+    zoom === 1
+      ? { width: '100%', height: '100%', overflow: 'hidden' }
+      : {
+          transform: `scale(${zoom})`,
+          transformOrigin: 'top left',
+          width: inv,
+          height: inv,
+          overflow: 'hidden',
+        };
   return (
     <ZoomContext.Provider value={zoom}>
       <div className="h-screen w-screen overflow-hidden">
-        <div
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top left',
-            width: inv,
-            height: inv,
-            overflow: 'hidden',
-          }}
-        >
-          {children}
-        </div>
+        <div style={innerStyle}>{children}</div>
       </div>
     </ZoomContext.Provider>
   );

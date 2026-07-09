@@ -1,5 +1,6 @@
 ﻿'use client';
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { X, Link2 } from 'lucide-react';
 import ConnectFlow, { type MintTarget } from './ConnectFlow';
@@ -9,13 +10,15 @@ interface Props {
   /** Workspaces the user can mint a PAT in. Empty = OAuth-only (token mode unavailable). */
   mintTargets?: MintTarget[];
   onClose: () => void;
+  /** Funnel attribution for where the connect flow was opened from. */
+  source?: string;
 }
 
 /**
  * Standalone full-screen modal wrapping {@link ConnectFlow}.
  * Layered above the AI Agents control center (and Workspace Settings) — z-110.
  */
-export default function ConnectModal({ mcpUrl, mintTargets = [], onClose }: Props) {
+export default function ConnectModal({ mcpUrl, mintTargets = [], onClose, source }: Props) {
   const t = useTranslations('WorkspaceSettings');
 
   useEffect(() => {
@@ -24,7 +27,7 @@ export default function ConnectModal({ mcpUrl, mintTargets = [], onClose }: Prop
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 md:p-6"
       onClick={onClose}
@@ -52,9 +55,10 @@ export default function ConnectModal({ mcpUrl, mintTargets = [], onClose }: Prop
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6">
-          <ConnectFlow bare mcpUrl={mcpUrl} mintTargets={mintTargets} onClose={onClose} />
+          <ConnectFlow bare mcpUrl={mcpUrl} mintTargets={mintTargets} onClose={onClose} source={source} />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

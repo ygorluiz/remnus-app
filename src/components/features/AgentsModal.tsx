@@ -7,10 +7,12 @@ import PageIcon from '@/components/features/PageIcon';
 import { ConfirmDialog } from '@/components/features/ConfirmDialog';
 import ConnectModal from '@/components/features/agents/ConnectModal';
 import AgentMark, { AGENT_MARKS, MarkIcon, markForId, resolveAgentMark } from '@/components/features/agents/AgentMark';
+import { formatTokens } from '@/components/features/admin/format';
 import {
   getUserWorkspacesWithTokens,
   getUserAgentActivity,
   getUserOAuthTokens,
+  getMyAgentUsage,
   revokeAgentToken,
   revokeOAuthToken,
   setAgentTokenAgent,
@@ -25,6 +27,8 @@ type OAuthToken = Awaited<ReturnType<typeof getUserOAuthTokens>>[number];
 type UnifiedRow =
   | { kind: 'pat';   data: WorkspaceToken }
   | { kind: 'oauth'; data: OAuthToken };
+
+type AgentUsage = Awaited<ReturnType<typeof getMyAgentUsage>>;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -328,6 +332,7 @@ export default function AgentsModal({ onClose }: Props) {
   const [workspaces,    setWorkspaces]    = useState<WsWithTokens[]>([]);
   const [activity,      setActivity]      = useState<ActivityRow[]>([]);
   const [oauthTokens,   setOAuthTokens]   = useState<OAuthToken[]>([]);
+  const [usage,         setUsage]         = useState<AgentUsage | null>(null);
   const [loading,       setLoading]       = useState(true);
   const [showActivity,  setShowActivity]  = useState(false);
   const [showConnect,   setShowConnect]   = useState(false);
@@ -340,7 +345,7 @@ export default function AgentsModal({ onClose }: Props) {
   // Workspaces the user can mint a PAT in — passed to ConnectFlow's Advanced/token section.
   const mintTargets = workspaces
     .filter(ws => ws.canManage)
-    .map(ws => ({ id: ws.id, name: ws.name }));
+    .map(ws => ({ id: ws.id, name: ws.name, icon: ws.icon, iconColor: ws.iconColor }));
 
   const oauthByWorkspace = oauthTokens.reduce<Record<string, OAuthToken[]>>((acc, tok) => {
     (acc[tok.workspaceId] ??= []).push(tok);
@@ -349,8 +354,8 @@ export default function AgentsModal({ onClose }: Props) {
 
   const load = () => {
     setLoading(true);
-    Promise.all([getUserWorkspacesWithTokens(), getUserAgentActivity(), getUserOAuthTokens()])
-      .then(([ws, acts, oauth]) => { setWorkspaces(ws); setActivity(acts); setOAuthTokens(oauth); })
+    Promise.all([getUserWorkspacesWithTokens(), getUserAgentActivity(), getUserOAuthTokens(), getMyAgentUsage()])
+      .then(([ws, acts, oauth, use]) => { setWorkspaces(ws); setActivity(acts); setOAuthTokens(oauth); setUsage(use); })
       .finally(() => setLoading(false));
   };
 
@@ -439,6 +444,18 @@ export default function AgentsModal({ onClose }: Props) {
             ))
           )}
 
+          {/* Usage summary — last 30 days, by token owner (response payload → ~tokens) */}
+          {!loading && totalTokens > 0 && usage && usage.calls > 0 && (
+            <div className="flex items-center justify-between border-t border-neutral-800 pt-4">
+              <span className="text-[11px] font-semibold text-neutral-300 uppercase tracking-widest">
+                {t('agentsUsageLabel')}
+              </span>
+              <span className="text-[11px] text-neutral-400">
+                {t('agentsUsageValue', { tokens: formatTokens(usage.bytes), calls: usage.calls })}
+              </span>
+            </div>
+          )}
+
           {/* Activity section — hidden until at least one agent is connected */}
           {!loading && totalTokens > 0 && (
             <div className="border-t border-neutral-800 pt-4">
@@ -514,6 +531,7 @@ export default function AgentsModal({ onClose }: Props) {
       <ConnectModal
         mcpUrl={mcpUrl}
         mintTargets={mintTargets}
+        source="agents_modal"
         onClose={() => { setShowConnect(false); load(); }}
       />
     )}

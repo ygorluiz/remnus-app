@@ -7,21 +7,22 @@ import { Markdown } from '@tiptap/markdown';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
-import { TableCell } from '@tiptap/extension-table-cell';
-import { TableHeader } from '@tiptap/extension-table-header';
+import { MarkdownTable, BgTableCell, BgTableHeader } from './TableMarkdown';
 import BubbleMenuBar from './BubbleMenuBar';
 import BlockDragHandle, { getDragSource, getNestTarget, clearNestTarget } from './BlockDragHandle';
+import TableControls from './TableControls';
 import { Slice, Fragment } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import { dropPoint } from '@tiptap/pm/transform';
+import { joinTextblockForward } from '@tiptap/pm/commands';
 import { SlashCommand } from './SlashCommandMenu';
 import { ChildBlock } from './ChildBlockExtension';
 import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import { YoutubeEmbed } from './YoutubeEmbedExtension';
+import { fragmentToCleanMarkdown } from './clipboardMarkdown';
 
 // Markdown has no native syntax for text/highlight colors, so the default
 // serializer drops them (a colored run reverts on reload). These extends emit
@@ -100,6 +101,7 @@ import { BookmarkBlock } from './BookmarkBlockExtension';
 import { FileBlock } from './FileBlockExtension';
 import { PageLink } from './PageLinkNode';
 import { PageMention } from './PageMentionExtension';
+import { EmojiSuggestion } from './EmojiExtension';
 import { FencedCodeBlock } from './CodeBlockExtension';
 import { CollapsibleHeading, HeadingCollapsePlugin } from './HeadingCollapseExtension';
 import { IndentedParagraph, IndentShortcuts, IndentGlobal, MAX_INDENT } from './IndentExtension';
@@ -259,10 +261,10 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: false }),
+      MarkdownTable.configure({ resizable: true, lastColumnResizable: false }),
       TableRow,
-      TableCell,
-      TableHeader,
+      BgTableCell,
+      BgTableHeader,
       ChildBlock.configure({
         workspaceId: workspaceId ?? null,
         parentId: parentId ?? null,
@@ -280,6 +282,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       FileBlock.configure({ workspaceId: workspaceId ?? null }),
       PageLink,
       PageMention,
+      EmojiSuggestion,
       FencedCodeBlock,
       ColorTextStyle,
       Color,
@@ -296,6 +299,40 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       attributes: {
         class: 'prose-editor focus:outline-none min-h-[500px]',
         spellcheck: 'false',
+      },
+      // Selecting all the text of a SINGLE table cell (triple-click, or a drag
+      // that grazes the cell border) yields a single-cell CellSelection whose
+      // copied slice is still wrapped in table→row→cell. That wrapper makes the
+      // clipboard carry a whole `<table>` (text/html) and `| … |` GFM syntax
+      // (text/plain) — so pasting anywhere reproduces a table instead of the
+      // plain cell text. `transformCopied` runs BEFORE both the html and text
+      // serializers, so unwrapping the slice to just the cell's own content here
+      // fixes EVERY clipboard format at once. A multi-cell / whole-row / whole-
+      // table copy has >1 cell (or a `table` at the top) and is left untouched.
+      transformCopied: (slice) => {
+        const content = slice.content;
+        if (content.childCount !== 1) return slice;
+        const row = content.firstChild;
+        if (!row || row.type.spec.tableRole !== 'row' || row.childCount !== 1) return slice;
+        const cell = row.firstChild;
+        const role = cell?.type.spec.tableRole;
+        if (!cell || (role !== 'cell' && role !== 'header_cell')) return slice;
+        if (cell.content.size === 0) return Slice.empty;
+        // Keep the cell's block content, opened one level so a single-paragraph
+        // cell pastes inline (matching a normal in-paragraph text copy).
+        return new Slice(cell.content, 1, 1);
+      },
+      // Copy/cut a native text selection as clean markdown (not the storage HTML
+      // for atom blocks, and with no doubled blank lines) — so a callout pastes
+      // as a blockquote and consecutive paragraphs paste tightly. The marquee
+      // block selection goes through serializeBlockSelectionMarkdown, which uses
+      // the same cleaner, so both copy paths produce identical output. The slice
+      // reaching here is already unwrapped by transformCopied for single-cell
+      // table copies, so cell text serializes as plain text, not a `| … |` row.
+      clipboardTextSerializer: (slice) => {
+        const ed = editorRef.current;
+        if (!ed) return slice.content.textBetween(0, slice.content.size, '\n\n', '\n');
+        return fragmentToCleanMarkdown(ed, slice.content);
       },
       handleClick: (_view, _pos, event) => {
         const anchor = (event.target as HTMLElement | null)?.closest('a');
@@ -341,6 +378,23 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
         }
       },
       handleKeyDown: (view, event) => {
+        // Delete at the end of a textblock should merge with the next textblock even
+        // when the next block is a different node type (e.g. paragraph → listItem inside
+        // a bulletList). ProseMirror's base keymap only binds `joinForward` for Delete,
+        // which requires the two nodes at the boundary to be the same type — so pressing
+        // Delete at end of a paragraph above a bullet list does nothing (it falls through
+        // to `selectNodeForward` which just selects the list). `joinTextblockForward`
+        // descends into the next container and finds the first textblock, enabling the
+        // "Delete at end of parent → child merges up" behaviour the user expects.
+        if (event.key === 'Delete') {
+          const { state } = view;
+          const { empty, $from } = state.selection;
+          if (empty && $from.parentOffset === $from.parent.content.size) {
+            return joinTextblockForward(state, view.dispatch, view) ?? false;
+          }
+          return false;
+        }
+
         if (event.key !== 'Backspace') return false;
         const { state } = view;
         const { selection } = state;
@@ -542,6 +596,117 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
           const doc = manager.parse(text);
           if (!doc?.content?.length) return false;
 
+          const LIST_TYPES_SET = new Set(['bulletList', 'orderedList', 'taskList']);
+          const LIST_ITEM_TYPES_SET = new Set(['listItem', 'taskItem']);
+
+          // Count total list items and whether there is non-list content mixed in.
+          let totalListItems = 0;
+          let hasNonList = false;
+          for (const item of doc.content) {
+            if (LIST_TYPES_SET.has(item.type)) totalListItems += (item.content ?? []).length;
+            else hasNonList = true;
+          }
+
+          if (totalListItems > 0) {
+            if (totalListItems === 1 && !hasNonList) {
+              // Single bullet → paste as plain text (unwrap the list wrapper).
+              const innerContent = doc.content[0]?.content?.[0]?.content ?? [];
+              if (innerContent.length) {
+                ed.commands.insertContent(innerContent);
+                return true;
+              }
+            } else {
+              // Multiple list items and cursor is inside a list item:
+              // split the current item at the cursor and insert the pasted items
+              // between the two halves — the natural "insert at cursor" semantics.
+              //
+              //   cursor at item end   → pasted items become next siblings (most common)
+              //   cursor at item start → pasted items inserted before item's content
+              //   cursor in middle     → item splits; pasted items fill the gap
+              //   cursor in empty item → empty slot replaced; no phantom bullet left
+              const { $from } = _view.state.selection;
+              let listItemDepth = -1;
+              for (let d = $from.depth; d >= 0; d--) {
+                if (LIST_ITEM_TYPES_SET.has($from.node(d).type.name)) {
+                  listItemDepth = d;
+                  break;
+                }
+              }
+
+              if (listItemDepth >= 0) {
+                const { schema } = _view.state;
+                const siblings: any[] = [];
+                for (const item of doc.content) {
+                  if (LIST_TYPES_SET.has(item.type)) {
+                    for (const li of (item.content ?? [])) siblings.push(li);
+                  } else {
+                    siblings.push({ type: 'listItem', content: [item] });
+                  }
+                }
+
+                if (siblings.length) {
+                  const siblingNodes = siblings.map((s: any) => schema.nodeFromJSON(s));
+                  const listItemNode = $from.node(listItemDepth);
+                  const itemStart = $from.before(listItemDepth);
+                  const itemEnd = $from.after(listItemDepth);
+
+                  const isEmptyItem =
+                    listItemNode.childCount === 1 &&
+                    listItemNode.firstChild?.type.name === 'paragraph' &&
+                    listItemNode.firstChild?.content.size === 0;
+                  const hasSinglePara =
+                    listItemNode.childCount === 1 &&
+                    listItemNode.firstChild?.type.name === 'paragraph';
+
+                  let newNodes: ReturnType<typeof schema.nodeFromJSON>[];
+
+                  if (isEmptyItem) {
+                    // Empty slot — replace entirely; pasted items fill its position.
+                    newNodes = siblingNodes;
+                  } else if (hasSinglePara) {
+                    // Split at cursor; rebuild the item from the two halves.
+                    const cursorOffset = $from.parentOffset;
+                    const paraContent = $from.parent.content;
+                    const beforeContent = paraContent.cut(0, cursorOffset);
+                    const afterContent = paraContent.cut(cursorOffset);
+                    const paraType = schema.nodes.paragraph;
+                    const listItemType = listItemNode.type;
+                    newNodes = [];
+                    if (beforeContent.size > 0) {
+                      newNodes.push(listItemType.create(
+                        listItemNode.attrs,
+                        paraType.create($from.parent.attrs, beforeContent),
+                        listItemNode.marks,
+                      ));
+                    }
+                    newNodes.push(...siblingNodes);
+                    if (afterContent.size > 0) {
+                      newNodes.push(listItemType.create(
+                        listItemNode.attrs,
+                        paraType.create($from.parent.attrs, afterContent),
+                        listItemNode.marks,
+                      ));
+                    }
+                  } else {
+                    // Complex item (nested lists / multiple children) → insert after.
+                    _view.dispatch(
+                      _view.state.tr.insert(
+                        $from.after(listItemDepth),
+                        Fragment.fromArray(siblingNodes),
+                      ),
+                    );
+                    return true;
+                  }
+
+                  _view.dispatch(
+                    _view.state.tr.replaceWith(itemStart, itemEnd, Fragment.fromArray(newNodes)),
+                  );
+                  return true;
+                }
+              }
+            }
+          }
+
           ed.commands.insertContent(doc.content);
           return true;
         } catch {
@@ -646,6 +811,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       <BubbleMenuBar editor={editor} />
       {editable && <BlockDragHandle editor={editor} />}
       {editable && <BlockSelectionToolbar editor={editor} />}
+      {editable && <TableControls editor={editor} />}
       <EditorContent editor={editor} />
     </div>
   );

@@ -10,6 +10,9 @@ export interface SelectOption {
   color?: SelectOptionColor;
   // Only meaningful for `status` columns — which bucket the option belongs to.
   group?: StatusGroup;
+  // Emoji / `lucide:Name` / uploaded image URL — same format as PageIcon. Tinted
+  // by `color` when it's a lucide icon (SelectOptionColor keys match ICON_COLORS).
+  icon?: string;
 }
 
 export const STATUS_GROUP_ORDER: StatusGroup[] = ['todo', 'in_progress', 'complete'];

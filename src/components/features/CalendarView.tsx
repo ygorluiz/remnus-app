@@ -10,12 +10,13 @@ import { useContextMenu, type MenuItem } from './ContextMenu';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import AgentEditBadge from './AgentEditBadge';
-import { StatusChip, UserChip, UserTags } from './PropertyTags';
+import { StatusChip, UserAvatarStack, OptionIcon } from './PropertyTags';
 import { updatePageIcon } from '@/lib/actions/page';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface CalendarViewProps {
   database: any;
+  currentUserId?: string;
   pages: any[];
   dateCol: string;
   viewMode: 'month' | 'week';
@@ -45,39 +46,29 @@ const formatYYYYMMDD = (d: Date) => {
 };
 
 const getMonthDays = (date: Date, firstDayOfWeek: 'sunday' | 'monday') => {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const firstDayOfMonth = new Date(year, month, 1);
-  
-  let startDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday, 1 is Monday, etc.
+  // Rolling 6-week grid anchored on `date`. Instead of always opening on the
+  // 1st of the month (which pushes "today" to the bottom rows and shows several
+  // stale past weeks on top when we're mid-month), the grid starts one week
+  // before the week that contains `date`. So the current week + one prior week
+  // are visible up top and the rest of the window looks ahead — "today" sits on
+  // the 2nd row. Monthly prev/next navigation is preserved (it shifts `date` by
+  // a month, re-anchoring the window), as is the current-month highlighting.
+  const anchorMonth = date.getMonth();
+
+  // Start of the week that contains `date`, honoring firstDayOfWeek.
+  let dow = date.getDay(); // 0 = Sunday
   if (firstDayOfWeek === 'monday') {
-    startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+    dow = dow === 0 ? 6 : dow - 1;
   }
-  
+  const gridStart = new Date(date.getFullYear(), date.getMonth(), date.getDate() - dow - 7);
+
   const days = [];
-  // Add days from previous month
-  const prevMonthLastDay = new Date(year, month, 0).getDate();
-  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
     days.push({
-      date: new Date(year, month - 1, prevMonthLastDay - i),
-      isCurrentMonth: false,
-    });
-  }
-  // Add days of current month
-  const currentMonthLastDay = new Date(year, month + 1, 0).getDate();
-  for (let i = 1; i <= currentMonthLastDay; i++) {
-    days.push({
-      date: new Date(year, month, i),
-      isCurrentMonth: true,
-    });
-  }
-  // Add days of next month to make complete weeks (multiples of 7, standard 6 rows = 42 cells)
-  const totalDays = days.length;
-  const remaining = 42 - totalDays;
-  for (let i = 1; i <= remaining; i++) {
-    days.push({
-      date: new Date(year, month + 1, i),
-      isCurrentMonth: false,
+      date: d,
+      isCurrentMonth: d.getMonth() === anchorMonth,
     });
   }
   return days;
@@ -108,6 +99,7 @@ const WEEKDAYS_MON = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
 export default function CalendarView({
   database,
+  currentUserId,
   pages,
   dateCol,
   viewMode,
@@ -144,7 +136,6 @@ export default function CalendarView({
 
   // Card dragging states
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
-  const [isCardDragReady, setIsCardDragReady] = useState(false);
   const [dragOverDayStr, setDragOverDayStr] = useState<string | null>(null);
   const [activeMenuCardId, setActiveMenuCardId] = useState<string | null>(null);
   const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
@@ -334,7 +325,11 @@ export default function CalendarView({
         <div
           className="grid grid-cols-7 border-l border-t border-neutral-800/80 bg-neutral-850 h-auto"
           style={{
-            gridTemplateRows: viewMode === 'month' ? 'repeat(6, minmax(6rem, 1fr))' : 'minmax(22rem, 1fr)'
+            // `auto` (not `1fr`) so each week row grows to fit its busiest day
+            // independently — a week packed with cards expands without dragging
+            // every other row to the same height. The min (~2 default cards tall)
+            // keeps sparse weeks from collapsing too short.
+            gridTemplateRows: viewMode === 'month' ? 'repeat(6, minmax(11rem, auto))' : 'minmax(22rem, auto)'
           }}
         >
           {days.map(({ date, isCurrentMonth }, idx) => {
@@ -365,11 +360,16 @@ export default function CalendarView({
                   }
                   setDragOverDayStr(null);
                   setDraggedCardId(null);
-                  setIsCardDragReady(false);
                 }}
-                className={`border-r border-b border-neutral-800/80 p-1 lg:p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
-                  !isCurrentMonth && viewMode === 'month' ? 'bg-neutral-950/20' : 'bg-transparent'
-                } ${isDragOver ? 'bg-neutral-800/15' : ''}`}
+                className={`relative border-r border-b border-neutral-800/80 p-1 lg:p-2 min-h-24 flex flex-col transition-colors overflow-visible group/day ${
+                  isDragOver
+                    ? 'bg-neutral-800/15'
+                    : isToday
+                    ? 'bg-blue-500/5'
+                    : !isCurrentMonth && viewMode === 'month'
+                    ? 'bg-neutral-950/20'
+                    : 'bg-transparent'
+                } ${isToday ? 'ring-1 ring-inset ring-blue-500/40 z-10' : ''}`}
               >
                 {/* Day Number / Indicator */}
                 <div className="flex items-center justify-between mb-1.5 shrink-0 select-none">
@@ -419,7 +419,7 @@ export default function CalendarView({
                       key={page.id}
                       onClick={() => onCardClick(page.id)}
                       onContextMenu={(e) => cardMenu.open(e, buildCardMenu(page.id))}
-                      draggable={isCardDragReady}
+                      draggable={true}
                       onDragStart={(e) => {
                         e.stopPropagation();
                         setDraggedCardId(page.id);
@@ -427,8 +427,7 @@ export default function CalendarView({
                         e.dataTransfer.effectAllowed = 'move';
                       }}
                       onDragEnd={() => {
-                        setDraggedCardId(page.id);
-                        setIsCardDragReady(false);
+                        setDraggedCardId(null);
                       }}
                       className={`relative py-1 lg:py-2.5 px-1 lg:px-2 cursor-pointer transition-colors group flex flex-col select-none overflow-hidden rounded ${
                         draggedCardId === page.id ? 'opacity-25' : ''
@@ -458,8 +457,6 @@ export default function CalendarView({
                             e.dataTransfer.setData('text/plain', page.id);
                             e.dataTransfer.effectAllowed = 'move';
                           }}
-                          onMouseDown={() => setIsCardDragReady(true)}
-                          onMouseLeave={() => setIsCardDragReady(false)}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (activeMenuCardId === page.id) {
@@ -575,23 +572,23 @@ export default function CalendarView({
                             if (c.type === 'select' && typeof val === 'string') {
                               const sc = getOptionColorByValue(c.options || [], val);
                               display = (
-                                <span className="text-[9px] px-1.5 py-px rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-px rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                  <OptionIcon value={val} options={c.options} size={9} />
                                   {val}
                                 </span>
                               );
                             } else if (c.type === 'status' && typeof val === 'string') {
                               display = <StatusChip value={val} options={c.options} iconSize={10} />;
-                            } else if (c.type === 'user') {
-                              display = <UserChip userId={String(val)} avatarSize={14} />;
-                            } else if (c.type === 'multi_user' && Array.isArray(val)) {
-                              display = <UserTags value={val} avatarSize={14} wrap={propertyTextClamp === 'wrap'} />;
+                            } else if (c.type === 'user' || c.type === 'multi_user') {
+                              display = <UserAvatarStack value={val} currentUserId={currentUserId} size={18} />;
                             } else if (c.type === 'multi_select' && Array.isArray(val)) {
                               display = (
                                 <span className={`flex gap-0.5 ${propertyTextClamp === 'wrap' ? 'flex-wrap' : 'flex-nowrap overflow-hidden'}`}>
                                   {val.map((optVal: string) => {
                                     const mc = getOptionColorByValue(c.options || [], optVal);
                                     return (
-                                      <span key={optVal} className="text-[9px] px-1.5 py-px rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                      <span key={optVal} className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-px rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                        <OptionIcon value={optVal} options={c.options} size={9} />
                                         {optVal}
                                       </span>
                                     );

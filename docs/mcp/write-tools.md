@@ -41,7 +41,7 @@ Update an existing page or database row. Properties are **merged** — existing 
 
 ---
 
-## bulk_update
+## bulk_update_pages
 
 Update multiple pages or database rows in a single call.
 
@@ -113,7 +113,10 @@ Create a new database with a custom schema. A `Title` text column is always prep
 }
 ```
 
-Column types: `text`, `number`, `select`, `multi_select`, `date`, `datetime`
+Column types: `text`, `number`, `select`, `multi_select`, `status`, `user`, `multi_user`, `date`, `datetime`, `checkbox`, `url`, `email`, `phone`
+
+- `status` — like `select`, but each option may include a `group`: `"todo"` | `"in_progress"` | `"complete"` (renders as a progress-ring glyph).
+- `user` / `multi_user` — store workspace member user ids (no `options` needed); resolved to member name + avatar in the UI.
 
 **Returns** — `{ id, databaseId }`
 
@@ -135,3 +138,60 @@ Add or remove columns from an existing database. Removing columns is **destructi
 The `Title` column cannot be removed.
 
 **Returns** — updated schema.
+
+---
+
+## create_database_view
+
+Add a new saved view (table, kanban, or calendar) to a database. Kanban groups rows by a select/status column; calendar places cards by a date/datetime column. Use `get_database_schema` first to see column ids/names.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `databaseId` | string | ✓ | Database ID |
+| `name` | string | ✓ | Name for the new view |
+| `type` | string | ✓ | `"table"` \| `"kanban"` \| `"calendar"` |
+| `groupByCol` | string | | Kanban only: select/status column id or name. Auto-picks the first status/select column if omitted. |
+| `dateCol` | string | | Calendar only: date/datetime column id or name. Auto-picks the first date/datetime column if omitted. |
+| `icon` | string | | Emoji, `"lucide:Name"`, or image URL for the view tab |
+| `iconColor` | string | | Theme color for a lucide icon |
+
+A kanban view with no select/status column, or a calendar view with no date/datetime column, errors unless one is passed explicitly.
+
+**Returns** — `{ created: true, view }`
+
+---
+
+## update_database_view
+
+Rename a view, change its icon, or patch fields within its existing config (`filters`, `sorts`, `groupByCol`, `dateCol`, `cardProperties`, etc — merged into the current config). A view's type (table/kanban/calendar) can't be changed after creation; create a new view instead.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `databaseId` | string | ✓ | Database ID |
+| `viewId` | string | ✓ | View ID (from `get_database_schema`) |
+| `name` | string | | New view name |
+| `icon` | string | | Emoji, `"lucide:Name"`, or image URL |
+| `iconColor` | string | | Theme color for a lucide icon |
+| `config` | object | | Partial config fields to merge in, e.g. `{ "groupByCol": "col_abc123" }` |
+
+**Returns** — `{ updated: true, view }`
+
+---
+
+## delete_database_view
+
+Delete a saved view. Requires `confirm: true`. A database must always keep at least one view — deleting the last one errors.
+
+**Parameters**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `databaseId` | string | ✓ | | Database ID |
+| `viewId` | string | ✓ | | View ID (from `get_database_schema`) |
+| `confirm` | boolean | | `false` | Set to `true` to confirm deletion |
+
+**Returns** — `{ deleted: true }`

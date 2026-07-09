@@ -1,12 +1,13 @@
 'use server';
 import { db } from '@/db';
 import { agentTokens, workspaceMembers, workspaces, agentActivity, oauthAccessTokens, oauthClients } from '@/db/schema';
-import { eq, and, isNull, desc, inArray } from 'drizzle-orm';
+import { eq, and, isNull, desc, inArray, gte, sql } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth/session';
 import { isAdminRole } from '@/lib/auth/roles';
 import { getTranslations } from 'next-intl/server';
 import { checkCanAddAgent } from '@/lib/services/billing';
 import { captureServer, isCaptureAllowedFromRequest } from '@/lib/analytics/server';
+import { maybeSendAgentConnectedEmail } from '@/lib/email/lifecycle';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 
@@ -47,6 +48,15 @@ export async function mintAgentToken(
   if (!isAdminRole(user.role)) {
     const code = await checkCanAddAgent(workspaceId);
     if (code) {
+      // Funnel: a PAT mint was blocked by a plan limit — same "why can't they add
+      // an agent" signal as the OAuth agent_limit_reached path. Capture the exact code.
+      await captureServer({
+        event: 'mcp_token_mint_blocked',
+        userId,
+        allowed: await isCaptureAllowedFromRequest(),
+        role: user.role,
+        properties: { reason: code, type: 'pat', scope, workspaceId },
+      }).catch(() => {});
       const t = await getTranslations('Errors');
       throw new Error(t(code));
     }
@@ -87,6 +97,9 @@ export async function mintAgentToken(
   } catch {
     // best-effort
   }
+
+  // First-agent celebration email (once per user, ever). No-throw.
+  await maybeSendAgentConnectedEmail(userId);
 
   return { token: fullToken };
 }
@@ -223,6 +236,8 @@ export async function getUserAgentTokens() {
 export async function getUserAgentActivity(count = 60) {
   const user = await getCurrentUser();
 
+  // PAT rows join agent_tokens; OAuth rows (token_id null since migration 0034)
+  // join oauth_access_tokens — coalesce so both kinds carry a label + brand id.
   return db
     .select({
       id:            agentActivity.id,
@@ -230,11 +245,13 @@ export async function getUserAgentActivity(count = 60) {
       status:        agentActivity.status,
       createdAt:     agentActivity.createdAt,
       workspaceName: workspaces.name,
-      tokenName:     agentTokens.name,
-      agentName:     agentTokens.agentName,
+      tokenName:     sql<string | null>`coalesce(${agentTokens.name}, ${oauthAccessTokens.displayName}, ${oauthClients.clientName})`,
+      agentName:     sql<string | null>`coalesce(${agentTokens.agentName}, ${oauthAccessTokens.agentName})`,
     })
     .from(agentActivity)
-    .innerJoin(agentTokens, eq(agentActivity.tokenId, agentTokens.id))
+    .leftJoin(agentTokens, eq(agentActivity.tokenId, agentTokens.id))
+    .leftJoin(oauthAccessTokens, eq(agentActivity.oauthTokenId, oauthAccessTokens.id))
+    .leftJoin(oauthClients, eq(oauthAccessTokens.clientId, oauthClients.clientId))
     .innerJoin(workspaces, eq(agentActivity.workspaceId, workspaces.id))
     .innerJoin(workspaceMembers, and(
       eq(workspaceMembers.workspaceId, workspaces.id),
@@ -242,6 +259,30 @@ export async function getUserAgentActivity(count = 60) {
     ))
     .orderBy(desc(agentActivity.createdAt))
     .limit(count);
+}
+
+/**
+ * The signed-in user's MCP usage over the last 30 days — call count + total
+ * response payload bytes (token estimate ≈ bytes/4). Attribution is by token
+ * owner (`owner_user_id`, migration 0034); rows logged before the migration
+ * carry byte data as null and are excluded from `bytes` but not from `calls`.
+ */
+export async function getMyAgentUsage() {
+  const user = await getCurrentUser();
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [row] = await db
+    .select({
+      calls: sql<number>`cast(count(*) as int)`,
+      bytes: sql<number>`coalesce(sum(${agentActivity.responseBytes}), 0)`,
+    })
+    .from(agentActivity)
+    .where(and(
+      eq(agentActivity.ownerUserId, user.id),
+      gte(agentActivity.createdAt, cutoff),
+    ));
+
+  return { calls: Number(row?.calls ?? 0), bytes: Number(row?.bytes ?? 0) };
 }
 
 export async function updateAgentToken(

@@ -2,7 +2,7 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
 import { db } from '@/db';
 import { workspaceItems, pages, databases, agentActivity } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { listWorkspaceItems, getDatabaseSchema, getAnyPageById } from '@/lib/services/workspace';
+import { listWorkspaceItems, getDatabaseSchema, getAnyPageById, getWorkspaceDigest } from '@/lib/services/workspace';
 import type { TokenContext } from './context';
 
 export function registerResources(server: McpServer, ctx: TokenContext) {
@@ -43,13 +43,38 @@ export function registerResources(server: McpServer, ctx: TokenContext) {
           text: JSON.stringify({
             workspaceId,
             databases: schemas.filter((s): s is Exclude<typeof s, null> => s !== null),
-          }, null, 2),
+          }),
         }],
       };
     },
   );
 
-  // 2. Page Content — remnus://page/{id}
+  // 2. Workspace Digest — remnus://workspace/{id}/digest
+  const workspaceDigestTemplate = new ResourceTemplate('remnus://workspace/{id}/digest', {
+    list: async () => ({
+      resources: [{
+        uri: `remnus://workspace/${ctx.workspaceId}/digest`,
+        name: 'Workspace Digest',
+        mimeType: 'text/markdown',
+        description: 'Compact one-line-per-item map of the whole workspace (titles, ids, row counts, last-updated) — the cheapest way to orient before targeted reads',
+      }],
+    }),
+  });
+
+  server.registerResource(
+    'Workspace Digest',
+    workspaceDigestTemplate,
+    { mimeType: 'text/markdown', description: 'Compact one-line-per-item map of the whole workspace — read this first to orient, then fetch only what you need' },
+    async (uri, variables) => {
+      const workspaceId = variables.id as string;
+      if (workspaceId !== ctx.workspaceId) throw new Error('Access denied or workspace not found');
+
+      const digest = await getWorkspaceDigest(ctx.workspaceId);
+      return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text: digest }] };
+    },
+  );
+
+  // 3. Page Content — remnus://page/{id}
   const pageTemplate = new ResourceTemplate('remnus://page/{id}', {
     list: async () => {
       const [standalone, dbRows] = await Promise.all([
@@ -105,7 +130,7 @@ export function registerResources(server: McpServer, ctx: TokenContext) {
     },
   );
 
-  // 3. Database Schema — remnus://database/{id}/schema
+  // 4. Database Schema — remnus://database/{id}/schema
   const databaseSchemaTemplate = new ResourceTemplate('remnus://database/{id}/schema', {
     list: async () => {
       const { items } = await listWorkspaceItems(ctx.workspaceId);
@@ -128,23 +153,26 @@ export function registerResources(server: McpServer, ctx: TokenContext) {
     { mimeType: 'application/json', description: 'Get JSON schema columns of a database' },
     async (uri, variables) => {
       const schema = await getDatabaseSchema(ctx.workspaceId, variables.id as string);
-      return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(schema, null, 2) }] };
+      return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(schema) }] };
     },
   );
 
-  // 4. Audit Log — remnus://audit-log/recent
+  // 5. Audit Log — remnus://audit-log/recent
   server.registerResource(
     'Recent Audit Log',
     'remnus://audit-log/recent',
     { mimeType: 'application/json', description: 'Get recent audit activity for the current MCP token' },
     async (uri) => {
+      // PAT and OAuth activity live in different FK columns (migration 0034).
       const logs = await db
         .select()
         .from(agentActivity)
-        .where(eq(agentActivity.tokenId, ctx.tokenId))
+        .where(ctx.tokenKind === 'pat'
+          ? eq(agentActivity.tokenId, ctx.tokenId)
+          : eq(agentActivity.oauthTokenId, ctx.tokenId))
         .orderBy(desc(agentActivity.createdAt))
         .limit(50);
-      return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(logs, null, 2) }] };
+      return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(logs) }] };
     },
   );
 }

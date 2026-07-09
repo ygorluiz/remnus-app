@@ -23,6 +23,13 @@ export {
   jwks,
   agentActivity,
   subscriptions,
+  // Mailing & misc
+  accountDeletionTokens,
+  demoFeedback,
+  deletedItems,
+  emailCampaigns,
+  emailLog,
+  pageLinks,
   // Finance module
   financeAccounts,
   financeCards,

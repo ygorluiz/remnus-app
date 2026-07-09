@@ -3,13 +3,14 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   X, Shield, Globe, Mail, Calendar, Clock, Activity, Layers, FileText, Database, HardDrive, CreditCard, Sparkles,
+  Bot, Key, Zap, Crown, Trash2,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { getUserDetail, type UserDetail } from '@/lib/actions/analytics';
-import { setUserRole } from '@/lib/actions/auth';
+import { setUserRole, adminDeleteUser } from '@/lib/actions/auth';
 import { adminSetUserPlan } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
-import { formatDate, formatDuration, formatRelative, formatBytes } from './format';
+import { formatDate, formatDuration, formatRelative, formatBytes, formatTokens } from './format';
 
 const PLAN_TIERS: PlanTier[] = ['free', 'startup', 'professional', 'enterprise'];
 
@@ -38,6 +39,9 @@ export default function AdminUserDetailModal({
   const [isPending, startTransition] = useTransition();
   const [planPending, startPlanTransition] = useTransition();
   const [planError, setPlanError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePending, startDeleteTransition] = useTransition();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     // Modal mounts fresh per open (keyed by userId in the parent), so the
@@ -99,6 +103,19 @@ export default function AdminUserDetailModal({
     });
   };
 
+  const handleDelete = () => {
+    setDeleteError(null);
+    startDeleteTransition(async () => {
+      const res = await adminDeleteUser(userId);
+      if (res?.error) {
+        setDeleteError(res.error);
+        return;
+      }
+      router.refresh();
+      onClose();
+    });
+  };
+
   const acct = detail?.account;
   const isSelf = userId === currentUserId;
 
@@ -130,13 +147,50 @@ export default function AdminUserDetailModal({
               {acct?.email && <div className="text-xs text-neutral-500 truncate">{acct.email}</div>}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800 shrink-0"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            {!isSelf && !loading && detail && (
+              confirmingDelete ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deletePending}
+                    className="text-[11px] font-medium text-red-400 hover:text-red-300 disabled:opacity-50 transition-colors"
+                  >
+                    {deletePending ? t('deleting') : t('confirm')}
+                  </button>
+                  <span className="text-neutral-700">·</span>
+                  <button
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={deletePending}
+                    className="text-[11px] text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  className="p-1 text-neutral-500 hover:text-red-400 transition-colors rounded hover:bg-neutral-800"
+                  title={t('delete')}
+                >
+                  <Trash2 size={15} />
+                </button>
+              )
+            )}
+            <button
+              onClick={onClose}
+              className="p-1 text-neutral-500 hover:text-neutral-200 transition-colors rounded hover:bg-neutral-800"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
+
+        {deleteError && (
+          <div className="px-6 py-2 text-[11px] text-red-400 bg-red-500/5 border-b border-neutral-800 shrink-0">
+            {deleteError}
+          </div>
+        )}
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6 space-y-6">
@@ -192,6 +246,49 @@ export default function AdminUserDetailModal({
                   <Stat icon={<Activity size={13} />} label={t('lastActive')} value={formatRelative(detail.activity.lastActive, relLabels)} />
                   <Stat icon={<HardDrive size={13} />} label={t('storageUsed')} value={formatBytes(detail.storageBytes)} />
                 </div>
+              </section>
+
+              {/* Content */}
+              <section>
+                <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">{t('contentSection')}</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Stat icon={<Crown size={13} />} label={t('ownedWorkspaces')} value={String(detail.account.ownedWorkspaces)} />
+                  <Stat icon={<FileText size={13} />} label={t('contentPages')} value={String(detail.content.pages)} />
+                  <Stat icon={<Database size={13} />} label={t('contentDatabases')} value={String(detail.content.databases)} />
+                  <Stat icon={<Layers size={13} />} label={t('contentRecords')} value={String(detail.content.records)} />
+                </div>
+              </section>
+
+              {/* AI agents (MCP) */}
+              <section>
+                <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">{t('agentsSection')}</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  <Stat icon={<Bot size={13} />} label={t('agentsConnected')} value={String(detail.agents.active)} />
+                  <Stat icon={<Zap size={13} />} label={t('agentsCalls')} value={detail.agents.calls.toLocaleString(locale)} />
+                  <Stat icon={<Activity size={13} />} label={t('agentsLastCall')} value={formatRelative(detail.agents.lastCall, relLabels)} />
+                  <Stat icon={<Sparkles size={13} />} label={t('agentsTokensServed')} value={`~${formatTokens(detail.agents.responseBytes)}`} />
+                </div>
+                {detail.agents.tokens.length === 0 && detail.agents.oauthActive === 0 ? (
+                  <p className="text-xs text-neutral-600 italic">{t('agentsNone')}</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {detail.agents.tokens.map((tok) => (
+                      <div key={tok.id} className="flex items-center gap-2.5 border border-neutral-800 rounded-md bg-neutral-900/40 px-3 py-2">
+                        <Key size={12} className="text-neutral-500 shrink-0" />
+                        <span className="text-xs text-neutral-200 truncate flex-1 min-w-0">{tok.agentName || tok.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 uppercase shrink-0">{tok.scope}</span>
+                        <span className="text-[10px] text-neutral-500 shrink-0 hidden sm:inline">{formatRelative(tok.lastUsedAt, relLabels)}</span>
+                        <AgentStatusBadge status={tok.status} t={t} />
+                      </div>
+                    ))}
+                    {detail.agents.oauthActive > 0 && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-neutral-500">
+                        <Sparkles size={11} className="text-blue-400 shrink-0" />
+                        {t('agentsOauthCount', { count: detail.agents.oauthActive })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* Subscription / plan */}
@@ -304,6 +401,17 @@ function SourceBadge({ source, t }: { source: 'stripe' | 'manual' | 'none'; t: (
     return <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500/90 font-medium">{t('planSourceManual')}</span>;
   }
   return <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-500">{t('planSourceNone')}</span>;
+}
+
+function AgentStatusBadge({ status, t }: { status: 'active' | 'revoked' | 'expired'; t: (k: string) => string }) {
+  const cls =
+    status === 'active'
+      ? 'bg-green-500/15 text-green-400'
+      : status === 'expired'
+        ? 'bg-amber-500/15 text-amber-500/90'
+        : 'bg-neutral-800 text-neutral-500';
+  const label = status === 'active' ? t('agentStatusActive') : status === 'expired' ? t('agentStatusExpired') : t('agentStatusRevoked');
+  return <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${cls}`}>{label}</span>;
 }
 
 function Field({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {

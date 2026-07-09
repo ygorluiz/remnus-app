@@ -12,6 +12,12 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
+      # Run the platform jobs ONE AT A TIME. tauri-action has every matrix job
+      # read-modify-write the same shared `latest.json` updater manifest on the
+      # release; running them concurrently races on the GitHub asset API and one
+      # job fails with "Not Found - delete-a-release-asset". Serializing removes
+      # the race (releases are tag-triggered and rare, so the extra time is fine).
+      max-parallel: 1
       matrix:
         include:
           - platform: ubuntu-22.04
@@ -67,14 +73,14 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Remnus ${{ github.ref_name }}'
           releaseBody: 'Download the installer for your platform below.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
       # Upload version-less, stable-named copies so /download can link to
       # https://github.com/<repo>/releases/latest/download/<stable-name> without
-      # ever needing the page updated per release. Note: latest/download only
-      # resolves once the draft release is published.
+      # ever needing the page updated per release. The release is published
+      # (releaseDraft: false), so latest/download resolves as soon as CI finishes.
       - name: Upload stable-named installers
         shell: bash
         env:

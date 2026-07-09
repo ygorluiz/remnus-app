@@ -12,6 +12,7 @@ import {
   databases,
   pages,
 } from '@/db/schema';
+import { isTauriRequest } from '@/lib/server/platform';
 
 // Heartbeat endpoint. The client pings while the user is active (see
 // ActivityTracker). Each ping extends the most recent open session, or opens a
@@ -58,10 +59,18 @@ async function computeChangeVersion(userId: string): Promise<number> {
       .where(inArray(workspaceItems.workspaceId, ids)),
   ]);
 
+  const parseTime = (val: any) => {
+    if (!val) return 0;
+    if (val instanceof Date) return val.getTime();
+    const d = new Date(val);
+    const time = d.getTime();
+    return isNaN(time) ? 0 : time;
+  };
+
   return Math.max(
-    Number(items[0]?.m ?? 0),
-    Number(sps[0]?.m ?? 0),
-    Number(rows[0]?.m ?? 0),
+    parseTime(items[0]?.m),
+    parseTime(sps[0]?.m),
+    parseTime(rows[0]?.m),
   );
 }
 
@@ -107,6 +116,7 @@ export async function POST() {
         startedAt: now,
         lastSeenAt: now,
         durationSeconds: 0,
+        platform: (await isTauriRequest()) ? 'tauri' : 'web',
       });
     }
   } catch {

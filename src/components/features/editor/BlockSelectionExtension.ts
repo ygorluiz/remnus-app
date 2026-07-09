@@ -3,6 +3,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorView } from '@tiptap/pm/view';
 import type { Node as PmNode } from '@tiptap/pm/model';
+import { contentToCleanMarkdown, nodesToCleanMarkdown } from './clipboardMarkdown';
 
 export interface BlockSelectionState {
   /** Sorted positions of selected visual blocks (top-level or listItem/taskItem). */
@@ -30,23 +31,59 @@ export function hasBlockSelection(editorState: any): boolean {
  * editor's storage format, so it pastes back cleanly through the markdown paste
  * path. Returns null when there is no block selection.
  */
+const LIST_TYPES = new Set(['bulletList', 'orderedList', 'taskList']);
+const LIST_ITEM_TYPES = new Set(['listItem', 'taskItem']);
+
 export function serializeBlockSelectionMarkdown(editor: any): string | null {
   const s = getBlockSelection(editor.state);
   if (!s.selected.length) return null;
+  const doc = editor.state.doc;
   const sorted = [...s.selected].sort((a, b) => a - b);
-  const nodes = sorted
-    .map((pos: number) => editor.state.doc.nodeAt(pos))
-    .filter((n: PmNode | null): n is PmNode => n != null);
-  if (!nodes.length) return null;
-  const manager = (editor as any).markdown ?? (editor as any).storage?.markdown?.manager;
-  try {
-    if (manager?.serialize) {
-      return manager.serialize({ type: 'doc', content: nodes.map((n) => n.toJSON()) });
-    }
-  } catch {
-    /* fall through to plain text */
+
+  // Resolve each selected position to its node + parent list type, skipping any
+  // position that sits inside an already-collected node (so selecting both a list
+  // item and one of its nested children doesn't serialize the child twice).
+  type Entry = { node: PmNode; parentType: string; parentAttrs: Record<string, any> };
+  const entries: Entry[] = [];
+  let coveredUntil = -1;
+  for (const pos of sorted) {
+    if (pos < coveredUntil) continue;
+    const node = doc.nodeAt(pos);
+    if (!node) continue;
+    const parent = doc.resolve(pos).parent;
+    entries.push({ node, parentType: parent.type.name, parentAttrs: parent.attrs ?? {} });
+    coveredUntil = pos + node.nodeSize;
   }
-  return nodes.map((n) => n.textContent).join('\n\n');
+  if (!entries.length) return null;
+
+  // Loose list items selected on their own serialize as separate `- x` blocks,
+  // which the doc's blank-line (`\n\n`) join then spreads apart with an empty line
+  // between every item. Regroup consecutive items sharing the same parent list back
+  // into that list so they serialize as one tight list (single newlines).
+  const content: any[] = [];
+  let i = 0;
+  while (i < entries.length) {
+    const e = entries[i];
+    if (LIST_ITEM_TYPES.has(e.node.type.name) && LIST_TYPES.has(e.parentType)) {
+      const listType = e.parentType;
+      const items: any[] = [];
+      const attrs = e.parentAttrs;
+      while (
+        i < entries.length &&
+        entries[i].parentType === listType &&
+        LIST_ITEM_TYPES.has(entries[i].node.type.name)
+      ) {
+        items.push(entries[i].node.toJSON());
+        i++;
+      }
+      content.push({ type: listType, attrs, content: items });
+    } else {
+      content.push(e.node.toJSON());
+      i++;
+    }
+  }
+
+  return contentToCleanMarkdown(editor, content) ?? nodesToCleanMarkdown(editor, entries.map((e) => e.node));
 }
 
 /**
@@ -142,15 +179,20 @@ function rectsIntersect(
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 }
 
-/** Walk up from `el` to find the nearest scrollable ancestor (fallback: documentElement). */
+/**
+ * Walk up from `el` to find the nearest scroll container (fallback: documentElement).
+ * Matches on the overflow style ALONE — NOT on `scrollHeight > clientHeight`. This is
+ * resolved once when the plugin mounts, when the page is often still short (content not
+ * yet overflowing); requiring an overflow at mount time would wrongly fall through to
+ * documentElement, and later auto-scroll / anchor-tracking would target the wrong
+ * element. The styled scroll container (e.g. `.overflow-auto`) is the right target
+ * regardless of how much content it currently holds.
+ */
 function findScrollParent(el: HTMLElement): HTMLElement {
   let node: HTMLElement | null = el.parentElement;
   while (node) {
-    const style = getComputedStyle(node);
-    const oy = style.overflowY;
-    if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && node.scrollHeight > node.clientHeight) {
-      return node;
-    }
+    const oy = getComputedStyle(node).overflowY;
+    if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') return node;
     node = node.parentElement;
   }
   return document.documentElement;
@@ -280,10 +322,26 @@ export const BlockSelection = Extension.create({
         // never reach ProseMirror's own DOM).
         view(editorView: EditorView) {
           let marqueeEl: HTMLDivElement | null = null;
+          // Start point is kept in VIEWPORT coords (startX/startY) plus the scroll
+          // offset at mousedown (startScroll*). On every update the anchor is shifted
+          // by how far the container has scrolled since, so the marquee stays pinned
+          // to the CONTENT under it (not the viewport) — otherwise scrolling mid-drag
+          // would slide the selection along with the page.
           let startX = 0;
           let startY = 0;
+          let startScrollTop = 0;
+          let startScrollLeft = 0;
+          let curClientX = 0;
+          let curClientY = 0;
           let active = false;
           let rafId: number | null = null;
+          let autoScrollRaf: number | null = null;
+          // The real scroll container, resolved FRESH on each marquee mousedown (not
+          // at plugin mount): when the plugin's view() first runs, tiptap's editor DOM
+          // is often not yet placed under the page's scroll wrapper, so resolving here
+          // would wrongly fall through to documentElement and break auto-scroll /
+          // anchor-tracking. By mousedown the tree is settled.
+          let scroller: HTMLElement = document.documentElement;
 
           const lastBlockBottom = (): number => {
             const blocks = allVisualBlocks(editorView.state.doc);
@@ -308,14 +366,28 @@ export const BlockSelection = Extension.create({
             return out;
           };
 
-          const onMouseMove = (e: MouseEvent) => {
-            if (!active) return;
-            e.preventDefault();
+          // The visible (viewport-space) rectangle of the scroll container. For the
+          // root scroller fall back to the window box.
+          const scrollViewportRect = () => {
+            if (scroller === document.documentElement || scroller === document.body) {
+              return { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+            }
+            const r = scroller.getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+          };
 
-            const left = Math.min(startX, e.clientX);
-            const top = Math.min(startY, e.clientY);
-            const right = Math.max(startX, e.clientX);
-            const bottom = Math.max(startY, e.clientY);
+          // Recompute the marquee box + selection from the current pointer position,
+          // shifting the start anchor by however far the container has scrolled since
+          // mousedown so the marquee stays glued to the content beneath it.
+          const updateMarquee = () => {
+            if (!active) return;
+            const anchorX = startX - (scroller.scrollLeft - startScrollLeft);
+            const anchorY = startY - (scroller.scrollTop - startScrollTop);
+
+            const left = Math.min(anchorX, curClientX);
+            const top = Math.min(anchorY, curClientY);
+            const right = Math.max(anchorX, curClientX);
+            const bottom = Math.max(anchorY, curClientY);
 
             if (marqueeEl) {
               marqueeEl.style.left = `${left}px`;
@@ -339,9 +411,45 @@ export const BlockSelection = Extension.create({
             });
           };
 
+          // Auto-scroll while the pointer sits near the top/bottom edge of the
+          // scroll container, so a drag can extend the selection past the visible
+          // area without the user scrolling manually. Self-reschedules each frame
+          // while in an edge zone and the container can still scroll that way.
+          const EDGE = 56;
+          const MAX_SPEED = 22;
+          const autoScrollStep = () => {
+            autoScrollRaf = null;
+            if (!active) return;
+            const vp = scrollViewportRect();
+            let dy = 0;
+            if (curClientY < vp.top + EDGE) {
+              dy = -Math.ceil(((vp.top + EDGE - curClientY) / EDGE) * MAX_SPEED);
+            } else if (curClientY > vp.bottom - EDGE) {
+              dy = Math.ceil(((curClientY - (vp.bottom - EDGE)) / EDGE) * MAX_SPEED);
+            }
+            if (dy === 0) return;
+            const before = scroller.scrollTop;
+            scroller.scrollTop += dy;
+            if (scroller.scrollTop !== before) updateMarquee();
+            autoScrollRaf = requestAnimationFrame(autoScrollStep);
+          };
+          const ensureAutoScroll = () => {
+            if (autoScrollRaf == null) autoScrollRaf = requestAnimationFrame(autoScrollStep);
+          };
+
+          const onMouseMove = (e: MouseEvent) => {
+            if (!active) return;
+            e.preventDefault();
+            curClientX = e.clientX;
+            curClientY = e.clientY;
+            updateMarquee();
+            ensureAutoScroll();
+          };
+
           const teardown = () => {
             active = false;
             if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            if (autoScrollRaf) { cancelAnimationFrame(autoScrollRaf); autoScrollRaf = null; }
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             document.body.classList.remove('block-marquee-active');
@@ -380,6 +488,21 @@ export const BlockSelection = Extension.create({
           const onMouseDown = (event: MouseEvent) => {
             if (event.button !== 0 || event.shiftKey) return;
             if (isInteractiveTarget(event.target)) return;
+            // Ignore mousedowns that belong to a custom drag affordance (e.g. the
+            // side-peek width resize handle). Its handle sits in the editor's left
+            // margin, which qualifies as a marquee "empty zone", so without this a
+            // resize drag would spuriously start a block-selection marquee. The
+            // marquee listener can be attached high up (documentElement) when the
+            // editor's scroll parent isn't settled at mount, so a stopPropagation on
+            // the handle alone isn't reliable — guard here too.
+            if ((event.target as HTMLElement | null)?.closest?.('[data-no-block-marquee]')) return;
+
+            // Skip if the editor is hidden (e.g. in a display:none keep-alive tab pane).
+            // offsetParent is null for elements with display:none or inside one.
+            // Without this check the hidden editor's document-level listener fires first,
+            // calls preventDefault and removeAllRanges, and prevents text selection in the
+            // VISIBLE editor — causing bug where clicks/selections don't register after tab switch.
+            if (editorView.dom.offsetParent === null) return;
 
             const pmRect = editorView.dom.getBoundingClientRect();
             const containerRect = container.getBoundingClientRect();
@@ -417,8 +540,13 @@ export const BlockSelection = Extension.create({
             document.getSelection()?.removeAllRanges();
             editorView.dispatch(editorView.state.tr.setMeta(blockSelectionKey, EMPTY));
 
+            scroller = findScrollParent(editorView.dom);
             startX = x;
             startY = y;
+            startScrollTop = scroller.scrollTop;
+            startScrollLeft = scroller.scrollLeft;
+            curClientX = x;
+            curClientY = y;
             active = true;
             document.body.classList.add('block-marquee-active');
 

@@ -1,11 +1,23 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import TabBar from './TabBar';
+import {
+  readSidebarVisible,
+  subscribeSidebarVisibility,
+  getSidebarVisibleServerSnapshot,
+  writeSidebarVisible,
+} from '@/lib/sidebarVisibility';
 
 export default function TauriTitlebar() {
   const [isTauri, setIsTauri] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const lastClickTime = useRef(0);
+  const sidebarVisible = useSyncExternalStore(
+    subscribeSidebarVisibility,
+    readSidebarVisible,
+    getSidebarVisibleServerSnapshot,
+  );
 
   useEffect(() => {
     if (!('__TAURI_INTERNALS__' in window || '__TAURI__' in window)) return;
@@ -48,6 +60,19 @@ export default function TauriTitlebar() {
 
   return (
     <div className="shrink-0 h-10 flex items-stretch bg-neutral-900 border-b border-neutral-800 select-none">
+      {/* App logo — visible when sidebar is hidden; clicking it reveals the sidebar */}
+      {!sidebarVisible && (
+        <button
+          type="button"
+          onClick={() => writeSidebarVisible(true)}
+          className="flex items-center justify-center w-10 shrink-0 border-r border-neutral-800 hover:bg-neutral-800/60 transition-colors cursor-default"
+          tabIndex={-1}
+          title="Show sidebar"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-square-dark.png" alt="Remnus" className="w-5 h-5 opacity-75" />
+        </button>
+      )}
       {/* Browser-style tabs live in the titlebar row (rendered only when inside the
           TabsProvider, i.e. the Tauri app). */}
       <TabBar />

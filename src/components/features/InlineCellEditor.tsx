@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, CheckSquare, Square } from 'lucide-react';
+import { Check, CheckSquare, Square, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
   type SelectOption,
@@ -16,18 +16,21 @@ import {
 } from '@/lib/types/properties';
 import DateRangePicker from './DateRangePicker';
 import { useMembers } from './MembersContext';
-import { StatusChip, StatusIcon, UserAvatar, UserChip, UserTags } from './PropertyTags';
+import { StatusChip, StatusIcon, UserAvatar, UserChip, UserTags, OptionIcon } from './PropertyTags';
 
 export default function InlineCellEditor({
   column,
   value,
   onSave,
   onClose,
+  onCreateOption,
 }: {
   column: any;
   value: any;
   onSave: (val: any) => void;
   onClose: () => void;
+  /** Persists a brand-new option onto the column's schema (select/multi_select only). */
+  onCreateOption?: (value: string) => void;
 }) {
   const t = useTranslations('Database');
   const members = useMembers();
@@ -35,6 +38,7 @@ export default function InlineCellEditor({
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [optionQuery, setOptionQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,34 +66,70 @@ export default function InlineCellEditor({
   if (column.type === 'select') {
     if (!mounted) return <div ref={containerRef} className="relative min-h-5" />;
     const c = value ? getOptionColorByValue(column.options || [], value) : null;
+    const allOpts: SelectOption[] = (column.options || []).map(normalizeOption);
+    const q = optionQuery.trim().toLowerCase();
+    const filteredOpts = q ? allOpts.filter((o) => o.value.toLowerCase().includes(q)) : allOpts;
+    const exactMatch = q ? allOpts.some((o) => o.value.toLowerCase() === q) : true;
+    const canCreate = !!onCreateOption && !!optionQuery.trim() && !exactMatch;
+    const createOption = () => {
+      const val = optionQuery.trim();
+      if (!val) return;
+      onCreateOption?.(val);
+      onSave(val);
+      onClose();
+    };
     return (
       <div ref={containerRef} className="relative w-full h-full">
         {value
-          ? <span className="text-xs px-2 py-0.5 rounded-full font-medium inline-block" style={{ backgroundColor: c?.bg, color: c?.text }}>{value}</span>
+          ? <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c?.bg, color: c?.text }}>
+              <OptionIcon value={value} options={column.options} />
+              {value}
+            </span>
           : <span className="text-neutral-700">—</span>
         }
         {createPortal(
           <div onClick={(e) => e.stopPropagation()}>
             <div className="fixed inset-0 z-9998 cursor-default" onClick={onClose} />
             <div
-              className="absolute z-9999 bg-neutral-850 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-40 max-h-60 overflow-y-auto text-left"
+              className="absolute z-9999 bg-neutral-850 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-40 max-h-72 overflow-y-auto text-left flex flex-col"
               style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, width: coords ? Math.max(160, coords.width) : 160, visibility: coords ? 'visible' : 'hidden' }}
             >
-              <button onClick={() => { onSave(''); onClose(); }} className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer">
-                {t('empty')}
-              </button>
-              {(column.options || []).map((rawOpt: string | SelectOption) => {
-                const opt = normalizeOption(rawOpt);
+              {onCreateOption && (
+                <input
+                  autoFocus
+                  type="text"
+                  value={optionQuery}
+                  onChange={(e) => setOptionQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && canCreate) createOption(); }}
+                  placeholder={t('searchOrCreateOption')}
+                  className="mx-2 mb-1 px-2 py-1 text-xs bg-neutral-900 border border-neutral-800 rounded focus:outline-none focus:border-neutral-700 text-neutral-200 placeholder-neutral-600"
+                />
+              )}
+              {!optionQuery && (
+                <button onClick={() => { onSave(''); onClose(); }} className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer">
+                  {t('empty')}
+                </button>
+              )}
+              {filteredOpts.map((opt) => {
                 const c = getOptionColor(opt);
                 const isSelected = value === opt.value;
                 return (
                   <button key={opt.value} onClick={() => { onSave(opt.value); onClose(); }}
                     className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${isSelected ? 'bg-neutral-850' : ''}`}>
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+                      <OptionIcon value={opt.value} options={column.options} />
+                      {opt.value}
+                    </span>
                     {isSelected && <Check size={12} className="text-neutral-400" />}
                   </button>
                 );
               })}
+              {canCreate && (
+                <button onClick={createOption} className="w-full text-left px-3 py-1.5 flex items-center gap-1.5 text-xs text-neutral-300 hover:bg-neutral-800 transition-colors cursor-pointer">
+                  <Plus size={12} className="text-neutral-500 shrink-0" />
+                  <span className="truncate">{t('createOptionLabel', { value: optionQuery.trim() })}</span>
+                </button>
+              )}
             </div>
           </div>,
           document.body,
@@ -107,6 +147,18 @@ export default function InlineCellEditor({
         : [...currentList, optVal];
       onSave(newList);
     };
+    const allOpts: SelectOption[] = (column.options || []).map(normalizeOption);
+    const q = optionQuery.trim().toLowerCase();
+    const filteredOpts = q ? allOpts.filter((o) => o.value.toLowerCase().includes(q)) : allOpts;
+    const exactMatch = q ? allOpts.some((o) => o.value.toLowerCase() === q) : true;
+    const canCreate = !!onCreateOption && !!optionQuery.trim() && !exactMatch;
+    const createOption = () => {
+      const val = optionQuery.trim();
+      if (!val) return;
+      onCreateOption?.(val);
+      onSave([...currentList, val]);
+      setOptionQuery('');
+    };
     if (!mounted) return <div ref={containerRef} className="relative min-h-5" />;
     return (
       <div ref={containerRef} className="relative w-full h-full">
@@ -114,7 +166,12 @@ export default function InlineCellEditor({
           {currentList.length > 0
             ? currentList.map((optVal: string) => {
                 const c = getOptionColorByValue(column.options || [], optVal);
-                return <span key={optVal} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>{optVal}</span>;
+                return (
+                  <span key={optVal} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+                    <OptionIcon value={optVal} options={column.options} />
+                    {optVal}
+                  </span>
+                );
               })
             : <span className="text-neutral-700">—</span>
           }
@@ -123,25 +180,45 @@ export default function InlineCellEditor({
           <div onClick={(e) => e.stopPropagation()}>
             <div className="fixed inset-0 z-9998 cursor-default" onClick={onClose} />
             <div
-              className="absolute z-9999 bg-neutral-850 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-45 max-h-60 overflow-y-auto text-left"
+              className="absolute z-9999 bg-neutral-850 border border-neutral-800 py-1 rounded shadow-xl overflow-hidden min-w-45 max-h-72 overflow-y-auto text-left flex flex-col"
               style={{ top: coords?.top ?? 0, left: coords?.left ?? 0, width: coords ? Math.max(180, coords.width) : 180, visibility: coords ? 'visible' : 'hidden' }}
             >
-              <div className="px-3 py-1 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider border-b border-neutral-850 mb-1">
-                {t('toggleOptions')}
-              </div>
-              {(column.options || []).map((rawOpt: string | SelectOption) => {
-                const opt = normalizeOption(rawOpt);
+              {onCreateOption ? (
+                <input
+                  autoFocus
+                  type="text"
+                  value={optionQuery}
+                  onChange={(e) => setOptionQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && canCreate) createOption(); }}
+                  placeholder={t('searchOrCreateOption')}
+                  className="mx-2 mb-1 px-2 py-1 text-xs bg-neutral-900 border border-neutral-800 rounded focus:outline-none focus:border-neutral-700 text-neutral-200 placeholder-neutral-600"
+                />
+              ) : (
+                <div className="px-3 py-1 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider border-b border-neutral-850 mb-1">
+                  {t('toggleOptions')}
+                </div>
+              )}
+              {filteredOpts.map((opt) => {
                 const c = getOptionColor(opt);
                 const isSelected = currentList.includes(opt.value);
                 return (
                   <button key={opt.value} onClick={() => handleToggle(opt.value)}
                     className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 transition-colors cursor-pointer ${isSelected ? 'bg-neutral-850' : ''}`}>
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>{opt.value}</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+                      <OptionIcon value={opt.value} options={column.options} />
+                      {opt.value}
+                    </span>
                     {isSelected && <Check size={12} className="text-neutral-400" />}
                   </button>
                 );
               })}
-              {(!column.options || column.options.length === 0) && (
+              {canCreate && (
+                <button onClick={createOption} className="w-full text-left px-3 py-1.5 flex items-center gap-1.5 text-xs text-neutral-300 hover:bg-neutral-800 transition-colors cursor-pointer">
+                  <Plus size={12} className="text-neutral-500 shrink-0" />
+                  <span className="truncate">{t('createOptionLabel', { value: optionQuery.trim() })}</span>
+                </button>
+              )}
+              {(!column.options || column.options.length === 0) && !canCreate && (
                 <div className="px-3 py-2 text-xs text-neutral-600">{t('noOptionsConfigured')}</div>
               )}
             </div>
@@ -325,7 +402,7 @@ export default function InlineCellEditor({
         onBlur={handleTextSave}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="bg-transparent text-white text-xs w-full focus:outline-none border-none p-0 m-0"
+        className="bg-transparent text-neutral-100 text-xs w-full focus:outline-none border-none p-0 m-0"
         style={{ fontFamily: 'inherit' }}
       />
     </div>

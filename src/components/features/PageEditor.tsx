@@ -1,10 +1,13 @@
 'use client';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { updatePageContent, updatePageProperties, duplicatePage, deletePage, updatePageIcon } from '@/lib/actions/page';
-import { ArrowLeft, X, Check, ChevronDown, MoreHorizontal, Trash2, Copy, Smile, ArrowLeftRight, Globe, CheckSquare, Square, ExternalLink } from 'lucide-react';
+import { updateDatabaseSchema } from '@/lib/actions/database';
+import { ArrowLeft, X, Check, ChevronDown, MoreHorizontal, Trash2, Copy, Smile, ArrowLeftRight, Globe, CheckSquare, Square, ExternalLink, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { useQueryClient } from '@tanstack/react-query';
+import { tabKeys } from './tabs/keys';
 import BlockEditor, { type BlockEditorHandle } from '@/components/features/editor/BlockEditor';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
@@ -12,6 +15,7 @@ import AgentEditBadge from './AgentEditBadge';
 import SaveStatus, { type SaveState } from './SaveStatus';
 import { ConfirmDialog } from './ConfirmDialog';
 import ShareModal from '@/components/share/ShareModal';
+import PageBacklinksPanel from './PageBacklinksPanel';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 import {
   type SelectOption,
@@ -24,7 +28,7 @@ import {
 } from '@/lib/types/properties';
 import DateRangePicker from './DateRangePicker';
 import { useMembers } from './MembersContext';
-import { StatusChip, StatusIcon, UserAvatar, UserChip, UserTags } from './PropertyTags';
+import { StatusChip, StatusIcon, UserAvatar, UserChip, UserTags, OptionIcon } from './PropertyTags';
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
   let timer: ReturnType<typeof setTimeout>;
@@ -103,6 +107,9 @@ export default function PageEditor({
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [openSelectId, setOpenSelectId] = useState<string | null>(null);
+  const [selectSearchQuery, setSelectSearchQuery] = useState('');
+  const [multiSelectNewCol, setMultiSelectNewCol] = useState<string | null>(null);
+  const [multiSelectNewValue, setMultiSelectNewValue] = useState('');
   const [openDateColId, setOpenDateColId] = useState<string | null>(null);
   const [dateAnchorRect, setDateAnchorRect] = useState<DOMRect | null>(null);
   const selectDropdownRef = useRef<HTMLDivElement>(null);
@@ -131,6 +138,33 @@ export default function PageEditor({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const menuDropdownRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<BlockEditorHandle>(null);
+
+  // Keep the Tauri keep-alive query cache (TabPane) in sync with each save, so
+  // leaving and re-entering this tab within the staleTime window doesn't reload
+  // the pre-edit content/properties from the cache. No-op on web (never read).
+  const queryClient = useQueryClient();
+  const patchPageCache = useCallback(
+    (patch: Record<string, any>) => {
+      queryClient.setQueryData(tabKeys.dbPage(initialPage.id), (old: any) =>
+        old ? { ...old, ...patch } : old
+      );
+    },
+    [queryClient, initialPage.id]
+  );
+
+  // Keep the latest edited values in refs so debounced / id-memoized savers
+  // (which capture state from their creation render) always emit the CURRENT
+  // properties/icon back to the parent list. Without this, a content save ships
+  // the original `properties` and clobbers a more recent inline property edit —
+  // the page reverts in the table/kanban/calendar a moment after editing.
+  const propertiesRef = useRef(properties);
+  const iconRef = useRef(icon);
+  const iconColorRef = useRef(iconColor);
+  useEffect(() => {
+    propertiesRef.current = properties;
+    iconRef.current = icon;
+    iconColorRef.current = iconColor;
+  }, [properties, icon, iconColor]);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -173,12 +207,13 @@ export default function PageEditor({
     setSaveState('saving');
     try {
       await updatePageContent(initialPage.id, md);
+      patchPageCache({ content: md });
       setSaveState('saved');
     } catch {
       setSaveState('error');
     }
     if (onPageUpdated) {
-      onPageUpdated({ ...initialPage, properties, content: md });
+      onPageUpdated({ ...initialPage, icon: iconRef.current, iconColor: iconColorRef.current, properties: propertiesRef.current, content: md });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPage.id]);
@@ -193,7 +228,8 @@ export default function PageEditor({
     () =>
       debounce((props: Record<string, any>) => {
         updatePageProperties(initialPage.id, props);
-        onPageUpdated?.({ ...initialPage, properties: props });
+        patchPageCache({ properties: props });
+        onPageUpdated?.({ ...initialPage, icon: iconRef.current, iconColor: iconColorRef.current, properties: props });
       }, 600),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [initialPage.id]
@@ -211,6 +247,7 @@ export default function PageEditor({
     const newProps = { ...properties, [colId]: value };
     setProperties(newProps);
     await updatePageProperties(initialPage.id, newProps);
+    patchPageCache({ properties: newProps });
     if (onPageUpdated) {
       onPageUpdated({ ...initialPage, icon, iconColor, properties: newProps });
     }
@@ -220,6 +257,7 @@ export default function PageEditor({
     setIcon(newIcon);
     setIconColor(newColor);
     updatePageIcon(initialPage.id, newIcon, newColor);
+    patchPageCache({ icon: newIcon, iconColor: newColor });
     if (onPageUpdated) {
       onPageUpdated({ ...initialPage, icon: newIcon, iconColor: newColor, properties });
     }
@@ -231,6 +269,19 @@ export default function PageEditor({
       ? current.filter(v => v !== option)
       : [...current, option];
     await handlePropertyChange(colId, newVal);
+  };
+
+  // Persists a newly-typed select/multi_select option onto the column's schema
+  // (server revalidates `/db/[id]`, so `database.schema` picks it up shortly after).
+  const handleCreateOption = (colId: string, value: string) => {
+    const col = schema.find((c: any) => c.id === colId);
+    if (!col) return;
+    const existing = (col.options || []).map((o: string | SelectOption) => normalizeOption(o).value);
+    if (existing.includes(value)) return;
+    const nextSchema = schema.map((c: any) =>
+      c.id === colId ? { ...c, options: [...(c.options || []), { value, color: 'default' }] } : c
+    );
+    updateDatabaseSchema(database.id, nextSchema);
   };
 
   const containerClass = isPeek
@@ -371,7 +422,7 @@ export default function PageEditor({
               }
             }}
             placeholder={t('untitled')}
-            className="w-full bg-transparent text-white font-bold text-2xl sm:text-4xl focus:outline-none placeholder:text-neutral-700 tracking-tight py-1 resize-none overflow-hidden block leading-tight"
+            className="w-full bg-transparent text-neutral-100 font-bold text-2xl sm:text-4xl focus:outline-none placeholder:text-neutral-700 tracking-tight py-1 resize-none overflow-hidden block leading-tight"
           />
         </div>
       </div>
@@ -401,13 +452,17 @@ export default function PageEditor({
               {col.type === 'select' ? (
                 <div className="relative flex-1 max-w-xs pt-0.5" ref={openSelectId === col.id ? selectDropdownRef : undefined}>
                   <button
-                    onClick={() => setOpenSelectId(openSelectId === col.id ? null : col.id)}
+                    onClick={() => {
+                      setSelectSearchQuery('');
+                      setOpenSelectId(openSelectId === col.id ? null : col.id);
+                    }}
                     className="flex items-center gap-1.5 text-sm focus:outline-none cursor-pointer"
                   >
                     {val ? (() => {
                       const c = getOptionColorByValue(col.options || [], val);
                       return (
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
+                          <OptionIcon value={val} options={col.options} />
                           {val}
                         </span>
                       );
@@ -416,31 +471,62 @@ export default function PageEditor({
                     )}
                     <ChevronDown size={12} className="text-neutral-600" />
                   </button>
-                  {openSelectId === col.id && (
-                    <div className="absolute z-50 top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 min-w-32 py-1 rounded shadow-xl overflow-hidden" style={{ minWidth: 140 }}>
-                      <button
-                        onClick={() => { handlePropertyChange(col.id, ''); setOpenSelectId(null); }}
-                        className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer"
-                      >
-                        {tDb('empty')}
-                      </button>
-                      {(col.options || []).map((rawOpt: string | SelectOption) => {
-                        const opt = normalizeOption(rawOpt);
-                        const c = getOptionColor(opt);
-                        return (
+                  {openSelectId === col.id && (() => {
+                    const allOpts = (col.options || []).map(normalizeOption);
+                    const q = selectSearchQuery.trim().toLowerCase();
+                    const filteredOpts = q ? allOpts.filter((o: SelectOption) => o.value.toLowerCase().includes(q)) : allOpts;
+                    const exactMatch = q ? allOpts.some((o: SelectOption) => o.value.toLowerCase() === q) : true;
+                    const canCreate = !!selectSearchQuery.trim() && !exactMatch;
+                    const createOption = () => {
+                      const newVal = selectSearchQuery.trim();
+                      if (!newVal) return;
+                      handleCreateOption(col.id, newVal);
+                      handlePropertyChange(col.id, newVal);
+                      setOpenSelectId(null);
+                    };
+                    return (
+                      <div className="absolute z-50 top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 min-w-32 py-1 rounded shadow-xl overflow-hidden max-h-72 overflow-y-auto" style={{ minWidth: 160 }}>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={selectSearchQuery}
+                          onChange={(e) => setSelectSearchQuery(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && canCreate) createOption(); }}
+                          placeholder={tDb('searchOrCreateOption')}
+                          className="mx-2 mb-1 px-2 py-1 text-xs bg-neutral-950 border border-neutral-800 rounded focus:outline-none focus:border-neutral-700 text-neutral-200 placeholder-neutral-600"
+                        />
+                        {!selectSearchQuery && (
                           <button
-                            key={opt.value}
-                            onClick={() => { handlePropertyChange(col.id, opt.value); setOpenSelectId(null); }}
-                            className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-neutral-800 transition-colors cursor-pointer"
+                            onClick={() => { handlePropertyChange(col.id, ''); setOpenSelectId(null); }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-800 transition-colors cursor-pointer"
                           >
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
-                              {opt.value}
-                            </span>
+                            {tDb('empty')}
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                        )}
+                        {filteredOpts.map((opt: SelectOption) => {
+                          const c = getOptionColor(opt);
+                          return (
+                            <button
+                              key={opt.value}
+                              onClick={() => { handlePropertyChange(col.id, opt.value); setOpenSelectId(null); }}
+                              className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-neutral-800 transition-colors cursor-pointer"
+                            >
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded" style={{ backgroundColor: c.bg, color: c.text }}>
+                                <OptionIcon value={opt.value} options={col.options} />
+                                {opt.value}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {canCreate && (
+                          <button onClick={createOption} className="w-full text-left px-3 py-1.5 flex items-center gap-1.5 text-xs text-neutral-300 hover:bg-neutral-800 transition-colors cursor-pointer">
+                            <Plus size={12} className="text-neutral-500 shrink-0" />
+                            <span className="truncate">{tDb('createOptionLabel', { value: selectSearchQuery.trim() })}</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : col.type === 'multi_select' ? (
                 <div className="flex-1 flex flex-col gap-2 pt-0.5">
@@ -450,6 +536,7 @@ export default function PageEditor({
                         const c = getOptionColorByValue(col.options || [], optVal);
                         return (
                           <span key={optVal} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: c.bg, color: c.text }}>
+                            <OptionIcon value={optVal} options={col.options} />
                             {optVal}
                             <button
                               onClick={() => handleMultiSelectToggle(col.id, optVal)}
@@ -462,27 +549,57 @@ export default function PageEditor({
                       })}
                     </div>
                   )}
-                  {col.options && (col.options as (string | SelectOption)[])
-                    .filter((o) => !(Array.isArray(val) && val.includes(normalizeOption(o).value))).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {(col.options as (string | SelectOption)[])
-                        .filter((o) => !(Array.isArray(val) && val.includes(normalizeOption(o).value)))
-                        .map((rawOpt) => {
-                          const opt = normalizeOption(rawOpt);
-                          const c = getOptionColor(opt);
-                          return (
-                            <button
-                              key={opt.value}
-                              onClick={() => handleMultiSelectToggle(col.id, opt.value)}
-                              className="text-xs px-2 py-0.5 rounded-full font-medium border border-neutral-700/40 opacity-50 hover:opacity-80 transition-opacity cursor-pointer"
-                              style={{ backgroundColor: c.bg, color: c.text }}
-                            >
-                              + {opt.value}
-                            </button>
-                          );
-                        })}
-                    </div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {col.options && (col.options as (string | SelectOption)[])
+                      .filter((o) => !(Array.isArray(val) && val.includes(normalizeOption(o).value)))
+                      .map((rawOpt) => {
+                        const opt = normalizeOption(rawOpt);
+                        const c = getOptionColor(opt);
+                        return (
+                          <button
+                            key={opt.value}
+                            onClick={() => handleMultiSelectToggle(col.id, opt.value)}
+                            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border border-neutral-700/40 opacity-50 hover:opacity-80 transition-opacity cursor-pointer"
+                            style={{ backgroundColor: c.bg, color: c.text }}
+                          >
+                            + <OptionIcon value={opt.value} options={col.options} />{opt.value}
+                          </button>
+                        );
+                      })}
+                    {multiSelectNewCol === col.id ? (
+                      <input
+                        autoFocus
+                        type="text"
+                        value={multiSelectNewValue}
+                        onChange={(e) => setMultiSelectNewValue(e.target.value)}
+                        onBlur={() => { if (!multiSelectNewValue.trim()) setMultiSelectNewCol(null); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const newVal = multiSelectNewValue.trim();
+                            if (newVal) {
+                              handleCreateOption(col.id, newVal);
+                              handleMultiSelectToggle(col.id, newVal);
+                            }
+                            setMultiSelectNewValue('');
+                            setMultiSelectNewCol(null);
+                          } else if (e.key === 'Escape') {
+                            setMultiSelectNewValue('');
+                            setMultiSelectNewCol(null);
+                          }
+                        }}
+                        placeholder={tDb('searchOrCreateOption')}
+                        className="px-2 py-0.5 text-xs bg-neutral-900 border border-neutral-700 rounded-full focus:outline-none focus:border-neutral-600 text-neutral-200 placeholder-neutral-600 w-32"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => { setMultiSelectNewCol(col.id); setMultiSelectNewValue(''); }}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border border-dashed border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-colors cursor-pointer"
+                      >
+                        <Plus size={10} />
+                        {tDb('addOption')}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : col.type === 'status' ? (
                 <div className="relative flex-1 max-w-xs pt-0.5" ref={openSelectId === col.id ? selectDropdownRef : undefined}>
@@ -625,7 +742,7 @@ export default function PageEditor({
                     value={val || ''}
                     onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
                     placeholder={tDb('empty')}
-                    className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
+                    className="bg-transparent text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
                   />
                   {typeof val === 'string' && /^https?:\/\//i.test(val) && (
                     <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 shrink-0">
@@ -639,7 +756,7 @@ export default function PageEditor({
                   value={val || ''}
                   onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
                   placeholder={tDb('empty')}
-                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
+                  className="bg-transparent text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
                 />
               ) : col.type === 'phone' ? (
                 <input
@@ -647,7 +764,7 @@ export default function PageEditor({
                   value={val || ''}
                   onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
                   placeholder={tDb('empty')}
-                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
+                  className="bg-transparent text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
                 />
               ) : col.type === 'number' ? (
                 <input
@@ -655,14 +772,14 @@ export default function PageEditor({
                   value={val || ''}
                   onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
                   placeholder={tDb('empty')}
-                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
+                  className="bg-transparent text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow"
                 />
               ) : (
                 <AutoGrowTextarea
                   value={val || ''}
                   onChange={(e) => handleTextPropertyChange(col.id, e.target.value)}
                   placeholder={tDb('empty')}
-                  className="bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow resize-none overflow-hidden block w-full leading-snug"
+                  className="bg-transparent text-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-700 rounded p-1 -ml-1 flex-1 text-sm placeholder:text-neutral-700 transition-shadow resize-none overflow-hidden block w-full leading-snug"
                 />
               )}
             </div>
@@ -682,6 +799,9 @@ export default function PageEditor({
         initialSubItems={subItems}
         onImmediateSave={saveContent}
       />
+
+      {!isPeek && <PageBacklinksPanel workspaceId={database.workspaceId} pageId={initialPage.id} />}
+
       {showShareModal && (
         <ShareModal
           pageId={initialPage.id}

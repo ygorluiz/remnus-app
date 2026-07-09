@@ -25,7 +25,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden url' }, { status: 403 });
   }
 
-  const upstream = await fetch(url);
+  // redirect: 'manual' — only the validated Cloudinary host is fetched; a 3xx to
+  // any other host is treated as a failure (ok === false) rather than followed.
+  const upstream = await fetch(url, { redirect: 'manual' });
   if (!upstream.ok) {
     return NextResponse.json({ error: 'Fetch failed' }, { status: 502 });
   }
