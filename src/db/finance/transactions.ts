@@ -1,0 +1,30 @@
+import { pgTable, text, integer, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { workspaces } from '../pg-schema';
+
+export const financeTransactions = pgTable('finance_transactions', {
+  id:                   text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId:          text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  title:                text('title').notNull(),
+  description:          text('description'),
+  amountCents:          integer('amount_cents').notNull(),
+  type:                 text('type', { enum: ['income', 'expense', 'transfer', 'refund'] }).notNull(),
+  categoryId:           text('category_id'),
+  accountId:            text('account_id').notNull(),
+  destinationAccountId: text('destination_account_id'),
+  cardId:               text('card_id'),
+  transactionDate:      timestamp('transaction_date').notNull(),
+  status:               text('status', { enum: ['pending', 'cleared', 'reconciled'] }).notNull().default('pending'),
+  currency:             text('currency').notNull().default('BRL'),
+  isRecurring:          boolean('is_recurring').notNull().default(false),
+  recurringRuleId:      text('recurring_rule_id'),
+  isInstallment:        boolean('is_installment').notNull().default(false),
+  installmentGroupId:   text('installment_group_id'),
+  currentInstallment:   integer('current_installment'),
+  totalInstallments:    integer('total_installments'),
+  tags:                 jsonb('tags').notNull().$type<string[]>().default([]),
+  notes:                text('notes'),
+  location:             text('location'),
+  attachmentUrl:        text('attachment_url'),
+  createdAt:            timestamp('created_at').notNull().defaultNow(),
+  updatedAt:            timestamp('updated_at').notNull().defaultNow(),
+});

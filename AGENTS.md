@@ -59,7 +59,7 @@ Remnus is fully internationalized using **next-intl v4** (App Router native). Al
 
 **Clean URLs:** `localePrefix: 'never'` — URLs stay as `/db/123`, never `/en/db/123`. All pages live under `src/app/[locale]/`.
 
-**Translation files:** `messages/{locale}.json` — `en.json` is the source of truth. **26 namespaces:** `Layout`, `Home`, `Auth`, `Workspace`, `WorkspaceSettings`, `Templates`, `Database`, `Editor`, `Page`, `IconPicker`, `Admin`, `Errors`, `LanguageSwitcher`, `MobileNav`, `Landing`, `Billing`, `Pricing`, `Contact`, `Download`, `Privacy`, `Updater`, `Sharing`, `UserSettings`, `OAuthAuthorize`, `Security`, `Consent`.
+**Translation files:** `messages/{locale}.json` — `en.json` is the source of truth. **27 namespaces:** `Layout`, `Home`, `Auth`, `Workspace`, `WorkspaceSettings`, `Templates`, `Database`, `Editor`, `Page`, `IconPicker`, `Admin`, `Errors`, `LanguageSwitcher`, `MobileNav`, `Landing`, `Billing`, `Pricing`, `Contact`, `Download`, `Privacy`, `Updater`, `Sharing`, `UserSettings`, `OAuthAuthorize`, `Security`, `Consent`, `Finance`.
 
 **Locale prefix:** Since `localePrefix: 'never'`, the pt-BR locale is identified via the `NEXT_LOCALE` cookie or `Accept-Language` header, never by URL path (no `/pt-BR/` prefix).
 
@@ -262,6 +262,31 @@ We use the **JSON Column Pattern** (not EAV) for dynamic user-defined properties
 - `api/mcp/prompts.ts` — Registers 5 prompt templates: `summarize-page` (page_id, style?), `weekly-status-report` (database_id, period?), `kanban-triage` (database_id), `extract-tasks` (page_id), `search-and-create` (title, query). Fetches DB content and returns filled prompt string; LLM call is done by the client.
 - `api/mcp/tools/read.ts` — 8 read tools: `search`, `list_workspace` (cursor-based pagination), `get_page` (auto-detects type), `get_database_schema` (schema only, no rows), `query_database` (supports `filters: Record<string,any>`, cursor-based pagination), `list_members` (workspace_members JOIN user; role/email/joinedAt), `query_audit_log` (agentActivity; tool/status/date filters).
 - `api/mcp/tools/write.ts` — 7 write tools: `create_page`, `update_page` (merges properties, never overwrites), `bulk_update`, `delete_page` (requires `confirm: true`), `move_item` (`newParentId: null` → root), `create_database` (title column auto-prepended), `update_database_schema` (removing requires `confirm: true`; title column protected).
+
+### Finance Module (Phase 2 MVP — All 11 DB tables fully implemented)
+
+**Modular architecture** — each concept is an independent module with its own schema, service, actions, hooks, and UI.
+
+| Module | Schema | Actions | UI |
+|--------|--------|---------|----|
+| Accounts | `src/db/finance/accounts.ts` | `src/lib/actions/finance/accounts.ts` | `src/components/features/finance/accounts/` |
+| Transactions | `src/db/finance/transactions.ts` | `src/lib/actions/finance/transactions.ts` | `src/components/features/finance/transactions/` |
+| Categories | `src/db/finance/categories.ts` | `src/lib/actions/finance/categories.ts` | `src/components/features/finance/categories/` |
+| Cards | `src/db/finance/cards.ts` | `src/lib/actions/finance/cards.ts` | `src/components/features/finance/cards/` |
+| Budgets | `src/db/finance/budgets.ts` | `src/lib/actions/finance/budgets.ts` | `src/components/features/finance/budgets/` |
+| Goals | `src/db/finance/goals.ts` | `src/lib/actions/finance/goals.ts` | `src/components/features/finance/goals/` |
+| Subscriptions | `src/db/finance/subscriptions.ts` | `src/lib/actions/finance/subscriptions.ts` | `src/components/features/finance/subscriptions/` |
+| Debts | `src/db/finance/debts.ts` | `src/lib/actions/finance/debts.ts` | `src/components/features/finance/debts/` |
+| Investments | `src/db/finance/investments.ts` | `src/lib/actions/finance/investments.ts` | `src/components/features/finance/investments/` |
+
+- **Services:** `src/lib/services/finance/validation.ts` (Zod schemas), `ledger.ts` (balance reconciliation)
+- **Hooks:** `src/hooks/finance/useAccounts.ts`, `useTransactions.ts`, `useCategories.ts`, `useCards.ts`, `useBudgets.ts`, `useGoals.ts`, `useSubscriptions.ts`, `useDebts.ts`, `useInvestments.ts` (TanStack Query)
+- **Sidebar:** `FinanceGroup` at `src/components/features/finance/FinanceGroup.tsx` — collapsible nav (dashboard, accounts, cards, budgets, goals, subscriptions, debts, investments, transactions, categories)
+- **Routes:** `src/app/[locale]/finance/{dashboard,accounts,cards,budgets,goals,subscriptions,debts,investments,transactions,categories}/page.tsx`
+- **DB:** Schemas in `src/db/finance/`, re-exported via `index.ts` → `pg-schema.ts` → `schema.ts`. Migration: `migrations-pg/0001_*.sql` (11 tables). Apply via `npm run db:setup`.
+- **i18n:** `Finance` namespace (27th) added to all 7 translation files.
+- **Access control:** each finance action has `assertFinanceAccess()` (same pattern as workspace)
+- **Ledger auto-reconciliation:** `createTransaction`/`updateTransaction`/`deleteTransaction` call `reconcileAccountBalance()` to keep `currentBalanceCents` current
 
 **Server Actions (`src/lib/actions/`)**
 - `workspace.ts` — Workspace + sidebar item CRUD (all auth-gated via `assertWorkspaceAccess`). Includes `updateWorkspaceIcon(id, icon, iconColor)`, `setWorkspaceHidden(id, hidden)` (sidebar hide/show), and `reparentWorkspaceItem(itemId, newParentId, targetWorkspaceId, siblingIdsOrder)` (sidebar drag-to-nest — sets `parent_id`, re-sequences the new sibling group, cycle-guarded; `newParentId: null` → root).

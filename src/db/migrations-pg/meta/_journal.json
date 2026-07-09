@@ -8,6 +8,13 @@
       "when": 1782190491379,
       "tag": "0000_spicy_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783558820230,
+      "tag": "0001_acoustic_green_goblin",
+      "breakpoints": true
     }
   ]
 }

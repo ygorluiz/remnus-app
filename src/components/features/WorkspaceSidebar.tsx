@@ -55,6 +55,7 @@ import LanguageSwitcher from '@/components/features/LanguageSwitcher';
 import AgentsModal from './AgentsModal';
 import BillingModal from './BillingModal';
 import UserSettingsModal from './UserSettingsModal';
+import FinanceGroup from '@/components/features/finance/FinanceGroup';
 import { getUserAgentTokenCount } from '@/lib/actions/agentToken';
 import { getMyTier } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
@@ -1266,6 +1267,9 @@ export default function WorkspaceSidebar({
           )}
         </div>
       </div>
+
+      {/* Finance group */}
+      <FinanceGroup activeWorkspaceId={activeWorkspace.id} />
 
       {/* Item context menu — mobile: bottom sheet, desktop: floating dropdown */}
       {activeMenuItem && (

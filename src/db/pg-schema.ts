@@ -316,3 +316,8 @@ export const subscriptions = pgTable('subscriptions', {
 }, (table) => [
   index('subscriptions_stripe_customer_idx').on(table.stripeCustomerId),
 ]);
+
+// ── Finance module tables ─────────────────────────────────────────────────────
+// Imported at bottom so core tables (workspaces, users) are fully defined
+// before finance modules reference them.
+export * from './finance';
