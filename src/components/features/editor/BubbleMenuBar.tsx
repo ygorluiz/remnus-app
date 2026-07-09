@@ -384,16 +384,16 @@ export default function BubbleMenuBar({ editor }: Props) {
         >
           {modeState === 'format' ? (
             <>
-              <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title={t('bubbleBold')}>
+              <Btn onClick={() => (editor.chain().focus() as any).toggleBold().run()} active={editor.isActive('bold')} title={t('bubbleBold')}>
                 <Bold size={13} />
               </Btn>
-              <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title={t('bubbleItalic')}>
+              <Btn onClick={() => (editor.chain().focus() as any).toggleItalic().run()} active={editor.isActive('italic')} title={t('bubbleItalic')}>
                 <Italic size={13} />
               </Btn>
-              <Btn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title={t('bubbleStrike')}>
+              <Btn onClick={() => (editor.chain().focus() as any).toggleStrike().run()} active={editor.isActive('strike')} title={t('bubbleStrike')}>
                 <Strikethrough size={13} />
               </Btn>
-              <Btn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title={t('bubbleCode')}>
+              <Btn onClick={() => (editor.chain().focus() as any).toggleCode().run()} active={editor.isActive('code')} title={t('bubbleCode')}>
                 <Code size={13} />
               </Btn>
 
@@ -546,7 +546,7 @@ export default function BubbleMenuBar({ editor }: Props) {
           <div className="flex items-center gap-1.5 flex-wrap mb-3">
             <RemoveSwatch
               title={t('bubbleColorDefault')}
-              onClick={() => { editor.chain().focus().unsetColor().run(); }}
+              onClick={() => { (editor.chain().focus() as any).unsetColor().run(); }}
             />
             {TEXT_COLORS.filter((c) => c.value !== null).map((c) => (
               <ColorSwatch
@@ -554,7 +554,7 @@ export default function BubbleMenuBar({ editor }: Props) {
                 color={c.value!}
                 active={activeTextColor === c.value}
                 title={c.label}
-                onClick={() => { editor.chain().focus().setColor(c.value!).run(); }}
+                onClick={() => { (editor.chain().focus() as any).setColor(c.value!).run(); }}
               />
             ))}
           </div>
@@ -565,7 +565,7 @@ export default function BubbleMenuBar({ editor }: Props) {
           <div className="flex items-center gap-1.5 flex-wrap">
             <RemoveSwatch
               title={t('bubbleColorNone')}
-              onClick={() => { editor.chain().focus().unsetHighlight().run(); }}
+              onClick={() => { (editor.chain().focus() as any).unsetHighlight().run(); }}
             />
             {HIGHLIGHT_COLORS.filter((c) => c.value !== null).map((c) => (
               <ColorSwatch
@@ -573,7 +573,7 @@ export default function BubbleMenuBar({ editor }: Props) {
                 color={c.value!}
                 active={activeHighlight === c.value}
                 title={c.label}
-                onClick={() => { editor.chain().focus().setHighlight({ color: c.value! }).run(); }}
+                onClick={() => { (editor.chain().focus() as any).setHighlight({ color: c.value! }).run(); }}
               />
             ))}
           </div>

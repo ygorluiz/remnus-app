@@ -158,7 +158,7 @@ export default function BlockSelectionToolbar({ editor }: Props) {
    * the text selection (so no native highlight lingers) while preserving the block
    * selection — all in one transaction so the block decorations survive.
    */
-  const applyMarks = (mutate: (chain: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>) => {
+  const applyMarks = (mutate: (chain: any) => any) => {
     const r = blockRange();
     if (!r) return;
     const from = Math.min(r.from + 1, r.to - 1);
