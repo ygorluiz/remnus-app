@@ -54,7 +54,7 @@ export default function CategoryForm({
   };
 
   const isPending = createCategory.isPending || updateCategory.isPending;
-  const parentOptions = (allCategories ?? []).filter(c => c.id !== category?.id);
+  const parentOptions = (allCategories ?? []).filter((c: FinanceCategoryRow) => c.id !== category?.id);
 
   return (
     <>

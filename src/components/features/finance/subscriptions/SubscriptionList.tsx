@@ -24,7 +24,7 @@ export default function SubscriptionList({ workspaceId, onAdd }: { workspaceId: 
 
   if (isLoading) return <div className="flex items-center justify-center py-12 text-neutral-500 text-sm">{t('loading')}</div>;
 
-  const totalMonthly = (subs ?? []).filter(s => s.isActive).reduce((sum, s) => {
+  const totalMonthly = (subs ?? []).filter((s: FinanceSubscriptionRow) => s.isActive).reduce((sum: number, s: FinanceSubscriptionRow) => {
     switch (s.billingCycle) {
       case 'yearly': return sum + s.amountCents / 12;
       case 'quarterly': return sum + s.amountCents / 3;
