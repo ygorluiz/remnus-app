@@ -189,7 +189,7 @@ export default function BubbleMenuBar({ editor }: Props) {
 
   const openLinkEditor = () => {
     if (editor.isActive('link')) {
-      editor.chain().focus().extendMarkRange('link').run();
+      (editor.chain().focus() as any).extendMarkRange('link').run();
     }
     const { from, to } = editor.state.selection;
     const text = editor.state.doc.textBetween(from, to, '');
@@ -204,13 +204,13 @@ export default function BubbleMenuBar({ editor }: Props) {
 
   const cancelLink = () => {
     setMode('format');
-    editor.chain().focus().run();
+    (editor.chain().focus() as any).run();
   };
 
   const applyLink = () => {
     const href = normalizeHref(linkHref);
     if (!href) {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      (editor.chain().focus() as any).extendMarkRange('link').unsetLink().run();
       setMode('format');
       return;
     }
@@ -218,10 +218,10 @@ export default function BubbleMenuBar({ editor }: Props) {
     const textChanged = linkWasActive.current && linkText !== linkInitialText.current && linkText.length > 0;
 
     if (textChanged) {
-      editor.chain()
+      (editor.chain() as any)
         .focus()
         .extendMarkRange('link')
-        .command(({ tr, state, dispatch }) => {
+        .command(({ tr, state, dispatch }: any) => {
           if (!dispatch) return true;
           const { from, to } = state.selection;
           const mark = state.schema.marks.link?.create({ href });
@@ -233,13 +233,13 @@ export default function BubbleMenuBar({ editor }: Props) {
         })
         .run();
     } else {
-      editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+      (editor.chain().focus() as any).extendMarkRange('link').setLink({ href }).run();
     }
     setMode('format');
   };
 
   const removeLink = () => {
-    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    (editor.chain().focus() as any).extendMarkRange('link').unsetLink().run();
     setMode('format');
   };
 
