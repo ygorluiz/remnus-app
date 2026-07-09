@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Download, Loader2, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { deleteUploadedAsset } from './assetClient';
@@ -22,12 +22,7 @@ export default function FileBlockView({
   deleteNode,
   updateAttributes,
   editor,
-}: {
-  node: any;
-  deleteNode: () => void;
-  updateAttributes: (attrs: Record<string, any>) => void;
-  editor: any;
-}) {
+}: NodeViewProps) {
   const t = useTranslations('Editor');
   const workspaceId: string | null =
     editor?.extensionManager?.extensions?.find((e: any) => e.name === 'fileBlock')?.options?.workspaceId ?? null;

@@ -12,7 +12,7 @@ import { MarkdownTable, BgTableCell, BgTableHeader } from './TableMarkdown';
 import BubbleMenuBar from './BubbleMenuBar';
 import BlockDragHandle, { getDragSource, getNestTarget, clearNestTarget } from './BlockDragHandle';
 import TableControls from './TableControls';
-import { Slice, Fragment } from 'prosemirror-model';
+import { Slice, Fragment, Node as ProseMirrorNode } from 'prosemirror-model';
 import { TextSelection } from 'prosemirror-state';
 import { dropPoint } from 'prosemirror-transform';
 import { joinTextblockForward } from 'prosemirror-commands';
@@ -253,7 +253,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       }),
       Markdown,
       Placeholder.configure({
-        placeholder: ({ node }) => {
+        placeholder: ({ node }: { node: ProseMirrorNode }) => {
           if (node.type.name === 'heading') return 'Heading...';
           return placeholder ?? "Type '/' for commands or start writing...";
         },

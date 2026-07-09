@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { useTranslations } from 'next-intl';
 import { CALLOUT_COLORS } from './CalloutBlockExtension';
 
@@ -26,11 +26,7 @@ export default function CalloutBlockView({
   node,
   deleteNode,
   updateAttributes,
-}: {
-  node: any;
-  deleteNode: () => void;
-  updateAttributes: (attrs: Record<string, any>) => void;
-}) {
+}: NodeViewProps) {
   const t = useTranslations('Editor');
   const { icon, color, text } = node.attrs as { icon: string; color: string; text: string };
   const [emojiOpen, setEmojiOpen] = useState(false);

@@ -74,9 +74,10 @@ export const CollapsibleHeading = Heading.configure({ levels: [1, 2, 3] }).exten
   },
 
   // renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
-  renderMarkdown(node: any, h: any) {
-    const level = node.attrs?.level ?? 1;
-    const indent = (node.attrs?.indent as number) ?? 0;
+  renderMarkdown(node: { attrs?: Record<string, unknown>; content?: unknown }, h: any) {
+    const a = node.attrs ?? {};
+    const level = (a.level as number) ?? 1;
+    const indent = (a.indent as number) ?? 0;
     const content = node.content ? h.renderChildren(node.content) : '';
     if (!indent) return `${'#'.repeat(level)} ${content}`;
     return `<h${level} data-indent="${indent}">${content}</h${level}>`;

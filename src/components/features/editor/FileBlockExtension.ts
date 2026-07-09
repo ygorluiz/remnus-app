@@ -62,10 +62,13 @@ export const FileBlock = Node.create({
   },
 
   // renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
-  renderMarkdown(node: any) {
-    const a = node.attrs;
-    const indent = (a?.indent as number) ?? 0;
+  renderMarkdown(node: { attrs?: Record<string, unknown>; content?: unknown }) {
+    const a = node.attrs ?? {};
+    const indent = (a.indent as number) ?? 0;
     const indentAttr = indent ? ` data-indent="${indent}"` : '';
-    return `<div data-file-url="${esc(a.url || '')}" data-file-name="${esc(a.name || '')}" data-file-size="${a.size || 0}"${indentAttr}></div>`;
+    const url = (a.url as string) || '';
+    const name = (a.name as string) || '';
+    const size = (a.size as number) || 0;
+    return `<div data-file-url="${esc(url)}" data-file-name="${esc(name)}" data-file-size="${size}"${indentAttr}></div>`;
   },
 });

@@ -65,9 +65,11 @@ export const CalloutBlock = Node.create({
   },
 
   // renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
-  renderMarkdown(node: any) {
-    const indent = (node.attrs?.indent as number) ?? 0;
+  renderMarkdown(node: { attrs?: Record<string, unknown>; content?: unknown }) {
+    const a = node.attrs ?? {};
+    const indent = (a.indent as number) ?? 0;
     const indentAttr = indent ? ` data-indent="${indent}"` : '';
-    return `<div data-callout-icon="${escAttr(node.attrs.icon || '💡')}" data-callout-color="${escAttr(node.attrs.color || 'blue')}" data-callout-text="${escAttr(node.attrs.text || '')}"${indentAttr}></div>`;
+    const text = (a.text as string) || '';
+    return `<div data-callout-icon="${escAttr((a.icon as string) || '💡')}" data-callout-color="${escAttr((a.color as string) || 'blue')}" data-callout-text="${escAttr(text)}"${indentAttr}></div>`;
   },
 });

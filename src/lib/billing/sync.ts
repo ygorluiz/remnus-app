@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { subscriptions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import type { PlanTier } from './plans';
+import type Stripe from 'stripe';
 
 // Self-healing: derive a customer's effective plan from Stripe's LIVE state
 // rather than trusting a single webhook event. Handles duplicate subscriptions
@@ -41,7 +42,7 @@ export async function syncSubscriptionForCustomer(customerId: string, ownerUserI
     const status = st === 'active' || st === 'trialing' ? 'active' : st === 'past_due' || st === 'unpaid' ? 'past_due' : st;
     // current_period_end lives on the subscription (older API) or its items (newer API)
      
-    const periodUnix = (best.sub as any).current_period_end ?? (best.sub.items?.data?.[0] as any)?.current_period_end ?? null;
+    const periodUnix = (best.sub as unknown as Record<string, unknown>).current_period_end ?? ((best.sub.items?.data?.[0] as unknown as Record<string, unknown>)?.current_period_end ?? null);
     set = {
       tier: best.tier,
       status,

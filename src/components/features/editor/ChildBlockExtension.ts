@@ -78,10 +78,18 @@ export const ChildBlock = Node.create({
   // so marked tokenizes it as an HTML block, and parseHTMLToken re-parses it via
   // generateJSON + our parseHTML rule above.
   // renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
-  renderMarkdown(node: any) {
-    const { itemId, databaseId, itemType, title, icon, iconColor, linkOnly, indent } = node.attrs;
-    const safeTitle = (title || '').replace(/"/g, '&quot;');
+  renderMarkdown(node: { attrs?: Record<string, unknown>; content?: unknown }) {
+    const a = node.attrs ?? {};
+    const itemId = (a.itemId as string) || '';
+    const databaseId = (a.databaseId as string) || '';
+    const itemType = (a.itemType as string) || '';
+    const title = (a.title as string) || '';
+    const icon = (a.icon as string) || '';
+    const iconColor = (a.iconColor as string) || '';
+    const linkOnly = !!a.linkOnly;
+    const indent = (a.indent as number) ?? 0;
+    const safeTitle = title.replace(/"/g, '&quot;');
     const indentAttr = indent ? ` data-indent="${indent}"` : '';
-    return `<div data-cb-id="${itemId}" data-cb-dbid="${databaseId || ''}" data-cb-type="${itemType}" data-cb-title="${safeTitle}" data-cb-icon="${icon || ''}" data-cb-iconcolor="${iconColor || ''}" data-cb-link="${linkOnly ? '1' : ''}"${indentAttr}></div>`;
+    return `<div data-cb-id="${itemId}" data-cb-dbid="${databaseId}" data-cb-type="${itemType}" data-cb-title="${safeTitle}" data-cb-icon="${icon}" data-cb-iconcolor="${iconColor}" data-cb-link="${linkOnly ? '1' : ''}"${indentAttr}></div>`;
   },
 });

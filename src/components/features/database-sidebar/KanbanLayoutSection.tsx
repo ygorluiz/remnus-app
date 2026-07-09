@@ -4,9 +4,10 @@ import { useTranslations } from 'next-intl';
 import { GripVertical, ArrowLeft, ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 import { getPropertyIcon, Checkbox, selectCls, CollapsibleSection } from './shared';
 import GroupingLayoutSection from './GroupingLayoutSection';
+import type { SchemaColumn } from '@/lib/templates';
 
 interface KanbanLayoutSectionProps {
-  schema: any[];
+  schema: SchemaColumn[];
   groupByCol?: string;
   onGroupByColChange?: (colId: string) => void;
   cardProperties?: string[];
@@ -50,15 +51,15 @@ export default function KanbanLayoutSection({
 }: KanbanLayoutSectionProps) {
   const t = useTranslations('Database');
 
-  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select' || c.type === 'status');
-  const availableCardProps = schema.filter((c: any) => c.id !== 'title' && c.id !== groupByCol);
+  const colorColumns = schema.filter((c) => c.type === 'select' || c.type === 'multi_select' || c.type === 'status');
+  const availableCardProps = schema.filter((c) => c.id !== 'title' && c.id !== groupByCol);
   const effectiveVisible: string[] =
     cardProperties !== undefined
-      ? cardProperties.filter((id) => availableCardProps.some((c: any) => c.id === id))
-      : availableCardProps.slice(0, 2).map((c: any) => c.id);
+      ? cardProperties.filter((id) => availableCardProps.some((c) => c.id === id))
+      : availableCardProps.slice(0, 2).map((c) => c.id);
 
-  const visibleCardProps = effectiveVisible.map((id) => availableCardProps.find((c: any) => c.id === id)).filter(Boolean) as any[];
-  const hiddenCardProps = availableCardProps.filter((c: any) => !effectiveVisible.includes(c.id));
+  const visibleCardProps = effectiveVisible.map((id) => availableCardProps.find((c) => c.id === id)).filter(Boolean) as SchemaColumn[];
+  const hiddenCardProps = availableCardProps.filter((c) => !effectiveVisible.includes(c.id));
 
   const toggleCardProp = (colId: string) => {
     onCardPropertiesChange?.(
@@ -119,7 +120,7 @@ export default function KanbanLayoutSection({
                 <button onClick={() => toggleCardProp(col.id)} className="cursor-pointer"><Checkbox checked={true} /></button>
               </div>
             ))}
-            {hiddenCardProps.map((col: any) => (
+            {hiddenCardProps.map((col) => (
               <button key={col.id} onClick={() => toggleCardProp(col.id)} className="flex items-center gap-2 px-4 py-2 border-b border-neutral-800/30 hover:bg-neutral-800/10 transition-colors cursor-pointer text-left">
                 <span className="w-2.75 shrink-0" />
                 {getPropertyIcon(col.type)}
@@ -151,14 +152,14 @@ export default function KanbanLayoutSection({
             <span className="text-xs text-neutral-300 shrink-0">{t('cardBackground')}</span>
             <select value={cardBgCol ?? ''} onChange={(e) => onCardBgColChange?.(e.target.value)} className={`${selectCls} w-32 shrink-0 cursor-pointer truncate`}>
               <option value="">None</option>
-              {colorColumns.map((col: any) => <option key={col.id} value={col.id}>{col.name}</option>)}
+              {colorColumns.map((col) => <option key={col.id} value={col.id}>{col.name}</option>)}
             </select>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs text-neutral-300 shrink-0">{t('accentLine')}</span>
             <select value={cardColorCol ?? ''} onChange={(e) => onCardColorColChange?.(e.target.value)} className={`${selectCls} w-32 shrink-0 cursor-pointer truncate`}>
               <option value="">None</option>
-              {colorColumns.map((col: any) => <option key={col.id} value={col.id}>{col.name}</option>)}
+              {colorColumns.map((col) => <option key={col.id} value={col.id}>{col.name}</option>)}
             </select>
           </div>
           {cardColorCol && (

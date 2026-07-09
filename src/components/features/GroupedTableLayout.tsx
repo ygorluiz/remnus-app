@@ -11,6 +11,7 @@ import {
   groupPagesForTable,
 } from '@/lib/tableGrouping';
 import TableLayout from './TableLayout';
+import type { SchemaColumn } from '@/lib/templates';
 
 type GroupedTableLayoutProps = ComponentProps<typeof TableLayout> & {
   groupByCol: string;
@@ -33,9 +34,9 @@ export default function GroupedTableLayout({
 }: GroupedTableLayoutProps) {
   const t = useTranslations('Database');
   const schema = database.schema ?? [];
-  const groupColumn = schema.find((col: any) => col.id === groupByCol);
+  const groupColumn = schema.find((col: SchemaColumn) => col.id === groupByCol);
   const options = useMemo(
-    () => (groupColumn?.options ?? []).map((option: any) => normalizeOption(option).value),
+    () => (groupColumn?.options as (string | { value: string })[] | undefined ?? []).map((o) => normalizeOption(o).value),
     [groupColumn?.options],
   );
   const visibleGroups = useMemo(

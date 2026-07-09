@@ -98,9 +98,8 @@ export async function getBudgetsWithSpent(
       ),
     );
 
-  return (budgets as unknown as FinanceBudgetRow[]).map(b => {
-    const bAny = b as any;
-    const spent = Number(bAny.spentCents ?? 0);
+  return (budgets as unknown as BudgetWithSpent[]).map(b => {
+    const spent = Number(b.spentCents ?? 0);
     const budgetAmt = b.amountCents;
     return {
       ...b,

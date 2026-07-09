@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Link2, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -36,12 +36,7 @@ export default function BookmarkBlockView({
   deleteNode,
   updateAttributes,
   editor,
-}: {
-  node: any;
-  deleteNode: () => void;
-  updateAttributes: (attrs: Record<string, any>) => void;
-  editor: any;
-}) {
+}: NodeViewProps) {
   const t = useTranslations('Editor');
   const { url, title, description, image, favicon } = node.attrs as {
     url: string | null;
