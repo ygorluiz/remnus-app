@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Repeat, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useSubscriptions, useToggleSubscription, useDeleteSubscription } from '@/hooks/finance/useSubscriptions';
+import type { FinanceSubscriptionRow } from '@/lib/actions/finance/subscriptions';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -23,7 +24,7 @@ export default function SubscriptionList({ workspaceId, onAdd }: { workspaceId: 
 
   if (isLoading) return <div className="flex items-center justify-center py-12 text-neutral-500 text-sm">{t('loading')}</div>;
 
-  const totalMonthly = (subs ?? []).filter(s => s.isActive).reduce((sum, s) => {
+  const totalMonthly = (subs ?? []).filter((s: FinanceSubscriptionRow) => s.isActive).reduce((sum: number, s: FinanceSubscriptionRow) => {
     switch (s.billingCycle) {
       case 'yearly': return sum + s.amountCents / 12;
       case 'quarterly': return sum + s.amountCents / 3;
@@ -45,7 +46,7 @@ export default function SubscriptionList({ workspaceId, onAdd }: { workspaceId: 
       </div>
 
       <div className="space-y-2">
-        {(subs ?? []).map(sub => {
+        {(subs ?? []).map((sub: FinanceSubscriptionRow) => {
           const days = daysUntil(new Date(sub.nextRenewalDate));
           return (
             <div key={sub.id} className={`bg-neutral-900 border rounded-lg p-4 hover:border-neutral-700 transition-colors ${sub.isActive ? 'border-neutral-800' : 'border-neutral-850 opacity-60'}`}>

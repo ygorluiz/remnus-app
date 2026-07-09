@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 import { useUpsertBudget } from '@/hooks/finance/useBudgets';
 import { useCategories } from '@/hooks/finance/useCategories';
+import type { FinanceCategoryRow } from '@/lib/actions/finance/categories';
 
 export default function BudgetForm({
   workspaceId,
@@ -54,7 +55,7 @@ export default function BudgetForm({
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-50 focus:outline-none focus:border-blue-500/60"
             >
               <option value="">{t('selectCategory')}</option>
-              {(categories ?? []).map(cat => (
+              {(categories ?? []).map((cat: FinanceCategoryRow) => (
                 <option key={cat.id} value={cat.id}>{cat.emoji ? `${cat.emoji} ` : ''}{cat.name}</option>
               ))}
             </select>

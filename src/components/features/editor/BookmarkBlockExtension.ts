@@ -2,6 +2,7 @@ import { Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import BookmarkBlockView from './BookmarkBlockView';
 import { mediaStopEvent } from './mediaStopEvent';
+import type { JSONContent } from '@tiptap/core';
 
 function esc(s: string): string {
   return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/\r?\n/g, ' ');
@@ -69,10 +70,15 @@ export const BookmarkBlock = Node.create({
   },
 
   // renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
-  renderMarkdown(node: any) {
-    const a = node.attrs;
-    const indent = (a?.indent as number) ?? 0;
+  renderMarkdown(node: { attrs?: Record<string, unknown>; content?: unknown }) {
+    const a = node.attrs ?? {};
+    const indent = (a.indent as number) ?? 0;
     const indentAttr = indent ? ` data-indent="${indent}"` : '';
-    return `<div data-bm-url="${esc(a.url || '')}" data-bm-title="${esc(a.title || '')}" data-bm-desc="${esc(a.description || '')}" data-bm-image="${esc(a.image || '')}" data-bm-favicon="${esc(a.favicon || '')}"${indentAttr}></div>`;
+    const url = (a.url as string) || '';
+    const title = (a.title as string) || '';
+    const desc = (a.description as string) || '';
+    const image = (a.image as string) || '';
+    const favicon = (a.favicon as string) || '';
+    return `<div data-bm-url="${esc(url)}" data-bm-title="${esc(title)}" data-bm-desc="${esc(desc)}" data-bm-image="${esc(image)}" data-bm-favicon="${esc(favicon)}"${indentAttr}></div>`;
   },
 });

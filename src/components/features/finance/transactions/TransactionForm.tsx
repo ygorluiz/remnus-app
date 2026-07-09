@@ -7,6 +7,8 @@ import { useCreateTransaction, useUpdateTransaction } from '@/hooks/finance/useT
 import { useAccounts } from '@/hooks/finance/useAccounts';
 import { useCategories } from '@/hooks/finance/useCategories';
 import type { FinanceTransactionRow } from '@/lib/actions/finance/transactions';
+import type { FinanceAccountRow } from '@/lib/actions/finance/accounts';
+import type { FinanceCategoryRow } from '@/lib/actions/finance/categories';
 
 const TRANSACTION_TYPES = ['income', 'expense', 'transfer', 'refund'] as const;
 
@@ -146,7 +148,7 @@ export default function TransactionForm({
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-50 focus:outline-none focus:border-blue-500/60"
             >
               <option value="">{t('selectAccount')}</option>
-              {(accounts ?? []).map(acc => (
+              {(accounts ?? []).map((acc: FinanceAccountRow) => (
                 <option key={acc.id} value={acc.id}>{acc.name}</option>
               ))}
             </select>
@@ -161,7 +163,7 @@ export default function TransactionForm({
                 className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-50 focus:outline-none focus:border-blue-500/60"
               >
                 <option value="">{t('selectAccount')}</option>
-                {(accounts ?? []).filter(a => a.id !== accountId).map(acc => (
+                {(accounts ?? []).filter((a: FinanceAccountRow) => a.id !== accountId).map((acc: FinanceAccountRow) => (
                   <option key={acc.id} value={acc.id}>{acc.name}</option>
                 ))}
               </select>
@@ -177,7 +179,7 @@ export default function TransactionForm({
                 className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-50 focus:outline-none focus:border-blue-500/60"
               >
                 <option value="">{t('noCategory')}</option>
-                {(categories ?? []).map(cat => (
+                {(categories ?? []).map((cat: FinanceCategoryRow) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>

@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { jwt } from 'better-auth/plugins';
 import { db } from '@/db';
 import * as schema from '@/db/schema';
@@ -60,7 +60,7 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
+        after: async (user: { id: string; name: string; email: string; role?: string }) => {
           // Seed default workspace with tasks database and welcome page
           await createSeedWorkspace(user.id, user.name);
 

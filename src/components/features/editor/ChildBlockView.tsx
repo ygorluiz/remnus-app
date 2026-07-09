@@ -35,7 +35,7 @@ export default function ChildBlockView({
     const newTab = !!tabs && !isSharedView && (e.metaKey || e.ctrlKey || e.button === 1);
 
     // Save content immediately before navigating so it persists on return
-    const md = (editor as any).getMarkdown?.();
+    const md = editor.getMarkdown?.();
     if (md && typeof ext?.options?.onImmediateSave === 'function') {
       try { await ext.options.onImmediateSave(md); } catch {}
     }

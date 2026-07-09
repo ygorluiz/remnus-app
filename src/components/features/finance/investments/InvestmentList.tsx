@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, TrendingUp, TrendingDown, Minus, ArrowUpRight } from 'lucide-react';
 import { useInvestmentsWithValue, usePortfolioSummary, useDeleteInvestment } from '@/hooks/finance/useInvestments';
+import type { InvestmentWithValue } from '@/lib/actions/finance/investments';
 
 function fmt(n: number): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -56,7 +57,7 @@ export default function InvestmentList({ workspaceId, onAdd }: { workspaceId: st
       </div>
 
       <div className="space-y-1">
-        {(investments ?? []).map(inv => (
+        {(investments ?? []).map((inv: InvestmentWithValue) => (
           <div key={inv.id} className="flex items-center justify-between px-3 py-2.5 rounded-md hover:bg-neutral-850/50 transition-colors">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-7 h-7 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-bold text-neutral-400 shrink-0">

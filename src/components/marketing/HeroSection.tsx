@@ -19,7 +19,7 @@ export default async function HeroSection() {
         </div>
 
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-neutral-100 leading-tight">
-          {t('heroTitle').split('\n').map((line, i) => (
+          {t('heroTitle').split('\n').map((line: string, i: number) => (
             <span key={i}>
               {i === 1 ? <span className="text-blue-500"> {line}</span> : line}
               {i === 0 && <br />}

@@ -12,10 +12,10 @@ import { MarkdownTable, BgTableCell, BgTableHeader } from './TableMarkdown';
 import BubbleMenuBar from './BubbleMenuBar';
 import BlockDragHandle, { getDragSource, getNestTarget, clearNestTarget } from './BlockDragHandle';
 import TableControls from './TableControls';
-import { Slice, Fragment } from '@tiptap/pm/model';
-import { TextSelection } from '@tiptap/pm/state';
-import { dropPoint } from '@tiptap/pm/transform';
-import { joinTextblockForward } from '@tiptap/pm/commands';
+import { Slice, Fragment, Node as ProseMirrorNode } from 'prosemirror-model';
+import { TextSelection } from 'prosemirror-state';
+import { dropPoint } from 'prosemirror-transform';
+import { joinTextblockForward } from 'prosemirror-commands';
 import { SlashCommand } from './SlashCommandMenu';
 import { ChildBlock } from './ChildBlockExtension';
 import Color from '@tiptap/extension-color';
@@ -253,7 +253,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       }),
       Markdown,
       Placeholder.configure({
-        placeholder: ({ node }) => {
+        placeholder: ({ node }: { node: ProseMirrorNode }) => {
           if (node.type.name === 'heading') return 'Heading...';
           return placeholder ?? "Type '/' for commands or start writing...";
         },
@@ -292,7 +292,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
     content: computedInitial,
     contentType: 'markdown',
     onUpdate: ({ editor }) => {
-      const md = (editor as any).getMarkdown();
+      const md = editor.getMarkdown();
       onChange(md);
     },
     editorProps: {
@@ -590,7 +590,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
         if (!ed) return false;
 
         try {
-          const manager: any = (ed as any).markdown;
+          const manager = ed.markdown;
           if (!manager?.parse) return false;
 
           const doc = manager.parse(text);

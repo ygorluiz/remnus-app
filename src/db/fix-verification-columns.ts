@@ -11,10 +11,10 @@ async function main() {
     const cols = await client.query(
       "SELECT column_name FROM information_schema.columns WHERE table_name = 'verification' AND table_schema = 'public'"
     );
-    console.log('Current columns:', cols.rows.map(r => r.column_name).join(', '));
+    console.log('Current columns:', cols.rows.map((r: Record<string, unknown>) => (r as Record<string, unknown>).column_name).join(', '));
 
-    const hasToken = cols.rows.some(r => r.column_name === 'token');
-    const hasValue = cols.rows.some(r => r.column_name === 'value');
+    const hasToken = cols.rows.some((r: Record<string, unknown>) => (r as Record<string, unknown>).column_name === 'token');
+    const hasValue = cols.rows.some((r: Record<string, unknown>) => (r as Record<string, unknown>).column_name === 'value');
 
     if (hasToken && !hasValue) {
       await client.query('ALTER TABLE "verification" RENAME COLUMN "token" TO "value"');
@@ -29,7 +29,7 @@ async function main() {
     const final = await client.query(
       "SELECT column_name FROM information_schema.columns WHERE table_name = 'verification' AND table_schema = 'public'"
     );
-    console.log('Final columns:', final.rows.map(r => r.column_name).join(', '));
+    console.log('Final columns:', final.rows.map((r: Record<string, unknown>) => (r as Record<string, unknown>).column_name).join(', '));
   } finally {
     client.release();
     await pool.end();

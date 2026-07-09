@@ -14,8 +14,9 @@ export const FencedCodeBlock = CodeBlock.extend({
   },
 
   // renderMarkdown is a @tiptap/markdown extension field, not in Tiptap core types
-  renderMarkdown(node: any, h: any) {
-    const language = node.attrs?.language || '';
+  renderMarkdown(node: { attrs?: Record<string, unknown>; content?: unknown }, h: any) {
+    const a = node.attrs ?? {};
+    const language = (a.language as string) || '';
     const content = node.content ? h.renderChildren(node.content) : '';
 
     // Longest run of consecutive backticks anywhere in the body.

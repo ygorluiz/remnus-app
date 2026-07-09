@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
+import { Transaction } from 'prosemirror-state';
 import {
   Trash2, Copy, CopyPlus, Bold, Italic, Strikethrough, Code, ChevronDown,
   Pilcrow, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code2, X,
@@ -80,7 +81,7 @@ export default function BlockSelectionToolbar({ editor }: Props) {
   };
 
   useEffect(() => {
-    const update = () => {
+    const update = (_props: { transaction: Transaction }) => {
       const s = getBlockSelection(editor.state);
       setSelState(s);
 
@@ -123,7 +124,7 @@ export default function BlockSelectionToolbar({ editor }: Props) {
     };
 
     editor.on('transaction', update);
-    return () => { editor.off('transaction', update as any); };
+    return () => { editor.off('transaction', update); };
   }, [editor]);
 
   // Close popovers on outside click

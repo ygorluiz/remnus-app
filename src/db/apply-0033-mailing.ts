@@ -29,7 +29,7 @@ const client = createClient(url.startsWith('file:') ? { url } : { url, authToken
 
 async function hasColumn(table: string, column: string): Promise<boolean> {
   const res = await client.execute(`PRAGMA table_info(${table})`);
-  return res.rows.some((r) => r.name === column);
+  return res.rows.some((r: Record<string, unknown>) => (r as Record<string, unknown>).name === column);
 }
 
 async function main() {

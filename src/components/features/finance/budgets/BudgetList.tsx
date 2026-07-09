@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { Plus, PiggyBank, AlertTriangle } from 'lucide-react';
 import { useBudgetsWithSpent, useDeleteBudget } from '@/hooks/finance/useBudgets';
 import { useCategories } from '@/hooks/finance/useCategories';
+import type { BudgetWithSpent } from '@/lib/actions/finance/budgets';
+import type { FinanceCategoryRow } from '@/lib/actions/finance/categories';
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -33,7 +35,7 @@ export default function BudgetList({
   const { data: categories } = useCategories(workspaceId);
   const deleteBudget = useDeleteBudget();
 
-  const catMap = new Map((categories ?? []).map(c => [c.id, c]));
+  const catMap = new Map<string, FinanceCategoryRow>((categories ?? []).map((c: FinanceCategoryRow) => [c.id, c]));
 
   if (isLoading) {
     return (
@@ -43,8 +45,8 @@ export default function BudgetList({
     );
   }
 
-  const totalBudgeted = (budgets ?? []).reduce((s, b) => s + b.amountCents, 0);
-  const totalSpent = (budgets ?? []).reduce((s, b) => s + b.spentCents, 0);
+  const totalBudgeted = (budgets ?? []).reduce((s: number, b: BudgetWithSpent) => s + b.amountCents, 0);
+  const totalSpent = (budgets ?? []).reduce((s: number, b: BudgetWithSpent) => s + b.spentCents, 0);
 
   return (
     <div>
@@ -90,7 +92,7 @@ export default function BudgetList({
       </div>
 
       <div className="space-y-2">
-        {(budgets ?? []).map(budget => {
+        {(budgets ?? []).map((budget: BudgetWithSpent) => {
           const category = catMap.get(budget.categoryId);
           const isOver = budget.percentUsed >= 100;
           const isWarning = budget.percentUsed >= parseFloat(budget.alertThreshold) * 100;

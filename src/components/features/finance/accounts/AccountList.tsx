@@ -55,7 +55,7 @@ export default function AccountList({
     );
   }
 
-  const total = (accounts ?? []).reduce((sum, a) => sum + a.currentBalanceCents, 0);
+  const total = (accounts ?? []).reduce((sum: number, a: FinanceAccountRow) => sum + a.currentBalanceCents, 0);
 
   return (
     <div>
@@ -74,7 +74,7 @@ export default function AccountList({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {(accounts ?? []).map(account => {
+        {(accounts ?? []).map((account: FinanceAccountRow) => {
           const TypeIcon = TYPE_ICONS[account.type] ?? Building2;
           return (
             <div

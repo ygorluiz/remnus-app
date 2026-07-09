@@ -54,7 +54,7 @@ export default function CategoryForm({
   };
 
   const isPending = createCategory.isPending || updateCategory.isPending;
-  const parentOptions = (allCategories ?? []).filter(c => c.id !== category?.id);
+  const parentOptions = (allCategories ?? []).filter((c: FinanceCategoryRow) => c.id !== category?.id);
 
   return (
     <>
@@ -90,7 +90,7 @@ export default function CategoryForm({
               className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-50 focus:outline-none focus:border-blue-500/60"
             >
               <option value="">{t('noParentCategory')}</option>
-              {parentOptions.map(cat => (
+              {parentOptions.map((cat: FinanceCategoryRow) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>

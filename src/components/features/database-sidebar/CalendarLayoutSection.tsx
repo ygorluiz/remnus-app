@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { GripVertical, ArrowLeft, ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 import { getPropertyIcon, Checkbox, selectCls, CollapsibleSection } from './shared';
+import type { SchemaColumn } from '@/lib/templates';
 
 interface CalendarLayoutSectionProps {
-  schema: any[];
+  schema: SchemaColumn[];
   dateCol?: string;
   onDateColChange?: (colId: string) => void;
   viewMode?: 'month' | 'week';
@@ -49,16 +50,16 @@ export default function CalendarLayoutSection({
 }: CalendarLayoutSectionProps) {
   const t = useTranslations('Database');
 
-  const dateColumns = schema.filter((c: any) => c.type === 'date' || c.type === 'datetime');
-  const colorColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'multi_select' || c.type === 'status');
-  const calAvailableCardProps = schema.filter((c: any) => c.id !== 'title' && c.id !== dateCol);
+  const dateColumns = schema.filter((c) => c.type === 'date' || c.type === 'datetime');
+  const colorColumns = schema.filter((c) => c.type === 'select' || c.type === 'multi_select' || c.type === 'status');
+  const calAvailableCardProps = schema.filter((c) => c.id !== 'title' && c.id !== dateCol);
   const effectiveCalVisible: string[] =
     cardProperties !== undefined
-      ? cardProperties.filter((id) => calAvailableCardProps.some((c: any) => c.id === id))
-      : calAvailableCardProps.slice(0, 1).map((c: any) => c.id);
+      ? cardProperties.filter((id) => calAvailableCardProps.some((c) => c.id === id))
+      : calAvailableCardProps.slice(0, 1).map((c) => c.id);
 
-  const visibleCalCardProps = effectiveCalVisible.map((id) => calAvailableCardProps.find((c: any) => c.id === id)).filter(Boolean) as any[];
-  const hiddenCalCardProps = calAvailableCardProps.filter((c: any) => !effectiveCalVisible.includes(c.id));
+  const visibleCalCardProps = effectiveCalVisible.map((id) => calAvailableCardProps.find((c) => c.id === id)).filter(Boolean) as SchemaColumn[];
+  const hiddenCalCardProps = calAvailableCardProps.filter((c) => !effectiveCalVisible.includes(c.id));
 
   const toggleCalCardProp = (colId: string) => {
     onCardPropertiesChange?.(
@@ -95,7 +96,7 @@ export default function CalendarLayoutSection({
             {dateColumns.length > 0 ? (
               <select value={dateCol} onChange={(e) => onDateColChange?.(e.target.value)} className={`${selectCls} w-full`}>
                 <option value="">Select property…</option>
-                {dateColumns.map((col: any) => <option key={col.id} value={col.id}>{col.name}</option>)}
+                {dateColumns.map((col) => <option key={col.id} value={col.id}>{col.name}</option>)}
               </select>
             ) : (
               <span className="text-xs text-amber-500/80">{t('addDateForCalendar')}</span>
@@ -142,7 +143,7 @@ export default function CalendarLayoutSection({
                 <button onClick={() => toggleCalCardProp(col.id)} className="cursor-pointer"><Checkbox checked={true} /></button>
               </div>
             ))}
-            {hiddenCalCardProps.map((col: any) => (
+            {hiddenCalCardProps.map((col) => (
               <button key={col.id} onClick={() => toggleCalCardProp(col.id)} className="flex items-center gap-2 px-4 py-2 border-b border-neutral-800/30 hover:bg-neutral-800/10 transition-colors cursor-pointer text-left">
                 <span className="w-2.75 shrink-0" />
                 {getPropertyIcon(col.type)}
@@ -175,14 +176,14 @@ export default function CalendarLayoutSection({
               <span className="text-xs text-neutral-300 shrink-0">{t('cardBackground')}</span>
               <select value={cardBgCol ?? ''} onChange={(e) => onCardBgColChange?.(e.target.value)} className={`${selectCls} w-32 shrink-0 cursor-pointer truncate`}>
                 <option value="">None</option>
-                {colorColumns.map((col: any) => <option key={col.id} value={col.id}>{col.name}</option>)}
+                {colorColumns.map((col) => <option key={col.id} value={col.id}>{col.name}</option>)}
               </select>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-neutral-300 shrink-0">{t('accentLine')}</span>
               <select value={cardColorCol ?? ''} onChange={(e) => onCardColorColChange?.(e.target.value)} className={`${selectCls} w-32 shrink-0 cursor-pointer truncate`}>
                 <option value="">None</option>
-                {colorColumns.map((col: any) => <option key={col.id} value={col.id}>{col.name}</option>)}
+                {colorColumns.map((col) => <option key={col.id} value={col.id}>{col.name}</option>)}
               </select>
             </div>
             {cardColorCol && (
