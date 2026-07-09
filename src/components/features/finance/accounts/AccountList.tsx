@@ -55,7 +55,7 @@ export default function AccountList({
     );
   }
 
-  const total = (accounts ?? []).reduce((sum, a) => sum + a.currentBalanceCents, 0);
+  const total = (accounts ?? []).reduce((sum: number, a: FinanceAccountRow) => sum + a.currentBalanceCents, 0);
 
   return (
     <div>
