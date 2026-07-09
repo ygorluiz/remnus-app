@@ -253,7 +253,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       }),
       Markdown,
       Placeholder.configure({
-        placeholder: ({ node }) => {
+        placeholder: ({ node }: { node: any }) => {
           if (node.type.name === 'heading') return 'Heading...';
           return placeholder ?? "Type '/' for commands or start writing...";
         },
