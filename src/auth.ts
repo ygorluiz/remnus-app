@@ -60,7 +60,7 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
+        after: async (user: { id: string; name: string; email: string; role?: string }) => {
           // Seed default workspace with tasks database and welcome page
           await createSeedWorkspace(user.id, user.name);
 
