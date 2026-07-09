@@ -29,7 +29,7 @@ async function main() {
     const final = await client.query(
       "SELECT column_name FROM information_schema.columns WHERE table_name = 'verification' AND table_schema = 'public'"
     );
-    console.log('Final columns:', final.rows.map(r => r.column_name).join(', '));
+    console.log('Final columns:', final.rows.map((r: Record<string, unknown>) => (r as Record<string, unknown>).column_name).join(', '));
   } finally {
     client.release();
     await pool.end();

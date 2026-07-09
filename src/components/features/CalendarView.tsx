@@ -62,7 +62,7 @@ const getMonthDays = (date: Date, firstDayOfWeek: 'sunday' | 'monday') => {
   }
   const gridStart = new Date(date.getFullYear(), date.getMonth(), date.getDate() - dow - 7);
 
-  const days = [];
+  const days: { date: Date; isCurrentMonth: boolean }[] = [];
   for (let i = 0; i < 42; i++) {
     const d = new Date(gridStart);
     d.setDate(gridStart.getDate() + i);
@@ -82,7 +82,7 @@ const getWeekDays = (date: Date, firstDayOfWeek: 'sunday' | 'monday') => {
   const sunday = new Date(date);
   sunday.setDate(date.getDate() - currentDay);
   
-  const days = [];
+  const days: { date: Date; isCurrentMonth: boolean }[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(sunday);
     d.setDate(sunday.getDate() + i);
