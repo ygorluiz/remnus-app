@@ -49,14 +49,14 @@ export function clearNestTarget() { _nestTarget = null; }
 type BlockType = 'paragraph' | 'h1' | 'h2' | 'h3' | 'bullet' | 'ordered' | 'quote' | 'code';
 
 const BLOCK_APPLIES: Record<BlockType, (e: Editor) => void> = {
-  paragraph: (e) => (e.chain().focus() as any).clearNodes().run(),
-  h1: (e) => (e.chain().focus() as any).clearNodes().setNode('heading', { level: 1 }).run(),
-  h2: (e) => (e.chain().focus() as any).clearNodes().setNode('heading', { level: 2 }).run(),
-  h3: (e) => (e.chain().focus() as any).clearNodes().setNode('heading', { level: 3 }).run(),
-  bullet: (e) => { if (e.isActive('bulletList')) return; if (e.isActive('orderedList')) (e.chain().focus() as any).toggleOrderedList().run(); (e.chain().focus() as any).toggleBulletList().run(); },
-  ordered: (e) => { if (e.isActive('orderedList')) return; if (e.isActive('bulletList')) (e.chain().focus() as any).toggleBulletList().run(); (e.chain().focus() as any).toggleOrderedList().run(); },
-  quote: (e) => (e.chain().focus() as any).clearNodes().toggleBlockquote().run(),
-  code: (e) => (e.chain().focus() as any).clearNodes().toggleCodeBlock().run(),
+  paragraph: (e) => e.chain().focus().clearNodes().run(),
+  h1: (e) => e.chain().focus().clearNodes().setNode('heading', { level: 1 }).run(),
+  h2: (e) => e.chain().focus().clearNodes().setNode('heading', { level: 2 }).run(),
+  h3: (e) => e.chain().focus().clearNodes().setNode('heading', { level: 3 }).run(),
+  bullet: (e) => { if (e.isActive('bulletList')) return; if (e.isActive('orderedList')) e.chain().focus().toggleOrderedList().run(); e.chain().focus().toggleBulletList().run(); },
+  ordered: (e) => { if (e.isActive('orderedList')) return; if (e.isActive('bulletList')) e.chain().focus().toggleBulletList().run(); e.chain().focus().toggleOrderedList().run(); },
+  quote: (e) => e.chain().focus().clearNodes().toggleBlockquote().run(),
+  code: (e) => e.chain().focus().clearNodes().toggleCodeBlock().run(),
 };
 
 const BLOCK_ICONS: Record<BlockType, React.ReactNode> = {

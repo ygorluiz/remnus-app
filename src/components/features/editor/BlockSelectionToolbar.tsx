@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/core';
+import { Transaction } from 'prosemirror-state';
 import {
   Trash2, Copy, CopyPlus, Bold, Italic, Strikethrough, Code, ChevronDown,
   Pilcrow, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code2, X,
@@ -25,14 +26,14 @@ const EMPTY: BlockSelectionState = { selected: [], anchor: null };
 type BlockType = 'paragraph' | 'h1' | 'h2' | 'h3' | 'bullet' | 'ordered' | 'quote' | 'code';
 
 const BLOCK_APPLIES: Record<BlockType, (e: Editor) => void> = {
-  paragraph: (e) => (e.chain().focus() as any).clearNodes().run(),
-  h1: (e) => (e.chain().focus() as any).clearNodes().setNode('heading', { level: 1 }).run(),
-  h2: (e) => (e.chain().focus() as any).clearNodes().setNode('heading', { level: 2 }).run(),
-  h3: (e) => (e.chain().focus() as any).clearNodes().setNode('heading', { level: 3 }).run(),
-  bullet: (e) => { if (e.isActive('bulletList')) return; if (e.isActive('orderedList')) (e.chain().focus() as any).toggleOrderedList().run(); (e.chain().focus() as any).toggleBulletList().run(); },
-  ordered: (e) => { if (e.isActive('orderedList')) return; if (e.isActive('bulletList')) (e.chain().focus() as any).toggleBulletList().run(); (e.chain().focus() as any).toggleOrderedList().run(); },
-  quote: (e) => (e.chain().focus() as any).clearNodes().toggleBlockquote().run(),
-  code: (e) => (e.chain().focus() as any).clearNodes().toggleCodeBlock().run(),
+  paragraph: (e) => e.chain().focus().clearNodes().run(),
+  h1: (e) => e.chain().focus().clearNodes().setNode('heading', { level: 1 }).run(),
+  h2: (e) => e.chain().focus().clearNodes().setNode('heading', { level: 2 }).run(),
+  h3: (e) => e.chain().focus().clearNodes().setNode('heading', { level: 3 }).run(),
+  bullet: (e) => { if (e.isActive('bulletList')) return; if (e.isActive('orderedList')) e.chain().focus().toggleOrderedList().run(); e.chain().focus().toggleBulletList().run(); },
+  ordered: (e) => { if (e.isActive('orderedList')) return; if (e.isActive('bulletList')) e.chain().focus().toggleBulletList().run(); e.chain().focus().toggleOrderedList().run(); },
+  quote: (e) => e.chain().focus().clearNodes().toggleBlockquote().run(),
+  code: (e) => e.chain().focus().clearNodes().toggleCodeBlock().run(),
 };
 
 const BLOCK_ICONS: Record<BlockType, React.ReactNode> = {
@@ -80,7 +81,7 @@ export default function BlockSelectionToolbar({ editor }: Props) {
   };
 
   useEffect(() => {
-    const update = () => {
+    const update = (_props: { transaction: Transaction }) => {
       const s = getBlockSelection(editor.state);
       setSelState(s);
 
@@ -123,7 +124,7 @@ export default function BlockSelectionToolbar({ editor }: Props) {
     };
 
     editor.on('transaction', update);
-    return () => { editor.off('transaction', update as any); };
+    return () => { editor.off('transaction', update); };
   }, [editor]);
 
   // Close popovers on outside click
@@ -158,7 +159,7 @@ export default function BlockSelectionToolbar({ editor }: Props) {
    * the text selection (so no native highlight lingers) while preserving the block
    * selection — all in one transaction so the block decorations survive.
    */
-  const applyMarks = (mutate: (chain: any) => any) => {
+  const applyMarks = (mutate: (chain: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>) => {
     const r = blockRange();
     if (!r) return;
     const from = Math.min(r.from + 1, r.to - 1);

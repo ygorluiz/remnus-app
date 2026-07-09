@@ -253,7 +253,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
       }),
       Markdown,
       Placeholder.configure({
-        placeholder: ({ node }: { node: any }) => {
+        placeholder: ({ node }) => {
           if (node.type.name === 'heading') return 'Heading...';
           return placeholder ?? "Type '/' for commands or start writing...";
         },
@@ -292,7 +292,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
     content: computedInitial,
     contentType: 'markdown',
     onUpdate: ({ editor }) => {
-      const md = (editor as any).getMarkdown();
+      const md = editor.getMarkdown();
       onChange(md);
     },
     editorProps: {
@@ -590,7 +590,7 @@ const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEditor({
         if (!ed) return false;
 
         try {
-          const manager: any = (ed as any).markdown;
+          const manager = ed.markdown;
           if (!manager?.parse) return false;
 
           const doc = manager.parse(text);

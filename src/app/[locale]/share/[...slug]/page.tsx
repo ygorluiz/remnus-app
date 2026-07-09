@@ -162,7 +162,7 @@ export default async function SharedPageRoute({ params }: Props) {
 
   // Workspace members get redirected to the real page instead of the shared view
   if (session?.user?.id) {
-    const isAdmin = isAdminRole((session.user as any).role);
+    const isAdmin = isAdminRole((session.user as { role?: string }).role);
     const hasMembership = isAdmin || await checkUserHasWorkspaceAccess(session.user.id, share.workspaceId);
     if (hasMembership) {
       const normalRoute = await getNormalRoute(share.pageId);
