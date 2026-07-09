@@ -9,11 +9,12 @@ import { useTranslations } from 'next-intl';
 import type { SelectOption } from '@/lib/types/properties';
 import InlineCellEditor from './InlineCellEditor';
 import { useContextMenu, type MenuItem } from './ContextMenu';
-import { StatusChip, UserChip, UserTags } from './PropertyTags';
+import { StatusChip, UserChip, UserTags, OptionIcon } from './PropertyTags';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import AgentEditBadge from './AgentEditBadge';
 import { updatePageIcon } from '@/lib/actions/page';
+import { updateDatabaseSchema } from '@/lib/actions/database';
 import { ConfirmDialog } from './ConfirmDialog';
 
 function getEffectiveGroupOrder(options: string[], groupOrder: string[]): string[] {
@@ -105,6 +106,19 @@ export default function KanbanBoard({
     onUpdatePageProperties(pageId, nextProps);
   };
 
+  // Persists a newly-typed select/multi_select option onto the column's schema
+  // (server revalidates `/db/[id]`, so `database.schema` picks it up shortly after).
+  const handleCreateOption = (colId: string, value: string) => {
+    const col = schema.find((c) => c.id === colId);
+    if (!col) return;
+    const existing = (col.options || []).map((o: string | SelectOption) => normalizeOption(o).value);
+    if (existing.includes(value)) return;
+    const nextSchema = schema.map((c) =>
+      c.id === colId ? { ...c, options: [...(c.options || []), { value, color: 'default' }] } : c
+    );
+    updateDatabaseSchema(database.id, nextSchema);
+  };
+
   const groupColumn = schema.find((col) => col.id === groupByCol);
   const options: string[] = (groupColumn?.options ?? []).map((o: string | SelectOption) => normalizeOption(o).value);
 
@@ -138,7 +152,6 @@ export default function KanbanBoard({
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const [dragOverCardId, setDragOverCardId] = useState<string | null>(null);
   const [dragOverColumnName, setDragOverColumnName] = useState<string | null>(null);
-  const [isCardDragReady, setIsCardDragReady] = useState(false);
   const [activeMenuCardId, setActiveMenuCardId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
@@ -211,14 +224,12 @@ export default function KanbanBoard({
     setDraggedCardId(null);
     setDragOverCardId(null);
     setDragOverColumnName(null);
-    setIsCardDragReady(false);
   };
 
   const handleCardDragEnd = () => {
     setDraggedCardId(null);
     setDragOverCardId(null);
     setDragOverColumnName(null);
-    setIsCardDragReady(false);
   };
 
   const handleColumnCardAreaDragOver = (e: React.DragEvent, columnName: string) => {
@@ -238,7 +249,6 @@ export default function KanbanBoard({
     setDraggedCardId(null);
     setDragOverCardId(null);
     setDragOverColumnName(null);
-    setIsCardDragReady(false);
   };
 
   if (!groupByCol) {
@@ -328,7 +338,7 @@ export default function KanbanBoard({
                     key={page.id}
                     onClick={() => onCardClick(page.id)}
                     onContextMenu={(e) => cardMenu.open(e, buildCardMenu(page.id))}
-                    draggable={isCardDragReady}
+                    draggable={true}
                     onDragStart={(e) => {
                       e.stopPropagation();
                       handleCardDragStart(e, page.id);
@@ -358,12 +368,6 @@ export default function KanbanBoard({
                         onDragStart={(e) => {
                           e.stopPropagation();
                           handleCardDragStart(e, page.id);
-                        }}
-                        onMouseDown={() => {
-                          setIsCardDragReady(true);
-                        }}
-                        onMouseLeave={() => {
-                          setIsCardDragReady(false);
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -478,7 +482,8 @@ export default function KanbanBoard({
                           if (c.type === 'select' && typeof val === 'string') {
                             const sc = getOptionColorByValue(c.options || [], val);
                             display = (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: sc.bg, color: sc.text }}>
+                                <OptionIcon value={val} options={c.options} />
                                 {val}
                               </span>
                             );
@@ -494,7 +499,8 @@ export default function KanbanBoard({
                                 {val.map((optVal: string) => {
                                   const mc = getOptionColorByValue(c.options || [], optVal);
                                   return (
-                                    <span key={optVal} className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                    <span key={optVal} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: mc.bg, color: mc.text }}>
+                                      <OptionIcon value={optVal} options={c.options} />
                                       {optVal}
                                     </span>
                                   );
@@ -550,6 +556,11 @@ export default function KanbanBoard({
                                   value={val}
                                   onSave={(newVal) => handleCellSave(page.id, c.id, newVal)}
                                   onClose={() => setEditingCell(null)}
+                                  onCreateOption={
+                                    c.type === 'select' || c.type === 'multi_select'
+                                      ? (v) => handleCreateOption(c.id, v)
+                                      : undefined
+                                  }
                                 />
                               ) : (
                                 <div

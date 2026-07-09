@@ -80,6 +80,8 @@ export const users = pgTable('user', {
   role:              text('role').default('user').notNull(),
   analyticsConsent:  text('analytics_consent'),
   passwordHash:      text('password_hash'),
+  emailUnsubscribedAt: timestamp('email_unsubscribed_at'),
+  emailSuppressed:     boolean('email_suppressed').default(false),
 });
 
 export const sessions = pgTable('session', {
@@ -197,6 +199,7 @@ export const userSessions = pgTable('user_sessions', {
   startedAt:       timestamp('started_at').notNull(),
   lastSeenAt:      timestamp('last_seen_at').notNull(),
   durationSeconds: integer('duration_seconds').notNull().default(0),
+  platform: text('platform'),
 }, (table) => [
   index('user_sessions_user_id_idx').on(table.userId),
   index('user_sessions_last_seen_at_idx').on(table.lastSeenAt),
@@ -286,17 +289,21 @@ export const oauthAccessTokens = pgTable('oauth_access_tokens', {
 ]);
 
 export const agentActivity = pgTable('agent_activity', {
-  id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  tokenId:     text('token_id').notNull().references(() => agentTokens.id, { onDelete: 'cascade' }),
-  workspaceId: text('workspace_id').notNull(),
-  tool:        text('tool').notNull(),
-  targetType:  text('target_type'),
-  targetId:    text('target_id'),
-  status:      text('status', { enum: ['success', 'error'] }).notNull(),
-  createdAt:   timestamp('created_at').notNull(),
+  id:            text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tokenId:       text('token_id').references(() => agentTokens.id, { onDelete: 'cascade' }),
+  oauthTokenId:  text('oauth_token_id').references(() => oauthAccessTokens.id, { onDelete: 'set null' }),
+  ownerUserId:   text('owner_user_id').references(() => users.id, { onDelete: 'set null' }),
+  workspaceId:   text('workspace_id').notNull(),
+  tool:          text('tool').notNull(),
+  targetType:    text('target_type'),
+  targetId:      text('target_id'),
+  status:        text('status', { enum: ['success', 'error'] }).notNull(),
+  responseBytes: integer('response_bytes'),
+  createdAt:     timestamp('created_at').notNull(),
 }, (table) => [
   index('agent_activity_workspace_id_idx').on(table.workspaceId),
   index('agent_activity_token_id_idx').on(table.tokenId),
+  index('agent_activity_owner_created_idx').on(table.ownerUserId, table.createdAt),
 ]);
 
 // ── Subscriptions ─────────────────────────────────────────────────────────────
@@ -316,3 +323,89 @@ export const subscriptions = pgTable('subscriptions', {
 }, (table) => [
   index('subscriptions_stripe_customer_idx').on(table.stripeCustomerId),
 ]);
+
+// ── Demo feedback ─────────────────────────────────────────────────────────────
+
+export const demoFeedback = pgTable('demo_feedback', {
+  id:        text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId:    text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  sentiment: text('sentiment').notNull(),
+  comment:   text('comment'),
+  createdAt: timestamp('created_at').notNull(),
+}, (table) => [
+  index('demo_feedback_created_at_idx').on(table.createdAt),
+]);
+
+// ── Email campaigns ─────────────────────────────────────────────────────────
+
+export const emailCampaigns = pgTable('email_campaigns', {
+  id:         text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId: text('workspace_id'),
+  createdBy:  text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  subject:    text('subject').notNull(),
+  preheader:  text('preheader'),
+  body:       text('body').notNull(),
+  status:     text('status').notNull().default('draft'),
+  sentAt:     timestamp('sent_at'),
+  createdAt:  timestamp('created_at').notNull(),
+});
+
+// ── Email log ────────────────────────────────────────────────────────────────
+
+export const emailLog = pgTable('email_log', {
+  id:         text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  campaignId: text('campaign_id').references(() => emailCampaigns.id, { onDelete: 'set null' }),
+  userId:     text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  kind:       text('kind').notNull(),
+  subject:    text('subject'),
+  status:     text('status').notNull(),
+  error:      text('error'),
+  createdAt:  timestamp('created_at').notNull(),
+}, (table) => [
+  index('email_log_user_kind_idx').on(table.userId, table.kind),
+  index('email_log_created_at_idx').on(table.createdAt),
+  index('email_log_campaign_id_idx').on(table.campaignId),
+]);
+
+// ── Page links ───────────────────────────────────────────────────────────────
+
+export const pageLinks = pgTable('page_links', {
+  id:            text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  sourcePageId:  text('source_page_id').notNull(),
+  targetPageId:  text('target_page_id').notNull(),
+  workspaceId:   text('workspace_id').notNull(),
+  strength:      integer('strength').notNull(),
+  createdAt:     timestamp('created_at').notNull(),
+}, (table) => [
+  index('page_links_source_idx').on(table.sourcePageId),
+  index('page_links_target_idx').on(table.targetPageId),
+]);
+
+// ── Deleted items ───────────────────────────────────────────────────────────
+
+export const deletedItems = pgTable('deleted_items', {
+  id:          text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId: text('workspace_id').notNull(),
+  itemType:    text('item_type').notNull(),
+  itemId:      text('item_id').notNull(),
+  deletedAt:   timestamp('deleted_at').notNull(),
+}, (table) => [
+  index('deleted_items_workspace_deleted_idx').on(table.workspaceId, table.deletedAt),
+]);
+
+// ── Account deletion tokens ─────────────────────────────────────────────────
+
+export const accountDeletionTokens = pgTable('account_deletion_tokens', {
+  id:        text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId:    text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token:     text('token').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull(),
+}, (table) => [
+  index('account_deletion_tokens_user_id_idx').on(table.userId),
+]);
+
+// ── Finance module tables ─────────────────────────────────────────────────────
+// Imported at bottom so core tables (workspaces, users) are fully defined
+// before finance modules reference them.
+export * from './finance';

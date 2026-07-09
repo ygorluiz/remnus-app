@@ -2,10 +2,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2 } from 'lucide-react';
+import { X, User, Download, HardDrive, Crown, SlidersHorizontal, Camera, Loader2, Monitor, ChevronDown, Check, AlertTriangle, Mail } from 'lucide-react';
+import AvatarCropModal from './AvatarCropModal';
+import FlagIcon from './FlagIcon';
 import ImportTab from './workspace-settings/ImportTab';
+import DesktopTab from './workspace-settings/DesktopTab';
 import { getCurrentUserStorageBytes } from '@/lib/actions/workspace';
 import { updateMyProfile } from '@/lib/actions/auth';
+import { requestAccountDeletion } from '@/lib/actions/account';
+import { getMyTier } from '@/lib/actions/billing';
+import type { PlanTier } from '@/lib/billing/plans';
+import BillingModal from './BillingModal';
 import {
   setEditorFontSize, setSidebarDensity, setDefaultPageWidth, setTheme,
   type EditorFontSize, type SidebarDensity, type DefaultPageWidth,
@@ -44,7 +51,7 @@ function PrefRow<T extends string>({
           <button
             key={opt.value}
             onClick={() => onChange(opt.value)}
-            className={`px-3 py-1.5 text-xs font-medium border transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 text-xs font-medium border rounded-md transition-colors cursor-pointer ${
               value === opt.value
                 ? 'bg-neutral-700 border-neutral-600 text-neutral-100'
                 : 'bg-transparent border-neutral-800 text-neutral-500 hover:border-neutral-600 hover:text-neutral-300'
@@ -80,7 +87,7 @@ function ThemePicker({ value, onChange }: { value: AppTheme; onChange: (v: AppTh
           >
             {/* Swatch strip — extra outline ensures visibility on light and dark bg */}
             <div
-              className={`flex h-8 w-16 overflow-hidden border transition-all ${
+              className={`flex h-8 w-16 overflow-hidden border rounded-md transition-all ${
                 value === theme.value
                   ? 'border-blue-500 ring-1 ring-blue-500/50'
                   : 'border-neutral-700 group-hover:border-neutral-500'
@@ -112,7 +119,92 @@ const LOCALE_OPTIONS = [
   { value: 'fr', label: 'Français' },
   { value: 'es', label: 'Español' },
   { value: 'hi', label: 'हिन्दी' },
+  { value: 'zh', label: '中文' },
+  { value: 'ru', label: 'Русский' },
 ] as const;
+
+// ── Flag-based language select ───────────────────────────────────────────────────
+
+function LocaleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = LOCALE_OPTIONS.find(l => l.value === value) ?? LOCALE_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative w-48 shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`w-full flex items-center gap-2.5 bg-neutral-950 border rounded-md px-3 py-2 text-sm text-neutral-100 transition-colors cursor-pointer ${
+          open ? 'border-blue-500/60' : 'border-neutral-700 hover:border-neutral-600'
+        }`}
+      >
+        <FlagIcon code={current.value} size={18} />
+        <span className="flex-1 text-left truncate">{current.label}</span>
+        <ChevronDown size={15} className={`shrink-0 text-neutral-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute top-full mt-1.5 left-0 right-0 z-10 bg-neutral-900 border border-neutral-800 rounded-md py-1 modal-shadow max-h-64 overflow-y-auto"
+        >
+          {LOCALE_OPTIONS.map(lang => {
+            const selected = lang.value === value;
+            return (
+              <button
+                key={lang.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => { onChange(lang.value); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors cursor-pointer ${
+                  selected ? 'text-blue-400 bg-blue-500/10' : 'text-neutral-300 hover:bg-neutral-800/60'
+                }`}
+              >
+                <FlagIcon code={lang.value} size={18} />
+                <span className="flex-1 truncate">{lang.label}</span>
+                {selected && <Check size={14} className="shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Language preference row ───────────────────────────────────────────────────────
+
+function LanguagePrefRow({ label, hint, value, onChange }: { label: string; hint?: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="py-4 border-b border-neutral-800 flex items-start justify-between gap-6">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-neutral-200">{label}</p>
+        {hint && <p className="text-[11px] text-neutral-500 mt-0.5">{hint}</p>}
+      </div>
+      <LocaleSelect value={value} onChange={onChange} />
+    </div>
+  );
+}
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -129,7 +221,7 @@ interface UserSettingsModalProps {
   onClose: () => void;
 }
 
-type Tab = 'account' | 'preferences' | 'import';
+type Tab = 'account' | 'preferences' | 'desktop' | 'import';
 
 // ── Editable profile (avatar + display name) ────────────────────────────────────
 
@@ -144,20 +236,18 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
   const [savingName, setSavingName] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [err, setErr] = useState('');
+  const [cropObjectUrl, setCropObjectUrl] = useState<string | null>(null);
 
   const initials = (name || currentUser.email || 'U').trim().charAt(0).toUpperCase();
   const nameTrim = name.trim();
   const nameChanged = nameTrim.length > 0 && nameTrim !== (currentUser.name ?? '').trim();
 
-  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  async function uploadBlob(blob: Blob) {
     setErr('');
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
       fd.append('kind', 'icon');
       const res = await fetch('/api/upload', { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
@@ -171,6 +261,26 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
     } finally {
       setUploading(false);
     }
+  }
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    // Show crop dialog before uploading
+    const url = URL.createObjectURL(file);
+    setCropObjectUrl(url);
+  }
+
+  function onCropConfirm(blob: Blob) {
+    if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+    setCropObjectUrl(null);
+    uploadBlob(blob);
+  }
+
+  function onCropCancel() {
+    if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+    setCropObjectUrl(null);
   }
 
   async function onRemove() {
@@ -203,6 +313,14 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
 
   return (
     <div className="space-y-5">
+      {cropObjectUrl && (
+        <AvatarCropModal
+          objectUrl={cropObjectUrl}
+          onConfirm={onCropConfirm}
+          onCancel={onCropCancel}
+        />
+      )}
+
       {/* Avatar + actions */}
       <div className="flex items-center gap-4">
         <div className="relative shrink-0 group">
@@ -236,7 +354,7 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="text-xs font-medium px-3 py-1.5 border border-neutral-700 text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
+              className="text-xs font-medium px-3 py-1.5 border border-neutral-700 rounded-md text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
             >
               {t('profileUpload')}
             </button>
@@ -244,7 +362,7 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
               <button
                 onClick={onRemove}
                 disabled={uploading}
-                className="text-xs font-medium px-3 py-1.5 border border-neutral-800 text-neutral-400 hover:text-red-400 hover:border-red-400/40 transition-colors cursor-pointer disabled:opacity-50"
+                className="text-xs font-medium px-3 py-1.5 border border-neutral-800 rounded-md text-neutral-400 hover:text-red-400 hover:border-red-400/40 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {t('profileRemove')}
               </button>
@@ -293,13 +411,139 @@ function ProfileSection({ currentUser }: { currentUser: CurrentUser }) {
   );
 }
 
+// ── Danger zone: GDPR self-service account deletion ─────────────────────────────
+
+function DeleteAccountSection({ email }: { email?: string | null }) {
+  const t = useTranslations('UserSettings');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const canConfirm = confirmText.trim().toUpperCase() === 'DELETE';
+
+  async function handleRequest() {
+    if (!canConfirm || sending) return;
+    setSending(true);
+    setError('');
+    const result = await requestAccountDeletion();
+    setSending(false);
+    if (result?.error) {
+      setError(result.error);
+    } else {
+      setSent(true);
+    }
+  }
+
+  function closeConfirm() {
+    if (sending) return;
+    setShowConfirm(false);
+    setConfirmText('');
+    setError('');
+    setSent(false);
+  }
+
+  return (
+    <div className="border border-red-500/20 bg-red-500/5 p-4 rounded-lg space-y-3">
+      <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider">{t('dangerZoneTitle')}</h4>
+      <p className="text-xs text-neutral-400 leading-relaxed">{t('deleteAccountHint')}</p>
+      <button
+        onClick={() => setShowConfirm(true)}
+        className="text-xs bg-red-400 hover:bg-red-500 text-white font-semibold py-1.5 px-3 rounded-md transition-colors cursor-pointer"
+      >
+        {t('deleteAccountButton')}
+      </button>
+
+      {showConfirm && (
+        <>
+          <div className="fixed inset-0 z-300 bg-black/60" onClick={closeConfirm} />
+          <div className="fixed z-300 inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-sm bg-neutral-850 border border-neutral-800 rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            {sent ? (
+              <>
+                <div className="flex items-start gap-2.5">
+                  <Mail size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-100 mb-1.5">{t('deleteAccountEmailSentTitle')}</p>
+                    <p className="text-xs text-neutral-400 leading-relaxed">{t('deleteAccountEmailSentBody', { email: email || '' })}</p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={closeConfirm}
+                    className="px-4 py-2 text-xs font-medium text-neutral-400 hover:text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors cursor-pointer"
+                  >
+                    {t('deleteAccountCancel')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-100 mb-1.5">{t('deleteAccountConfirmTitle')}</p>
+                    <p className="text-xs text-neutral-400 leading-relaxed">{t('deleteAccountConfirmBody')}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">
+                    {t('deleteAccountConfirmInputLabel')}
+                  </label>
+                  <input
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleRequest(); }}
+                    placeholder="DELETE"
+                    autoFocus
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-md text-neutral-100 px-3 py-2 text-sm outline-none focus:border-red-500/60 transition-colors"
+                  />
+                </div>
+                {error && <p className="text-xs text-red-400 leading-relaxed">{error}</p>}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={closeConfirm}
+                    disabled={sending}
+                    className="px-4 py-2 text-xs font-medium text-neutral-400 hover:text-neutral-200 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {t('deleteAccountCancel')}
+                  </button>
+                  <button
+                    onClick={handleRequest}
+                    disabled={!canConfirm || sending}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-red-500/80 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    {sending ? t('deleteAccountSending') : t('deleteAccountRequestButton')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function UserSettingsModal({ currentUser, onClose }: UserSettingsModalProps) {
   const t = useTranslations('UserSettings');
+  const tBilling = useTranslations('Billing');
   const router = useRouter();
   const currentLocale = useLocale();
 
   const [activeTab, setActiveTab] = useState<Tab>('account');
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
+  const [planTier, setPlanTier] = useState<PlanTier | null>(null);
+  const [billing, setBilling] = useState<null | 'details' | 'upgrade'>(null);
+  const [isTauri, setIsTauri] = useState(false);
+
+  const isDemo = currentUser.role === 'demo';
+
+  // Detect the desktop shell — the Desktop tab (zoom + download folder) only
+  // makes sense (and its Tauri commands only resolve) inside Tauri.
+  useEffect(() => {
+    setIsTauri('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+  }, []);
 
   // Preference states — read from cookie-derived data attributes on <html>
   const [locale, setLocaleState] = useState(currentLocale);
@@ -319,6 +563,7 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
 
   useEffect(() => {
     getCurrentUserStorageBytes().then(setStorageBytes).catch(() => setStorageBytes(0));
+    getMyTier().then(setPlanTier).catch(() => setPlanTier('free'));
   }, []);
 
   // Apply editor size immediately via data attribute + refresh for SSR components
@@ -355,10 +600,12 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'account', label: t('tabAccount'), icon: <User size={13} /> },
     { id: 'preferences', label: t('tabPreferences'), icon: <SlidersHorizontal size={13} /> },
+    ...(isTauri ? [{ id: 'desktop' as Tab, label: t('tabDesktop'), icon: <Monitor size={13} /> }] : []),
     { id: 'import', label: t('tabImport'), icon: <Download size={13} /> },
   ];
 
   return (
+    <>
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6"
       onClick={onClose}
@@ -430,17 +677,40 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
 
                 <div className="border-t border-neutral-800 pt-5 space-y-4">
                   <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">{t('planTitle')}</p>
-                  <div className="flex items-center justify-between py-3 border-b border-neutral-800">
-                    <div className="flex items-center gap-2.5">
-                      <Crown size={14} className="text-amber-400 shrink-0" />
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-200">{t('planFree')}</p>
-                        <p className="text-[11px] text-neutral-500 mt-0.5">{t('planFreeHint')}</p>
+                  <div className="py-3 border-b border-neutral-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <Crown size={14} className="text-amber-400 shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-neutral-200">
+                            {planTier === null ? '—' : tBilling(`tier_${planTier}` as 'tier_free')}
+                          </p>
+                          {planTier === 'free' && (
+                            <p className="text-[11px] text-neutral-500 mt-0.5">{t('planFreeHint')}</p>
+                          )}
+                        </div>
                       </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-neutral-800 text-neutral-500 border border-neutral-700 rounded-md shrink-0">
+                        {t('planCurrentBadge')}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 bg-neutral-800 text-neutral-500 border border-neutral-700 shrink-0">
-                      {t('planCurrentBadge')}
-                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setBilling('details')}
+                        className="text-xs font-medium px-3 py-1.5 border border-neutral-700 rounded-md text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
+                      >
+                        {t('planDetails')}
+                      </button>
+                      {planTier !== 'enterprise' && (
+                        <button
+                          onClick={() => setBilling('upgrade')}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-md bg-blue-500 hover:bg-blue-400 text-white transition-colors cursor-pointer"
+                        >
+                          {tBilling('upgrade')}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider pt-1">{t('storageTitle')}</p>
@@ -456,6 +726,8 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
                     </div>
                   </div>
                 </div>
+
+                {!isDemo && <DeleteAccountSection email={currentUser.email} />}
           </div>
           )}
 
@@ -463,13 +735,11 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
           {activeTab === 'preferences' && (
             <div>
               <ThemePicker value={theme} onChange={handleTheme} />
-              <PrefRow
+              <LanguagePrefRow
                 label={t('prefLanguage')}
                 hint={t('prefLanguageHint')}
-                options={LOCALE_OPTIONS.map(l => ({ value: l.value, label: l.label }))}
                 value={locale}
                 onChange={handleLocale}
-                wrap
               />
               <PrefRow
                 label={t('prefEditorSize')}
@@ -506,6 +776,11 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
             </div>
           )}
 
+          {/* Desktop (Tauri only) */}
+          {activeTab === 'desktop' && isTauri && (
+            <DesktopTab />
+          )}
+
           {/* Import */}
           {activeTab === 'import' && (
             <ImportTab workspaceId="" />
@@ -514,5 +789,17 @@ export default function UserSettingsModal({ currentUser, onClose }: UserSettings
         </div>
       </div>
     </div>
+
+    {billing && (
+      <BillingModal
+        isDemo={isDemo}
+        initialPickerOpen={billing === 'upgrade'}
+        onClose={() => {
+          setBilling(null);
+          getMyTier().then(setPlanTier).catch(() => {});
+        }}
+      />
+    )}
+    </>
   );
 }

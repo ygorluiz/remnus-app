@@ -66,7 +66,7 @@ export default function BillingSuccessModal() {
 
   return (
     <>
-      <div className="fixed inset-0 z-200 bg-black/70 backdrop-blur-sm" onClick={close} />
+      <div className="fixed inset-0 z-200 bg-black/70" onClick={close} />
       <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-200 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md bg-neutral-900 border border-neutral-800 rounded-xl shadow-[0_8px_60px_rgba(0,0,0,0.7)] p-7 flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200">
         <div
           className="w-14 h-14 rounded-full flex items-center justify-center mb-4"

@@ -1,5 +1,6 @@
 ﻿'use client';
 import { useState, useTransition, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -20,7 +21,6 @@ import {
   Settings,
   Layers,
   ArrowLeft,
-  Monitor,
   Bot,
   Globe,
   Eye,
@@ -28,6 +28,8 @@ import {
   CreditCard,
   ArrowUpRight,
   Link2,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import PageIcon from './PageIcon';
 import { useContextMenu, type MenuItem } from './ContextMenu';
@@ -50,14 +52,19 @@ import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 import IconPicker from './IconPicker';
 import TemplatePickerModal from './TemplatePickerModal';
 import WorkspaceSettingsModal from './WorkspaceSettingsModal';
-import DesktopSettingsModal, { initDesktopZoom } from './DesktopSettingsModal';
-import LanguageSwitcher from '@/components/features/LanguageSwitcher';
+import { initDesktopZoom } from '@/lib/desktop/zoom';
 import AgentsModal from './AgentsModal';
+import OnboardingGuide from './onboarding/OnboardingGuide';
+import AgentDetectGuide from './agent-detect/AgentDetectGuide';
+import PwaInstallButton from './PwaInstallButton';
 import BillingModal from './BillingModal';
 import UserSettingsModal from './UserSettingsModal';
+import FinanceGroup from '@/components/features/finance/FinanceGroup';
 import { getUserAgentTokenCount } from '@/lib/actions/agentToken';
 import { getMyTier } from '@/lib/actions/billing';
 import type { PlanTier } from '@/lib/billing/plans';
+import { getSidebarOverlayContainer, writeSidebarVisible } from '@/lib/sidebarVisibility';
+import { useSidebarPeek } from '@/lib/sidebarPeekContext';
 
 const TIER_BADGE: Record<PlanTier, { color: string; background: string; borderColor: string }> = {
   free:         { color: 'var(--color-neutral-50)',    background: 'rgba(127,195,109,0.10)', borderColor: 'rgba(127,195,109,0.30)' },
@@ -97,6 +104,7 @@ export default function WorkspaceSidebar({
   currentUser,
   hideBrandHeader = false,
   density = 'comfortable',
+  showOnboarding = false,
 }: {
   items: WorkspaceItemRow[];
   workspaces: WorkspaceType[];
@@ -104,8 +112,12 @@ export default function WorkspaceSidebar({
   currentUser: CurrentUser;
   hideBrandHeader?: boolean;
   density?: 'compact' | 'comfortable';
+  /** Render the new-user onboarding surface here. Set only on the always-mounted
+   *  desktop sidebar so the welcome modal/checklist don't double up with the mobile drawer. */
+  showOnboarding?: boolean;
 }) {
   const t = useTranslations('Workspace');
+  const tLayout = useTranslations('Layout');
   const tSharing = useTranslations('Sharing');
   const tBilling = useTranslations('Billing');
   const router = useRouter();
@@ -114,6 +126,7 @@ export default function WorkspaceSidebar({
   const [isSaving, startSaveTransition] = useTransition();
   const [avatarError, setAvatarError] = useState(false);
   const [isTauri, setIsTauri] = useState(false);
+  const { isPeeking, pin } = useSidebarPeek();
 
   useEffect(() => {
     const isTauriNow = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;
@@ -189,7 +202,6 @@ export default function WorkspaceSidebar({
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [workspaceCreateError, setWorkspaceCreateError] = useState<string | null>(null);
   const [settingsModalWorkspace, setSettingsModalWorkspace] = useState<{ id: string; name: string; icon?: string | null; iconColor?: string | null } | null>(null);
-  const [desktopSettingsOpen, setDesktopSettingsOpen] = useState(false);
   const [agentsModalOpen, setAgentsModalOpen] = useState(false);
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [userSettingsOpen, setUserSettingsOpen] = useState(false);
@@ -708,12 +720,12 @@ export default function WorkspaceSidebar({
   const handleSwitchWorkspace = (id: string) => {
     if (id === activeWorkspaceIdFromPath) return;
 
-    // Find first item in this workspace to navigate directly, ensuring an instant client-side transition
+    // Navigate to the TOP of the hierarchy (first root item), not merely the
+    // oldest item in the flat list — ensuring an instant client-side transition.
     const workspaceChildren = itemsByWorkspace[id] || [];
-    if (workspaceChildren.length > 0) {
-      const firstItem = workspaceChildren[0];
-      const targetHref = hrefFor(firstItem);
-      router.push(targetHref);
+    const firstItem = workspaceChildren.find((i) => i.parentId === null) ?? workspaceChildren[0];
+    if (firstItem) {
+      router.push(hrefFor(firstItem));
     } else {
       // No items — switch workspace then show the empty state
       switchWorkspace(id).then(() => {
@@ -845,6 +857,7 @@ export default function WorkspaceSidebar({
   };
 
   const activeMenuItem = openMenuItemId ? items.find(i => i.id === openMenuItemId) : null;
+  const sidebarOverlayContainer = getSidebarOverlayContainer();
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">
@@ -878,7 +891,29 @@ export default function WorkspaceSidebar({
               <span>{t('saving')}</span>
             </div>
           )}
-          <LanguageSwitcher compact />
+          {isPeeking ? (
+            /* Peek mode: clicking pins the sidebar and adjusts the content layout */
+            <button
+              type="button"
+              onClick={pin}
+              aria-label={tLayout('pinSidebar')}
+              title={tLayout('pinSidebar')}
+              className="hidden lg:flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors"
+            >
+              <PanelLeft size={14} />
+            </button>
+          ) : (
+            /* Pinned mode: clicking hides the sidebar and content fills the space */
+            <button
+              type="button"
+              onClick={() => writeSidebarVisible(false)}
+              aria-label={tLayout('hideSidebar')}
+              title={tLayout('hideSidebar')}
+              className="hidden lg:flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:text-neutral-100 hover:bg-neutral-800 transition-colors"
+            >
+              <PanelLeftClose size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -961,14 +996,15 @@ export default function WorkspaceSidebar({
                         </div>
                       )}
                     </button>
-                    {activeWorkspaceIconPickerId === w.id && (
+                    {activeWorkspaceIconPickerId === w.id && sidebarOverlayContainer && createPortal(
                       <IconPicker
                         currentIcon={w.icon}
                         currentIconColor={w.iconColor}
                         onSelect={(newIcon, newColor) => handleWorkspaceIconSelect(w.id, newIcon, newColor)}
                         onClose={() => setActiveWorkspaceIconPickerId(null)}
                         anchorRef={{ current: workspaceIconRefs.current[w.id] }}
-                      />
+                      />,
+                      sidebarOverlayContainer,
                     )}
                   </div>
 
@@ -1105,14 +1141,15 @@ export default function WorkspaceSidebar({
                                   className="shrink-0"
                                 />
                               </button>
-                              {activeIconPickerId === item.id && (
+                              {activeIconPickerId === item.id && sidebarOverlayContainer && createPortal(
                                 <IconPicker
                                   currentIcon={item.icon}
                                   currentIconColor={item.iconColor}
                                   onSelect={(newIcon, newColor) => handleSidebarIconSelect(item.id, newIcon, newColor)}
                                   onClose={() => setActiveIconPickerId(null)}
                                   anchorRef={{ current: itemRefs.current[item.id] }}
-                                />
+                                />,
+                                sidebarOverlayContainer,
                               )}
                             </div>
 
@@ -1267,8 +1304,11 @@ export default function WorkspaceSidebar({
         </div>
       </div>
 
+      {/* Finance group */}
+      <FinanceGroup activeWorkspaceId={activeWorkspace.id} />
+
       {/* Item context menu — mobile: bottom sheet, desktop: floating dropdown */}
-      {activeMenuItem && (
+      {activeMenuItem && sidebarOverlayContainer && createPortal(
         <>
           {/* Mobile bottom sheet menu */}
           <div
@@ -1319,22 +1359,24 @@ export default function WorkspaceSidebar({
               {t('delete')}
             </button>
           </div>
-        </>
+        </>,
+        sidebarOverlayContainer,
       )}
 
       {/* Desktop: Notion-style right-click / ⋯ menu (rendered via portal) */}
       {itemMenu.node}
 
-      {shareModalItemId && (
+      {shareModalItemId && sidebarOverlayContainer && createPortal(
         <ShareModal
           pageId={shareModalItemId}
           workspaceId={activeWorkspace.id}
           isAdmin={currentUser.role === 'admin' || currentUser.role === 'super_admin'}
           onClose={() => setShareModalItemId(null)}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {templatePickerWorkspaceId && (
+      {templatePickerWorkspaceId && sidebarOverlayContainer && createPortal(
         <TemplatePickerModal
           workspaceId={templatePickerWorkspaceId}
           activeWorkspaceId={activeWorkspace.id}
@@ -1374,10 +1416,11 @@ export default function WorkspaceSidebar({
             }));
             router.push(type === 'page' ? `/page/${navId}` : `/db/${navId}`);
           }}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {settingsModalWorkspace && (
+      {settingsModalWorkspace && sidebarOverlayContainer && createPortal(
         <WorkspaceSettingsModal
           workspaceId={settingsModalWorkspace.id}
           workspaceName={settingsModalWorkspace.name}
@@ -1409,41 +1452,41 @@ export default function WorkspaceSidebar({
             setSettingsInitialTab('general');
             setBillingModalOpen(true);
           }}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {desktopSettingsOpen && (
-        <DesktopSettingsModal onClose={() => setDesktopSettingsOpen(false)} />
-      )}
-
-      {userSettingsOpen && (
+      {userSettingsOpen && sidebarOverlayContainer && createPortal(
         <UserSettingsModal
           currentUser={currentUser}
           onClose={() => setUserSettingsOpen(false)}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {agentsModalOpen && (
+      {agentsModalOpen && sidebarOverlayContainer && createPortal(
         <AgentsModal
           onClose={() => {
             setAgentsModalOpen(false);
             getUserAgentTokenCount().then(setAgentTokenCount).catch(() => {});
           }}
-        />
+        />,
+        sidebarOverlayContainer,
       )}
 
-      {billingModalOpen && (
-        <BillingModal onClose={() => {
+      {billingModalOpen && sidebarOverlayContainer && createPortal(
+        <BillingModal isDemo={currentUser.role === 'demo'} onClose={() => {
           setBillingModalOpen(false);
           getMyTier().then(setPlanTier).catch(() => {});
-        }} />
+        }} />,
+        sidebarOverlayContainer,
       )}
 
       {/* Delete confirmation modal */}
       {confirmDeleteItemId && (() => {
         const item = localItems.find(i => i.id === confirmDeleteItemId);
         if (!item) return null;
-        return (
+        return sidebarOverlayContainer && createPortal(
           <>
             <div
               className="fixed inset-0 z-300 bg-black/60"
@@ -1471,9 +1514,20 @@ export default function WorkspaceSidebar({
                 </button>
               </div>
             </div>
-          </>
+          </>,
+          sidebarOverlayContainer,
         );
       })()}
+
+      {/* New-user onboarding: welcome modal + getting-started checklist.
+          Only the always-mounted desktop sidebar renders it (showOnboarding),
+          so it never doubles up with the mobile drawer's sidebar instance. */}
+      {showOnboarding && (
+        <div className="shrink-0">
+          <OnboardingGuide userRole={currentUser.role} />
+          <AgentDetectGuide userRole={currentUser.role} />
+        </div>
+      )}
 
       {/* AI Agents button */}
       <div className="shrink-0 px-2 pt-1">
@@ -1518,6 +1572,9 @@ export default function WorkspaceSidebar({
           )}
         </button>
       </div>
+
+      {/* Install app (PWA) button — web only, hidden in Tauri / when installed */}
+      <PwaInstallButton />
 
       {/* Settings button */}
       <div className="shrink-0 px-2 pb-1">
@@ -1571,17 +1628,6 @@ export default function WorkspaceSidebar({
             <p className="text-[10px] text-neutral-500 truncate">{currentUser.email}</p>
           )}
         </div>
-
-        {/* Desktop Settings (Tauri only) */}
-        {isTauri && (
-          <button
-            onClick={() => setDesktopSettingsOpen(true)}
-            className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors cursor-pointer"
-            title={t('desktopSettings')}
-          >
-            <Monitor size={13} />
-          </button>
-        )}
 
         {/* Logout */}
         <button

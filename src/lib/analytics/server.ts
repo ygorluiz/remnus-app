@@ -46,7 +46,21 @@ function client(): PostHog | null {
   return globalThis.__remnusPosthog ?? null;
 }
 
-export type FunnelEvent = 'signup' | 'mcp_token_created' | 'agent_call';
+/**
+ * Activation-funnel events captured server-side. The OAuth/agent-add steps
+ * (`oauth_*`, `mcp_token_mint_blocked`) make the previously-invisible middle of
+ * the funnel measurable: where a user drops between signup and a working agent,
+ * and *why* they couldn't add one (consent denied, agent-limit reached, PKCE/editor
+ * failure). The in-app steps (`connect_*`) are captured client-side via posthog-js.
+ */
+export type FunnelEvent =
+  | 'signup'
+  | 'mcp_token_created'
+  | 'agent_call'
+  | 'oauth_authorize_viewed'
+  | 'oauth_consent_result'
+  | 'oauth_token_exchange_failed'
+  | 'mcp_token_mint_blocked';
 
 const PII_KEYS = new Set(['email', 'name', 'image']);
 
@@ -68,7 +82,8 @@ function stripPii(props?: Record<string, unknown>): Record<string, unknown> {
  */
 export async function captureServer(opts: {
   event: FunnelEvent;
-  userId: string;
+  /** Null => no user context (e.g. an OAuth failure before the code resolves); forces anonymous capture. */
+  userId: string | null;
   allowed: boolean;
   /** Role for admin/demo skip. Omit only if already known to be a normal user. */
   role?: string | null;
@@ -80,10 +95,13 @@ export async function captureServer(opts: {
   if (!ph) return;
   if (opts.role === 'admin' || opts.role === 'super_admin' || opts.role === 'demo') return;
 
+  // Identity requires both consent AND a known user; otherwise fall back to anonymous.
+  const identified = opts.allowed && !!opts.userId;
+
   try {
-    if (opts.allowed) {
+    if (identified) {
       ph.capture({
-        distinctId: opts.userId,
+        distinctId: opts.userId!,
         event: opts.event,
         properties: {
           ...(opts.properties ?? {}),
@@ -145,6 +163,40 @@ export async function isCaptureAllowedForUser(
     return { allowed: u.consent === 'granted', role: u.role };
   } catch {
     return { allowed: false, role: null };
+  }
+}
+
+/**
+ * Capture an activation event for a known user, resolving consent + role from
+ * their stored decision. Convenience over `captureServer` for cookie-less server
+ * scopes (OAuth token/authorize, audit-log hot path) that already have a userId.
+ * Best-effort — never throws.
+ */
+export async function captureForUser(
+  event: FunnelEvent,
+  userId: string,
+  properties?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const { allowed, role } = await isCaptureAllowedForUser(userId);
+    await captureServer({ event, userId, allowed, role, properties });
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Capture an activation event with no user context (e.g. an OAuth token-exchange
+ * failure before the auth code resolves to a user). Always anonymous. Best-effort.
+ */
+export async function captureAnonymous(
+  event: FunnelEvent,
+  properties?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await captureServer({ event, userId: null, allowed: false, properties });
+  } catch {
+    // best-effort
   }
 }
 

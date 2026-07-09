@@ -2,16 +2,10 @@ import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/next';
 import { auth } from '@/auth';
 import { cookies, headers } from 'next/headers';
-import { getAllWorkspaceItems, getWorkspaces } from '@/lib/actions/workspace';
-import WorkspaceSidebar from '@/components/features/WorkspaceSidebar';
-import MobileNavWrapper from '@/components/features/MobileNavWrapper';
-import QueryProvider from '@/components/providers/QueryProvider';
-import AppShell from '@/components/AppShell';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
-import { getTranslations } from 'next-intl/server';
 import { PostHogProvider } from '@/components/providers/PostHogProvider';
 import PostHogPageView from '@/components/providers/PostHogPageView';
 import PostHogIdentify from '@/components/providers/PostHogIdentify';
@@ -19,9 +13,6 @@ import AttributionCapture from '@/components/providers/AttributionCapture';
 import { ConsentProvider } from '@/components/providers/ConsentContext';
 import CookieConsentBanner from '@/components/features/CookieConsentBanner';
 import { CONSENT_COOKIE, isConsentRequired, parseConsent } from '@/lib/consent';
-import UpdateBanner from '@/components/features/UpdateBanner';
-import ActivityTracker from '@/components/providers/ActivityTracker';
-import BillingSuccessModal from '@/components/features/BillingSuccessModal';
 import { METADATA_BASE_URL, DEFAULT_OG_IMAGE, DEFAULT_TWITTER_IMAGE } from '@/lib/metadata';
 import { isAdminRole } from '@/lib/auth/roles';
 
@@ -87,113 +78,32 @@ export default async function LocaleLayout({
   const consentRequired = isConsentRequired(headerStore.get('x-vercel-ip-country'));
   const initialConsent = parseConsent(consentCookieStore.get(CONSENT_COOKIE)?.value);
 
-  if (!session?.user) {
-    return (
-      <>
-        <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
-          <PostHogPageView />
-          <AttributionCapture />
-          <NextIntlClientProvider messages={messages}>
-            <ConsentProvider consentRequired={consentRequired} initialConsent={initialConsent}>
-              {children}
-              <CookieConsentBanner />
-            </ConsentProvider>
-          </NextIntlClientProvider>
-        </PostHogProvider>
-        <Analytics />
-      </>
-    );
-  }
-
-  const t = await getTranslations('Layout');
-
-  const [workspacesList, items] = await Promise.all([
-    getWorkspaces(),
-    getAllWorkspaceItems(),
-  ]);
-
-  const cookieStore = await cookies();
-  const activeWorkspaceId = cookieStore.get('remnus_workspace_id')?.value;
-  const activeWorkspace = workspacesList.find((w) => w.id === activeWorkspaceId) || workspacesList[0];
-  const sidebarDensity = (cookieStore.get('remnus_sidebar_density')?.value ?? 'comfortable') as 'compact' | 'comfortable';
-
-  const currentUser = {
+  const currentUser = session?.user ? {
     id: session.user.id,
-    name: session.user.name ?? null,
-    email: session.user.email ?? null,
-    image: session.user.image ?? null,
-    role: (session.user as Record<string, unknown>).role as string ?? 'user',
-  };
-
-  const demoBanner = (session.user as Record<string, unknown>).role === 'demo' ? (
-    <div key="demo-banner" className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20">
-      <div className="flex items-center gap-1.5 text-xs text-amber-400 min-w-0">
-        <span className="font-semibold shrink-0">{t('demoMode')}</span>
-        <span className="text-amber-500/70 shrink-0">—</span>
-        <span className="text-amber-400/80 truncate">{t('demoChangesNote')}</span>
-      </div>
-      <form
-        action={async () => {
-          'use server';
-          await auth.api.signOut({ headers: await headers() });
-          redirect('/login');
-        }}
-      >
-        <button
-          type="submit"
-          className="shrink-0 text-xs font-medium text-amber-300 hover:text-amber-100 transition-colors self-start sm:self-auto"
-        >
-          {t('createFreeAccount')}
-        </button>
-      </form>
-    </div>
-  ) : undefined;
+    name: (session.user.name as string | undefined) ?? null,
+    email: (session.user.email as string | undefined) ?? null,
+    image: (session.user.image as string | undefined) ?? null,
+    role: (session.user.role as string) ?? 'user',
+  } : null;
 
   return (
-    <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
-      <PostHogPageView skip={currentUser ? isAdminRole(currentUser.role) : true} />
-      <PostHogIdentify user={currentUser} />
-      <NextIntlClientProvider messages={messages}>
-        <ConsentProvider
-          consentRequired={consentRequired}
-          initialConsent={initialConsent}
-          userRole={currentUser.role}
-        >
-        <ActivityTracker />
-        <BillingSuccessModal />
-        <UpdateBanner />
-        <QueryProvider>
-          <AppShell
-            items={items}
-            activeWorkspaceId={activeWorkspace?.id ?? ''}
-            sidebar={
-              <WorkspaceSidebar
-                key="workspace-sidebar"
-                items={items}
-                workspaces={workspacesList}
-                activeWorkspace={activeWorkspace ?? { id: '', name: 'Workspace' }}
-                currentUser={currentUser}
-                density={sidebarDensity}
-              />
-            }
-            mobileNav={
-              <MobileNavWrapper
-                key="mobile-nav"
-                items={items}
-                workspaces={workspacesList}
-                activeWorkspace={activeWorkspace ?? { id: '', name: 'Workspace' }}
-                currentUser={currentUser}
-              />
-            }
-            demoBanner={demoBanner}
+    <>
+      <PostHogProvider consentRequired={consentRequired} initialConsent={initialConsent}>
+        <PostHogPageView skip={currentUser ? isAdminRole(currentUser.role) : false} />
+        {currentUser && <PostHogIdentify user={currentUser} />}
+        {!currentUser && <AttributionCapture />}
+        <NextIntlClientProvider messages={messages}>
+          <ConsentProvider
+            consentRequired={consentRequired}
+            initialConsent={initialConsent}
+            userRole={currentUser?.role}
           >
             {children}
-          </AppShell>
-        </QueryProvider>
-        <Analytics />
-        <CookieConsentBanner />
-        </ConsentProvider>
-      </NextIntlClientProvider>
-    </PostHogProvider>
+            <CookieConsentBanner />
+          </ConsentProvider>
+        </NextIntlClientProvider>
+      </PostHogProvider>
+      <Analytics />
+    </>
   );
 }

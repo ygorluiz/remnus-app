@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { GitBranch, Mail, MessageSquare } from 'lucide-react';
+import ContactForm from './ContactForm';
 
 export default async function ContactSection() {
   const t = await getTranslations('Contact');
@@ -17,7 +18,7 @@ export default async function ContactSection() {
       title: t('emailTitle'),
       desc: t('emailDesc'),
       label: t('emailLabel'),
-      href: 'mailto:hello@remnus.com',
+      href: 'mailto:info@remnus.com',
     },
     {
       icon: MessageSquare,
@@ -63,6 +64,11 @@ export default async function ContactSection() {
               )}
             </div>
           ))}
+        </div>
+
+        <div className="mt-16 max-w-xl mx-auto">
+          <h2 className="text-center text-lg font-semibold text-neutral-100 mb-6">{t('formHeading')}</h2>
+          <ContactForm />
         </div>
 
         <p className="text-center text-xs text-neutral-600 mt-10">{t('responseNote')}</p>

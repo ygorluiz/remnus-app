@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Check, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { createCheckoutSession, cancelSubscription } from '@/lib/actions/billing';
+import DemoBillingNotice from './DemoBillingNotice';
 import type { PlanTier } from '@/lib/billing/plans';
 
 const RANK: Record<PlanTier, number> = { free: 0, startup: 1, professional: 2, enterprise: 3 };
@@ -32,16 +33,19 @@ const TIERS: TierDef[] = [
     featKeys: ['bridgePricingEntF1', 'bridgePricingEntF2', 'bridgePricingEntF3', 'bridgePricingEntF4', 'bridgePricingEntF5'] },
 ];
 
-export default function PlanPickerModal({ currentTier, onClose }: { currentTier: PlanTier; onClose: () => void }) {
+export default function PlanPickerModal({ currentTier, isDemo = false, onClose }: { currentTier: PlanTier; isDemo?: boolean; onClose: () => void }) {
   const t = useTranslations('Billing');
   const tl = useTranslations('Landing');
   const [busy, setBusy] = useState<PlanTier | null>(null);
   const [confirmFree, setConfirmFree] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoBlocked, setDemoBlocked] = useState(false);
 
   const act = async (tier: PlanTier) => {
     setError(null);
-    if (tier === 'enterprise') { window.location.href = '/contact'; return; }
+    // Demo accounts can browse pricing, but every plan change is gated behind sign-in.
+    if (isDemo) { setDemoBlocked(true); return; }
+    if (tier === 'enterprise') { window.location.assign('/contact'); return; }
 
     if (tier === 'free') {
       if (!confirmFree) { setConfirmFree(true); return; }
@@ -49,7 +53,7 @@ export default function PlanPickerModal({ currentTier, onClose }: { currentTier:
       try {
         const r = await cancelSubscription();
         if (r.error) { setError(r.error); setBusy(null); return; }
-        window.location.href = '/app';
+        window.location.assign('/app');
       } catch { setError(t('actionError')); setBusy(null); }
       return;
     }
@@ -57,7 +61,7 @@ export default function PlanPickerModal({ currentTier, onClose }: { currentTier:
     setBusy(tier);
     try {
       const r = await createCheckoutSession(tier);
-      if (r.url) { window.location.href = r.url; return; }
+      if (r.url) { window.location.assign(r.url); return; }
       if (r.error) setError(r.error);
     } catch { setError(t('actionError')); }
     setBusy(null);
@@ -140,6 +144,15 @@ export default function PlanPickerModal({ currentTier, onClose }: { currentTier:
           </div>
         </div>
       </div>
+
+      {demoBlocked && (
+        <>
+          <div className="fixed inset-0 z-120 bg-black/60" onClick={() => setDemoBlocked(false)} />
+          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-120 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-sm">
+            <DemoBillingNotice onClose={() => setDemoBlocked(false)} />
+          </div>
+        </>
+      )}
     </>
   );
 }

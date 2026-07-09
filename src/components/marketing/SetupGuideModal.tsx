@@ -82,7 +82,7 @@ export default function SetupGuideModal(props: Props) {
                             {props.endpointLabel}
                           </span>
                           <code className="block font-mono text-[11.5px] text-accent-strong bg-neutral-850 border border-neutral-800 rounded px-3 py-1.5">
-                            https://remnus.com/api/mcp
+                            https://www.remnus.com/api/mcp
                           </code>
                         </div>
                         <div>

@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import {
   createPageInWorkspace,
   updatePageById,
@@ -8,6 +9,9 @@ import {
   moveItemInWorkspace,
   createDatabaseInWorkspace,
   updateDatabaseSchemaById,
+  createDatabaseView,
+  updateDatabaseView,
+  deleteDatabaseView,
   getAnyPageById,
 } from '@/lib/services/workspace';
 import { publish } from '@/lib/realtime/publish';
@@ -31,6 +35,11 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         databaseId: z.string().optional().describe('Database ID (creates a database row instead of a page)'),
         properties: z.record(z.string(), z.any()).optional().describe('Initial properties (for database rows)'),
       },
+      outputSchema: z.object({
+        id: z.string().describe('ID of the created page or row'),
+        type: z.string().describe('What was created (page | db-row)'),
+      }).passthrough(),
+      annotations: { title: 'Create page', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async ({ title, content, parentId, databaseId, properties }) => {
       if (ctx.scope !== 'write') {
@@ -39,9 +48,14 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
       }
       try {
         const result = await createPageInWorkspace(ctx.workspaceId, { title, content, parentId, databaseId, properties }, { tokenId: ctx.tokenId });
-        await logActivity(ctx, 'create_page', 'success', result.type, result.id);
+        const out = { id: result.id, type: result.type };
+        const text = JSON.stringify(out);
+        await logActivity(ctx, 'create_page', 'success', result.type, result.id, text);
         publish({ scope: databaseId ? 'database' : 'sidebar', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ id: result.id, type: result.type }) }] };
+        if (!databaseId) {
+          revalidatePath('/', 'layout');
+        }
+        return { content: [{ type: 'text' as const, text }], structuredContent: out };
       } catch (err) {
         await logActivity(ctx, 'create_page', 'error');
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
@@ -59,6 +73,11 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         content: z.string().optional().describe('New markdown content'),
         properties: z.record(z.string(), z.any()).optional().describe('Properties to merge (for database rows)'),
       },
+      outputSchema: z.object({
+        updated: z.boolean().describe('Whether the update was applied'),
+        id: z.string().describe('ID of the updated page or row'),
+      }).passthrough(),
+      annotations: { title: 'Update page', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ pageId, title, content, properties }) => {
       if (ctx.scope !== 'write') {
@@ -67,9 +86,11 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
       }
       try {
         await updatePageById(ctx.workspaceId, pageId, { title, content, properties }, { tokenId: ctx.tokenId });
-        await logActivity(ctx, 'update_page', 'success', 'page', pageId);
+        const out = { updated: true, id: pageId };
+        const text = JSON.stringify(out);
+        await logActivity(ctx, 'update_page', 'success', 'page', pageId, text);
         publish({ scope: 'page', workspaceId: ctx.workspaceId, resourceId: pageId, actorId: actorId(ctx) });
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ updated: true, id: pageId }) }] };
+        return { content: [{ type: 'text' as const, text }], structuredContent: out };
       } catch (err) {
         await logActivity(ctx, 'update_page', 'error', 'page', pageId);
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
@@ -78,7 +99,7 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
   );
 
   server.registerTool(
-    'bulk_update',
+    'bulk_update_pages',
     {
       description: 'Update multiple pages or database rows in a single call.',
       inputSchema: {
@@ -89,19 +110,27 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
           properties: z.record(z.string(), z.any()).optional().describe('Properties to merge'),
         })).describe('List of updates to apply'),
       },
+      outputSchema: z.object({
+        results: z.array(z.object({
+          id: z.string().describe('Updated page or row ID'),
+          updated: z.boolean().describe('Whether this update was applied'),
+        }).passthrough()).describe('Per-update results'),
+      }),
+      annotations: { title: 'Bulk update pages', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ updates }) => {
       if (ctx.scope !== 'write') {
-        await logActivity(ctx, 'bulk_update', 'error');
+        await logActivity(ctx, 'bulk_update_pages', 'error');
         return { content: [{ type: 'text' as const, text: READ_ONLY_ERROR }], isError: true };
       }
       try {
         const results = await bulkUpdatePages(ctx.workspaceId, updates, { tokenId: ctx.tokenId });
-        await logActivity(ctx, 'bulk_update', 'success');
+        const text = JSON.stringify(results);
+        await logActivity(ctx, 'bulk_update_pages', 'success', undefined, undefined, text);
         publish({ scope: 'database', workspaceId: ctx.workspaceId, actorId: actorId(ctx) });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(results) }] };
+        return { content: [{ type: 'text' as const, text }], structuredContent: { results } };
       } catch (err) {
-        await logActivity(ctx, 'bulk_update', 'error');
+        await logActivity(ctx, 'bulk_update_pages', 'error');
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
       }
     },
@@ -115,6 +144,12 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         pageId: z.string().describe('The workspace item ID or database row ID to delete'),
         confirm: z.boolean().optional().default(false).describe('Set to true to confirm deletion. Without this flag, returns a preview of what would be deleted.'),
       },
+      outputSchema: z.object({
+        deleted: z.boolean().describe('Whether the item was actually deleted (false for a preview)'),
+        id: z.string().optional().describe('ID of the deleted item'),
+        preview: z.string().optional().describe('Preview message when confirm was not set'),
+      }).passthrough(),
+      annotations: { title: 'Delete page', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     },
     async ({ pageId, confirm }) => {
       if (ctx.scope !== 'write') {
@@ -124,12 +159,18 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
       try {
         if (!confirm) {
           const item = await getAnyPageById(ctx.workspaceId, pageId);
-          return { content: [{ type: 'text' as const, text: `This will permanently delete "${item.title}" (type: ${item.type}). Set confirm: true to proceed.` }] };
+          const preview = `This will permanently delete "${item.title}" (type: ${item.type}). Set confirm: true to proceed.`;
+          return { content: [{ type: 'text' as const, text: preview }], structuredContent: { deleted: false, id: pageId, preview } };
         }
         const result = await deleteItemFromWorkspace(ctx.workspaceId, pageId);
-        await logActivity(ctx, 'delete_page', 'success', result.type, pageId);
+        const out = { deleted: true, id: pageId };
+        const text = JSON.stringify(out);
+        await logActivity(ctx, 'delete_page', 'success', result.type, pageId, text);
         publish({ scope: result.type === 'db-row' ? 'database' : 'sidebar', workspaceId: ctx.workspaceId, actorId: actorId(ctx) });
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ deleted: true, id: pageId }) }] };
+        if (result.type !== 'db-row') {
+          revalidatePath('/', 'layout');
+        }
+        return { content: [{ type: 'text' as const, text }], structuredContent: out };
       } catch (err) {
         await logActivity(ctx, 'delete_page', 'error', 'page', pageId);
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
@@ -145,6 +186,10 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         itemId: z.string().describe('The workspace item ID to move'),
         newParentId: z.string().nullish().describe('New parent item ID. Pass null or omit to move to workspace root.'),
       },
+      outputSchema: z.object({
+        moved: z.boolean().describe('Whether the item was moved'),
+      }).passthrough(),
+      annotations: { title: 'Move item', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async ({ itemId, newParentId }) => {
       if (ctx.scope !== 'write') {
@@ -153,9 +198,11 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
       }
       try {
         const result = await moveItemInWorkspace(ctx.workspaceId, itemId, newParentId ?? null);
-        await logActivity(ctx, 'move_item', 'success', 'item', itemId);
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'move_item', 'success', 'item', itemId, text);
         publish({ scope: 'sidebar', workspaceId: ctx.workspaceId, actorId: actorId(ctx) });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+        revalidatePath('/', 'layout');
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
       } catch (err) {
         await logActivity(ctx, 'move_item', 'error', 'item', itemId);
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
@@ -176,6 +223,11 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
           options: z.array(z.any()).optional().describe('Options for select/multi_select/status columns. For status, each option may include a group: "todo" | "in_progress" | "complete". user/multi_user store workspace member user ids and need no options.'),
         })).optional().describe('Column definitions. Omit to use default schema (Title + Status).'),
       },
+      outputSchema: z.object({
+        id: z.string().describe('Workspace item ID of the new database'),
+        databaseId: z.string().describe('Database ID used by query/schema tools'),
+      }).passthrough(),
+      annotations: { title: 'Create database', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async ({ name, parentId, schema }) => {
       if (ctx.scope !== 'write') {
@@ -184,9 +236,12 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
       }
       try {
         const result = await createDatabaseInWorkspace(ctx.workspaceId, { name, schema, parentId });
-        await logActivity(ctx, 'create_database', 'success', 'database', result.databaseId);
+        const out = { id: result.id, databaseId: result.databaseId };
+        const text = JSON.stringify(out);
+        await logActivity(ctx, 'create_database', 'success', 'database', result.databaseId, text);
         publish({ scope: 'sidebar', workspaceId: ctx.workspaceId, actorId: actorId(ctx) });
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ id: result.id, databaseId: result.databaseId }) }] };
+        revalidatePath('/', 'layout');
+        return { content: [{ type: 'text' as const, text }], structuredContent: out };
       } catch (err) {
         await logActivity(ctx, 'create_database', 'error');
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
@@ -208,6 +263,11 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
         removeColumnIds: z.array(z.string()).optional().describe('Column IDs to remove (use get_database_schema to find IDs). Cannot remove the title column.'),
         confirm: z.boolean().optional().default(false).describe('Required when removing columns. Set to true to confirm the destructive operation.'),
       },
+      outputSchema: z.object({
+        updated: z.boolean().describe('Whether the schema was updated'),
+        schema: z.array(z.any()).describe('The new column schema after the change'),
+      }).passthrough(),
+      annotations: { title: 'Update database schema', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     },
     async ({ databaseId, addColumns, removeColumnIds, confirm }) => {
       if (ctx.scope !== 'write') {
@@ -216,11 +276,125 @@ export function registerWriteTools(server: McpServer, ctx: TokenContext) {
       }
       try {
         const result = await updateDatabaseSchemaById(ctx.workspaceId, databaseId, { addColumns, removeColumnIds }, confirm ?? false);
-        await logActivity(ctx, 'update_database_schema', 'success', 'database', databaseId);
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'update_database_schema', 'success', 'database', databaseId, text);
         publish({ scope: 'database', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
       } catch (err) {
         await logActivity(ctx, 'update_database_schema', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
+      }
+    },
+  );
+
+  const viewSchema = z.object({
+    id: z.string().describe('View ID'),
+    name: z.string().describe('View name'),
+    config: z.record(z.string(), z.any()).describe('View configuration (shape depends on config.type)'),
+    icon: z.string().optional(),
+    iconColor: z.string().optional(),
+  }).passthrough();
+
+  server.registerTool(
+    'create_database_view',
+    {
+      description: 'Add a new saved view (table, kanban, or calendar) to a database. Kanban groups by a select/status column (auto-picks one if omitted); calendar places cards by a date/datetime column (auto-picks one if omitted). Use get_database_schema first to see column ids/names.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID (from list_workspace or search)'),
+        name: z.string().describe('Name for the new view (e.g. "By Assignee")'),
+        type: z.enum(['table', 'kanban', 'calendar']).describe('View type'),
+        groupByCol: z.string().optional().describe('Kanban only: select/status column id or name to group by. Auto-picks the first status/select column if omitted.'),
+        dateCol: z.string().optional().describe('Calendar only: date/datetime column id or name to place cards on. Auto-picks the first date/datetime column if omitted.'),
+        icon: z.string().optional().describe('Emoji, "lucide:Name", or image URL for the view tab'),
+        iconColor: z.string().optional().describe('Theme color for a lucide icon'),
+      },
+      outputSchema: z.object({
+        created: z.boolean(),
+        view: viewSchema,
+      }).passthrough(),
+      annotations: { title: 'Create database view', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ databaseId, name, type, groupByCol, dateCol, icon, iconColor }) => {
+      if (ctx.scope !== 'write') {
+        await logActivity(ctx, 'create_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: READ_ONLY_ERROR }], isError: true };
+      }
+      try {
+        const result = await createDatabaseView(ctx.workspaceId, databaseId, { name, type, groupByCol, dateCol, icon, iconColor });
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'create_database_view', 'success', 'database', databaseId, text);
+        publish({ scope: 'database', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
+      } catch (err) {
+        await logActivity(ctx, 'create_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
+      }
+    },
+  );
+
+  server.registerTool(
+    'update_database_view',
+    {
+      description: 'Rename a database view, change its icon, or patch fields within its existing config (filters, sorts, groupByCol, dateCol, cardProperties, etc — merged into the current config). The view\'s type (table/kanban/calendar) cannot be changed; create a new view instead. Use get_database_schema to find view ids and current config shape.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID (from list_workspace or search)'),
+        viewId: z.string().describe('View ID (from get_database_schema)'),
+        name: z.string().optional().describe('New view name'),
+        icon: z.string().optional().describe('Emoji, "lucide:Name", or image URL'),
+        iconColor: z.string().optional().describe('Theme color for a lucide icon'),
+        config: z.record(z.string(), z.any()).optional().describe('Partial config fields to merge in, e.g. { "groupByCol": "col_abc123" } or { "filters": [...] }'),
+      },
+      outputSchema: z.object({
+        updated: z.boolean(),
+        view: viewSchema,
+      }).passthrough(),
+      annotations: { title: 'Update database view', readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ databaseId, viewId, name, icon, iconColor, config }) => {
+      if (ctx.scope !== 'write') {
+        await logActivity(ctx, 'update_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: READ_ONLY_ERROR }], isError: true };
+      }
+      try {
+        const result = await updateDatabaseView(ctx.workspaceId, databaseId, viewId, { name, icon, iconColor, config });
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'update_database_view', 'success', 'database', databaseId, text);
+        publish({ scope: 'database', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
+      } catch (err) {
+        await logActivity(ctx, 'update_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
+      }
+    },
+  );
+
+  server.registerTool(
+    'delete_database_view',
+    {
+      description: 'Delete a saved view from a database. Requires confirm: true. A database must always keep at least one view.',
+      inputSchema: {
+        databaseId: z.string().describe('Database ID (from list_workspace or search)'),
+        viewId: z.string().describe('View ID (from get_database_schema)'),
+        confirm: z.boolean().optional().default(false).describe('Set to true to confirm deletion.'),
+      },
+      outputSchema: z.object({
+        deleted: z.boolean(),
+      }).passthrough(),
+      annotations: { title: 'Delete database view', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ databaseId, viewId, confirm }) => {
+      if (ctx.scope !== 'write') {
+        await logActivity(ctx, 'delete_database_view', 'error', 'database', databaseId);
+        return { content: [{ type: 'text' as const, text: READ_ONLY_ERROR }], isError: true };
+      }
+      try {
+        const result = await deleteDatabaseView(ctx.workspaceId, databaseId, viewId, confirm ?? false);
+        const text = JSON.stringify(result);
+        await logActivity(ctx, 'delete_database_view', 'success', 'database', databaseId, text);
+        publish({ scope: 'database', workspaceId: ctx.workspaceId, resourceId: databaseId, actorId: actorId(ctx) });
+        return { content: [{ type: 'text' as const, text }], structuredContent: result };
+      } catch (err) {
+        await logActivity(ctx, 'delete_database_view', 'error', 'database', databaseId);
         return { content: [{ type: 'text' as const, text: `Error: ${String(err)}` }], isError: true };
       }
     },

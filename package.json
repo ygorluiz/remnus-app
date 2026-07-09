@@ -1,6 +1,6 @@
 {
   "name": "remnus-app",
-  "version": "0.1.6",
+  "version": "0.1.13",
   "private": true,
   "license": "AGPL-3.0-only",
   "scripts": {
@@ -24,9 +24,14 @@
     "mcpb:install": "npm --prefix mcpb/server install --omit=dev",
     "mcpb:pack": "npx --yes @anthropic-ai/mcpb pack mcpb mcpb-build/remnus.mcpb",
     "mcpb:build": "npm run mcpb:install && npm run mcpb:pack",
-    "version:bump": "npm version patch && sed -i 's/^version = .*/version = \"'$(node -p \"require('./package.json').version\")'\"/' src-tauri/Cargo.toml"
+    "release": "node scripts/release.mjs",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
+    "release:current": "node scripts/release.mjs current"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1079.0",
     "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.3.4",
@@ -71,8 +76,10 @@
     "jose": "^6.2.3",
     "jszip": "^3.10.1",
     "lucide-react": "^1.16.0",
+    "marked": "^18.0.5",
     "next": "16.2.6",
     "next-intl": "^4.12.0",
+    "nodemailer": "^7.0.13",
     "pg": "^8.22.0",
     "posthog-js": "^1.376.3",
     "posthog-node": "^5.37.0",
@@ -87,11 +94,13 @@
     "@ducanh2912/next-pwa": "^10.2.9",
     "@evilmartians/lefthook": "^2.1.9",
     "@libsql/client": "^0.17.4",
+    "@posthog/nextjs-config": "^1.9.68",
     "@swc/helpers": "^0.5.23",
     "@tailwindcss/postcss": "^4",
     "@tauri-apps/cli": "^2.11.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",

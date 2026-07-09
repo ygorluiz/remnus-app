@@ -2,15 +2,18 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ChevronLeft, RefreshCw, MoreHorizontal, Globe, ArrowLeftRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useQueryClient } from '@tanstack/react-query';
 import { updateStandalonePageContent, updateWorkspaceItemTitle, updateWorkspaceItemIcon } from '@/lib/actions/workspace';
 import BlockEditor, { type BlockEditorHandle } from '@/components/features/editor/BlockEditor';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import SaveStatus, { type SaveState } from './SaveStatus';
 import ShareModal from '@/components/share/ShareModal';
+import PageBacklinksPanel from './PageBacklinksPanel';
+import { useTabNav } from '@/components/providers/TabsContext';
+import { tabKeys } from './tabs/keys';
 import type { WorkspaceItemRow } from '@/lib/actions/workspace';
 
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
@@ -39,7 +42,6 @@ export default function StandalonePageEditor({
   const tEditor = useTranslations('Editor');
   const tWs = useTranslations('Workspace');
   const tSharing = useTranslations('Sharing');
-  const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [title, setTitle] = useState(item.title);
   const savedTitle = useRef(item.title);
@@ -55,13 +57,34 @@ export default function StandalonePageEditor({
   const menuRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<BlockEditorHandle>(null);
 
+  // Keep the Tauri keep-alive query cache (TabPane) in sync with each save, so
+  // leaving and re-entering this tab within the staleTime window doesn't reload
+  // the pre-edit content from the cache. No-op on web (the query is never read).
+  const queryClient = useQueryClient();
+  const patchPageCache = useCallback(
+    (patch: { item?: Partial<Item>; content?: string }) => {
+      queryClient.setQueryData(tabKeys.standalone(item.id), (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          ...(patch.item ? { item: { ...old.item, ...patch.item } } : {}),
+          ...(patch.content !== undefined && old.page
+            ? { page: { ...old.page, content: patch.content } }
+            : {}),
+        };
+      });
+    },
+    [queryClient, item.id]
+  );
+
+  const tabNav = useTabNav();
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    router.refresh();
+    tabNav.refresh();
     setTimeout(() => {
       setIsRefreshing(false);
     }, 1000);
-  }, [router]);
+  }, [tabNav]);
 
   useEffect(() => {
     const saved = localStorage.getItem(`page-width-${item.id}`) as WidthMode | null;
@@ -83,6 +106,7 @@ export default function StandalonePageEditor({
     setIcon(newIcon);
     setIconColor(newColor);
     await updateWorkspaceItemIcon(item.id, newIcon, newColor);
+    patchPageCache({ item: { icon: newIcon, iconColor: newColor } });
   };
 
   const widthLabels: Record<WidthMode, string> = { narrow: t('narrow'), wide: t('wide'), full: t('full') };
@@ -100,10 +124,11 @@ export default function StandalonePageEditor({
     if (title === savedTitle.current) return;
     const t = setTimeout(() => {
       updateWorkspaceItemTitle(item.id, title);
+      patchPageCache({ item: { title } });
       savedTitle.current = title;
     }, 800);
     return () => clearTimeout(t);
-  }, [title, item.id]);
+  }, [title, item.id, patchPageCache]);
 
   useEffect(() => {
     document.title = `${title || 'Untitled'} | Remnus`;
@@ -113,11 +138,12 @@ export default function StandalonePageEditor({
     setSaveState('saving');
     try {
       await updateStandalonePageContent(item.id, md);
+      patchPageCache({ content: md });
       setSaveState('saved');
     } catch {
       setSaveState('error');
     }
-  }, [item.id]);
+  }, [item.id, patchPageCache]);
 
   const handleContentChange = useMemo(
     () => debounce(saveContent, 1000),
@@ -263,7 +289,7 @@ export default function StandalonePageEditor({
               }
             }}
             placeholder={t('untitled')}
-            className="w-full bg-transparent text-white font-bold text-2xl sm:text-4xl focus:outline-none placeholder:text-neutral-700 tracking-tight py-1"
+            className="w-full bg-transparent text-neutral-100 font-bold text-2xl sm:text-4xl focus:outline-none placeholder:text-neutral-700 tracking-tight py-1"
           />
         </div>
       </div>
@@ -279,6 +305,8 @@ export default function StandalonePageEditor({
         initialSubItems={subItems}
         onImmediateSave={saveContent}
       />
+
+      <PageBacklinksPanel workspaceId={item.workspaceId} pageId={item.id} />
     </div>
   );
 }

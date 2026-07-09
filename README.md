@@ -2,7 +2,7 @@
 
 **Open-source MCP-native workspace for humans and AI agents.**
 
-Kanban boards, databases, and pages that Claude, Cursor, and any AI agent can read and write via MCP — alongside you.
+Kanban boards, databases, personal finance, and pages that Claude, Cursor, and any AI agent can read and write via MCP — alongside you.
 
 [![GitHub Stars](https://img.shields.io/github/stars/Ranork/remnus-app?style=flat-square)](https://github.com/Ranork/remnus-app/stargazers)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square)](LICENSE)
@@ -12,19 +12,26 @@ Kanban boards, databases, and pages that Claude, Cursor, and any AI agent can re
 
 ## What is Remnus?
 
-Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Every page, database, and kanban board in your workspace is accessible to AI agents via a first-class MCP server — using a simple bearer token, with no OAuth dance required.
+Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Every page, database, and kanban board in your workspace is accessible to AI agents via a first-class MCP server — with PAT or OAuth 2.1 + PKCE, no API key management needed.
 
 **Unlike Notion's MCP integration**, Remnus is designed for headless, CI/CD, and coding agent workflows from day one.
 
+---
+
 ## Features
 
-- **Pages** — Markdown editor with slash commands, nested sub-pages, and icons
-- **Databases** — Customizable columns, Table / Kanban / Calendar views, filters, sorts
+- **Pages** — Markdown editor with slash commands, nested sub-pages, icons, and media blocks (image, file, bookmark, callout, YouTube)
+- **Databases** — Customizable columns (text, number, select, multi-select, status, user, date, checkbox, URL, email), Table / Kanban / Calendar views, filters, sorts
+- **Personal Finance** — Full finance module: accounts, transactions, categories, cards, budgets, goals, subscriptions, debts, and investments with auto-reconciling ledger
 - **MCP Server** — 15 tools + 4 resources + 5 prompts, Streamable HTTP + SSE dual transport
-- **Multi-workspace** — Invite members, role-based access (owner / member / viewer)
-- **Desktop app** — Tauri v2 shell for Windows, macOS, Linux
-- **Mobile** — Capacitor v8 for iOS and Android (loads remnus.com)
-- **i18n** — English, Türkçe, Español, Français, Deutsch, हिन्दी
+- **Multi-workspace** — Invite members, role-based access (owner / member / viewer), seat-based billing
+- **Public sharing** — Share pages with read/write links, custom slugs, sitemap inclusion
+- **Desktop app** — Tauri v2 shell for Windows, macOS, Linux (system tray, deep links, close-to-tray)
+- **Mobile** — PWA + Capacitor v8 for iOS and Android
+- **i18n** — English, Türkçe, Español, Français, Deutsch, हिन्दी, Português (Brasil)
+- **Custom themes** — 6 themes: Remnus (dark), Carbon (dark), Dracula (dark), Tokyo Night (dark), Nord (dark), Catppuccin (light)
+
+---
 
 ## Quick Start — Self-host
 
@@ -33,42 +40,36 @@ Remnus is a Notion-like workspace built around the [Model Context Protocol (MCP)
 ```bash
 git clone https://github.com/Ranork/remnus-app.git
 cd remnus-app
-cp .env.example .env          # fill in AUTH_SECRET + OAuth credentials
+cp .env.example .env          # fill in BETTER_AUTH_SECRET + OAuth credentials + DATABASE_URL
 npm install
-npm run db:migrate
+npm run db:setup              # push schema to PostgreSQL
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The first user to sign up is auto-promoted to admin.
 
-### Docker Compose (5-minute setup)
+### Docker Compose
 
 If you prefer to run Remnus using Docker:
 
-1. Clone the repository and navigate into it:
-   ```bash
-   git clone https://github.com/Ranork/remnus-app.git
-   cd remnus-app
-   ```
-2. Copy the environment template and fill in the required variables (especially `AUTH_SECRET` and OAuth credentials):
-   ```bash
-   cp .env.example .env
-   ```
-3. Start the application:
-   ```bash
-   docker compose up -d
-   ```
-4. Access Remnus at `http://localhost:3000`. The SQLite database will be persisted automatically using a Docker volume.
+```bash
+git clone https://github.com/Ranork/remnus-app.git
+cd remnus-app
+cp .env.example .env
+docker compose up -d
+```
+
+Access Remnus at `http://localhost:3000`. Set `DATABASE_URL` to your PostgreSQL instance (Neon, Supabase, Railway, or local).
 
 ### Deploy
 
 [![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Ranork/remnus-app)
-[![Deploy to Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/Ranork/remnus-app)
 
 ### Add MCP to your editor
 
-After signing in, go to **Workspace Settings → Tokens** and create a token, then:
+After signing in, go to **AI Agents** in the sidebar to create a token or connect via OAuth. Then:
 
+[![Add to Claude](https://img.shields.io/badge/Claude-Add%20MCP-9b59b6?style=flat-square)](https://modelcontextprotocol.io)
 [![Add to Cursor](https://img.shields.io/badge/Add%20to-Cursor-black?style=flat-square)](https://docs.cursor.com/context/model-context-protocol)
 [![Add to VS Code](https://img.shields.io/badge/Add%20to-VS%20Code-blue?style=flat-square&logo=visualstudiocode)](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)
 
@@ -87,6 +88,8 @@ Or add manually to your MCP client config:
   }
 }
 ```
+
+---
 
 ## MCP Tools
 
@@ -107,18 +110,24 @@ Or add manually to your MCP client config:
 | `create_database` | write | Create a database with custom schema |
 | `update_database_schema` | write | Add or remove columns |
 
+---
+
 ## Tech Stack
 
 - **Framework:** Next.js 15 (App Router)
-- **Database:** SQLite via Drizzle ORM + `@libsql/client` (Turso-compatible)
-- **Auth:** Auth.js v5 — Google & GitHub OAuth
+- **Database:** PostgreSQL via Neon, Drizzle ORM
+- **Auth:** Better Auth v1.6 — Google & GitHub OAuth
 - **Styling:** Tailwind CSS + Lucide icons
 - **Desktop:** Tauri v2 (Rust)
-- **Mobile:** Capacitor v8
+- **Mobile:** Capacitor v8 (iOS/Android) + PWA
+- **i18n:** next-intl v4 — 7 locales
+- **Finance:** 9 modules (accounts, transactions, categories, cards, budgets, goals, subscriptions, debts, investments)
+
+---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). All contributions are welcome — bug fixes, new MCP tools, translations, and docs.
+See [CONTRIBUTING.md](CONTRIBUTING.md). All contributions are welcome — bug fixes, new MCP tools, translations, docs, and finance modules.
 
 ## License
 

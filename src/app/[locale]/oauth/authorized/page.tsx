@@ -5,7 +5,10 @@ import { OAuthSuccessView } from './OAuthSuccessView';
 
 function verifyRedirectSig(url: string, sig: string): boolean {
   try {
-    const secret = process.env.AUTH_SECRET ?? 'fallback-secret-change-me';
+    // Fail closed when AUTH_SECRET is missing — never validate against a known
+    // fallback key (that would let anyone forge the redirect signature).
+    const secret = process.env.AUTH_SECRET;
+    if (!secret) return false;
     const expected = createHmac('sha256', secret).update(url).digest('hex');
     const expectedBuf = Buffer.from(expected, 'hex');
     const sigBuf = Buffer.from(sig, 'hex');

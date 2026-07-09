@@ -8,8 +8,8 @@ Thank you for your interest in contributing! Here's how to get started.
 git clone https://github.com/Ranork/remnus-app.git
 cd remnus-app
 npm install
-cp .env.example .env   # fill in AUTH_SECRET + OAuth credentials
-npm run db:migrate
+cp .env.example .env   # fill in BETTER_AUTH_SECRET + OAuth credentials + DATABASE_URL (PostgreSQL)
+npm run db:setup       # push schema to PostgreSQL
 npm run dev
 ```
 
@@ -31,7 +31,7 @@ npm run dev
 
 ## Guidelines
 
-- **i18n:** Every user-facing string must use `useTranslations` (client) or `getTranslations` (server). Add keys to all 6 locale files (`en`, `tr`, `de`, `es`, `fr`, `hi`).
+- **i18n:** Every user-facing string must use `useTranslations` (client) or `getTranslations` (server). Add keys to all 7 locale files (`en`, `tr`, `de`, `es`, `fr`, `hi`, `pt-BR`).
 - **No hardcoded strings** — not even English fallbacks.
 - **Database migrations:** New `when` values must be greater than the last migration. See `AGENTS.md` for the current last value.
 - **No breaking changes** to the MCP API without discussion first.

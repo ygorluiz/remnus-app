@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect, useTransition, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -9,6 +9,7 @@ import { updateDatabaseViews } from '@/lib/actions/database';
 import { updateWorkspaceItemIcon, updateWorkspaceItemTitle } from '@/lib/actions/workspace';
 import { Plus, Settings, Columns3, Filter, ArrowUpDown, X, Maximize2, Database, ArrowLeftRight, MoreHorizontal, Trash2, Copy, ChevronLeft, RefreshCw } from 'lucide-react';
 import TableLayout from './TableLayout';
+import GroupedTableLayout from './GroupedTableLayout';
 import { ConfirmDialog } from './ConfirmDialog';
 import KanbanBoard from './KanbanBoard';
 import CalendarView from './CalendarView';
@@ -18,6 +19,7 @@ import PageEditor from './PageEditor';
 import PageIcon from './PageIcon';
 import IconPicker from './IconPicker';
 import { MembersProvider, type WorkspaceMember } from './MembersContext';
+import { useTabNav } from '@/components/providers/TabsContext';
 import type {
   DatabaseView,
   TableViewConfig,
@@ -26,10 +28,41 @@ import type {
   ViewFilter,
   ViewSort,
 } from '@/lib/types/views';
+import { isTableGroupableColumn } from '@/lib/tableGrouping';
 
 function uid() {
   return crypto.randomUUID().slice(0, 8);
 }
+
+function formatYYYYMMDD(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Side peek drawer only gets an explicit resizable width at the `sm` breakpoint
+// (640px) and up — below that it's a full-width bottom sheet. Read via
+// useSyncExternalStore (not useEffect+useState) so the client value is
+// available on the very first render, avoiding a one-frame width flash.
+const DESKTOP_VIEWPORT_QUERY = '(min-width: 640px)';
+function subscribeDesktopViewport(onChange: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mql = window.matchMedia(DESKTOP_VIEWPORT_QUERY);
+  mql.addEventListener('change', onChange);
+  return () => mql.removeEventListener('change', onChange);
+}
+function getDesktopViewportSnapshot() {
+  return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(DESKTOP_VIEWPORT_QUERY).matches;
+}
+function getDesktopViewportServerSnapshot() {
+  return false;
+}
+
+const SIDE_PEEK_MIN_WIDTH = 420;
+const SIDE_PEEK_MAX_WIDTH = 1100;
+const SIDE_PEEK_DEFAULT_WIDTH = 772; // previous fixed max-w-2xl (672px) + 100px
+const SIDE_PEEK_WIDTH_STORAGE_KEY = 'remnus_side_peek_width';
 
 function defaultTableView(name = 'Table'): DatabaseView {
   return {
@@ -230,25 +263,28 @@ export default function DatabaseView({
   database,
   initialPages,
   members = [],
+  currentUserId,
 }: {
   database: any;
   initialPages: any[];
   members?: WorkspaceMember[];
+  currentUserId?: string;
 }) {
   const t = useTranslations('Database');
   const tPage = useTranslations('Page');
   const tWs = useTranslations('Workspace');
   const schema: any[] = database.schema ?? [];
   const router = useRouter();
+  const tabNav = useTabNav();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleManualRefresh = useCallback(() => {
     setIsRefreshing(true);
-    router.refresh();
+    tabNav.refresh();
     setTimeout(() => {
       setIsRefreshing(false);
     }, 1000);
-  }, [router]);
+  }, [tabNav]);
 
   // Local pages state so that we can update them instantly in the UI when they are updated in peek mode
   const [localPages, setLocalPages] = useState<any[]>(() => initialPages);
@@ -269,6 +305,41 @@ export default function DatabaseView({
   const dbButtonRef = useRef<HTMLButtonElement>(null);
   const [dbName, setDbName] = useState<string>(database.name ?? '');
   const savedDbName = useRef<string>(database.name ?? '');
+
+  // Side peek drawer width — resizable, persisted across sessions.
+  const isDesktopViewport = useSyncExternalStore(subscribeDesktopViewport, getDesktopViewportSnapshot, getDesktopViewportServerSnapshot);
+  const [sidePeekWidth, setSidePeekWidth] = useState(SIDE_PEEK_DEFAULT_WIDTH);
+  useEffect(() => {
+    const saved = Number(localStorage.getItem(SIDE_PEEK_WIDTH_STORAGE_KEY));
+    if (saved && !isNaN(saved)) {
+      setSidePeekWidth(Math.min(SIDE_PEEK_MAX_WIDTH, Math.max(SIDE_PEEK_MIN_WIDTH, saved)));
+    }
+  }, []);
+  const handleSidePeekResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Stop the mousedown from reaching the peek editor's block-selection marquee
+    // listener (belt-and-suspenders alongside the [data-no-block-marquee] guard).
+    e.stopPropagation();
+    document.body.classList.add('resize-drag-active');
+    const startX = e.clientX;
+    const startWidth = sidePeekWidth;
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      // The drawer is anchored to the right edge, so dragging left grows it.
+      const deltaX = startX - moveEvent.clientX;
+      setSidePeekWidth(Math.min(SIDE_PEEK_MAX_WIDTH, Math.max(SIDE_PEEK_MIN_WIDTH, startWidth + deltaX)));
+    };
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.classList.remove('resize-drag-active');
+      setSidePeekWidth((w) => {
+        localStorage.setItem(SIDE_PEEK_WIDTH_STORAGE_KEY, String(w));
+        return w;
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   useEffect(() => {
     if (dbName === savedDbName.current) return;
@@ -413,9 +484,11 @@ export default function DatabaseView({
   }, [peekPageId]);
 
   const handlePageUpdated = (updatedPage: any) => {
-    // Update local state instantly so Table and Kanban update in the background
+    // Update local state instantly so Table and Kanban update in the background.
+    // Merge (not replace) so a partial/older payload can never drop fields that
+    // a more recent edit already set on the local row.
     setLocalPages((prev) =>
-      prev.map((p) => (p.id === updatedPage.id ? updatedPage : p))
+      prev.map((p) => (p.id === updatedPage.id ? { ...p, ...updatedPage } : p))
     );
     // Also, if the active peeked page is this page, update its cache
     setPeekPage((prev: any) => {
@@ -436,7 +509,7 @@ export default function DatabaseView({
     }
   };
 
-  const handleAddRow = (initialProperties?: Record<string, any>) => {
+  const handleAddRow = (initialProperties?: Record<string, any>, opts?: { openAfterCreate?: boolean }) => {
     const filterProps = getDefaultPropertiesFromFilters(config.filters || [], schema || []);
     const mergedProperties = { ...filterProps, ...initialProperties };
 
@@ -477,6 +550,7 @@ export default function DatabaseView({
         setLocalPages((prev) =>
           prev.map((p) => (p.id === tempId ? { ...p, id: realId } : p))
         );
+        if (opts?.openAfterCreate) handlePageClick(realId);
       } catch {
         setLocalPages((prev) => prev.filter((p) => p.id !== tempId));
       } finally {
@@ -487,6 +561,20 @@ export default function DatabaseView({
         });
       }
     });
+  };
+
+  // The header "New" button (unlike each view's own inline add-row trigger)
+  // has no surrounding context — no day cell, no kanban column — so without a
+  // date it was landing rows nowhere obvious (invisible on a Calendar view
+  // until opened directly). Prefill today's date when the schema has one
+  // (the active Calendar view's own dateCol, else the first date/datetime
+  // column) and always open the new row right after creation.
+  const handleHeaderNewClick = () => {
+    const dateColId = calendarConfig
+      ? calendarConfig.dateCol
+      : schema.find((c: any) => c.type === 'date' || c.type === 'datetime')?.id;
+    const initialProperties = dateColId ? { [dateColId]: formatYYYYMMDD(new Date()) } : undefined;
+    handleAddRow(initialProperties, { openAfterCreate: true });
   };
 
   const handleDeletePage = async (pageId: string) => {
@@ -723,7 +811,10 @@ export default function DatabaseView({
   const tableConfig = isTableView ? (config as TableViewConfig) : null;
   const kanbanConfig = config.type === 'kanban' ? (config as KanbanViewConfig) : null;
   const calendarConfig = config.type === 'calendar' ? (config as CalendarViewConfig) : null;
-  const selectColumns = schema.filter((c: any) => c.type === 'select' || c.type === 'status');
+  const tableGroupColumn = tableConfig?.groupByCol
+    ? schema.find((col: any) => col.id === tableConfig.groupByCol)
+    : null;
+  const isGroupedTableView = !!tableConfig?.groupByCol && isTableGroupableColumn(tableGroupColumn);
 
   const handleDateColChange = (dateCol: string) =>
     mutateConfig((cfg) => ({ ...cfg, dateCol }));
@@ -863,7 +954,7 @@ export default function DatabaseView({
               }
             }}
             placeholder={tPage('untitled')}
-            className="w-full bg-transparent text-white font-bold text-2xl sm:text-3xl focus:outline-none placeholder:text-neutral-700 tracking-tight leading-none py-1"
+            className="w-full bg-transparent text-neutral-100 font-bold text-2xl sm:text-3xl focus:outline-none placeholder:text-neutral-700 tracking-tight leading-none py-1"
           />
         </div>
       </div>
@@ -916,7 +1007,7 @@ export default function DatabaseView({
 
           {/* New Page button — hidden on mobile (available via bottom nav) */}
           <button
-            onClick={handleAddRow}
+            onClick={handleHeaderNewClick}
             disabled={pendingPageIds.size > 0}
             className="hidden sm:flex items-center gap-1.5 bg-neutral-100 text-neutral-900 hover:bg-white px-4 py-1.5 transition-colors text-sm font-medium disabled:opacity-50 ml-1 cursor-pointer rounded"
           >
@@ -929,31 +1020,64 @@ export default function DatabaseView({
       <div className="flex-1 flex gap-4 relative pt-4 pb-8 min-w-0 overflow-hidden">
         <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden h-full pr-1">
           {isTableView && tableConfig ? (
-            <TableLayout
-              database={database}
-              pages={processedPages}
-              columnOrder={tableConfig.columnOrder}
-              hiddenColumns={tableConfig.hiddenColumns}
-              columnWidths={tableConfig.columnWidths ?? {}}
-              onColumnWidthsChange={handleColumnWidthsChange}
-              rowColorCol={tableConfig.rowColorCol}
-              onColumnOrderChange={handleColumnOrderChange}
-              onRowClick={handlePageClick}
-              onRowReorder={handleRowReorder}
-              onDeletePage={handleDeletePage}
-              onDuplicatePage={handleDuplicatePage}
-              hasSorts={(config.sorts?.length ?? 0) > 0}
-              onUpdatePageProperties={handleUpdatePageProperties}
-              onCreatePage={handleAddRow}
-              filters={config.filters}
-              sorts={config.sorts}
-              onFiltersChange={handleFiltersChange}
-              onSortsChange={handleSortsChange}
-              onToggleHideColumn={toggleHideColumn}
-              defaultPageIcon={config.defaultPageIcon}
-              defaultPageIconColor={config.defaultPageIconColor}
-              onPageIconChange={handlePageIconChange}
-            />
+            isGroupedTableView ? (
+              <GroupedTableLayout
+                database={database}
+                pages={processedPages}
+                groupByCol={tableConfig.groupByCol!}
+                groupOrder={tableConfig.groupOrder ?? []}
+                hiddenGroups={tableConfig.hiddenGroups ?? []}
+                groupColBg={tableConfig.groupColBg ?? false}
+                onGroupOrderChange={handleGroupOrderChange}
+                columnOrder={tableConfig.columnOrder}
+                hiddenColumns={tableConfig.hiddenColumns}
+                columnWidths={tableConfig.columnWidths ?? {}}
+                onColumnWidthsChange={handleColumnWidthsChange}
+                rowColorCol={tableConfig.rowColorCol}
+                onColumnOrderChange={handleColumnOrderChange}
+                onRowClick={handlePageClick}
+                onRowReorder={handleRowReorder}
+                onDeletePage={handleDeletePage}
+                onDuplicatePage={handleDuplicatePage}
+                hasSorts={(config.sorts?.length ?? 0) > 0}
+                onUpdatePageProperties={handleUpdatePageProperties}
+                onCreatePage={handleAddRow}
+                filters={config.filters}
+                sorts={config.sorts}
+                onFiltersChange={handleFiltersChange}
+                onSortsChange={handleSortsChange}
+                onToggleHideColumn={toggleHideColumn}
+                defaultPageIcon={config.defaultPageIcon}
+                defaultPageIconColor={config.defaultPageIconColor}
+                onPageIconChange={handlePageIconChange}
+              />
+            ) : (
+              <TableLayout
+                database={database}
+                pages={processedPages}
+                columnOrder={tableConfig.columnOrder}
+                hiddenColumns={tableConfig.hiddenColumns}
+                columnWidths={tableConfig.columnWidths ?? {}}
+                onColumnWidthsChange={handleColumnWidthsChange}
+                rowColorCol={tableConfig.rowColorCol}
+                onColumnOrderChange={handleColumnOrderChange}
+                onRowClick={handlePageClick}
+                onRowReorder={handleRowReorder}
+                onDeletePage={handleDeletePage}
+                onDuplicatePage={handleDuplicatePage}
+                hasSorts={(config.sorts?.length ?? 0) > 0}
+                onUpdatePageProperties={handleUpdatePageProperties}
+                onCreatePage={handleAddRow}
+                filters={config.filters}
+                sorts={config.sorts}
+                onFiltersChange={handleFiltersChange}
+                onSortsChange={handleSortsChange}
+                onToggleHideColumn={toggleHideColumn}
+                defaultPageIcon={config.defaultPageIcon}
+                defaultPageIconColor={config.defaultPageIconColor}
+                onPageIconChange={handlePageIconChange}
+              />
+            )
           ) : kanbanConfig ? (
             <KanbanBoard
               database={database}
@@ -974,7 +1098,7 @@ export default function DatabaseView({
               cardBgCol={kanbanConfig.cardBgCol}
               groupColBg={kanbanConfig.groupColBg ?? false}
               onUpdatePageProperties={handleUpdatePageProperties}
-              onCreatePage={handleAddRow}
+              onCreatePage={(initialProperties) => handleAddRow(initialProperties, { openAfterCreate: true })}
               defaultPageIcon={config.defaultPageIcon}
               defaultPageIconColor={config.defaultPageIconColor}
               onPageIconChange={handlePageIconChange}
@@ -983,6 +1107,7 @@ export default function DatabaseView({
           ) : calendarConfig ? (
             <CalendarView
               database={database}
+              currentUserId={currentUserId}
               pages={processedPages}
               dateCol={calendarConfig.dateCol}
               viewMode={calendarConfig.viewMode}
@@ -998,7 +1123,7 @@ export default function DatabaseView({
               showPropertyLabels={calendarConfig.showPropertyLabels ?? true}
               propertyTextClamp={calendarConfig.propertyTextClamp ?? 'truncate'}
               onUpdatePageProperties={handleUpdatePageProperties}
-              onCreatePage={handleAddRow}
+              onCreatePage={(initialProperties) => handleAddRow(initialProperties, { openAfterCreate: true })}
               defaultPageIcon={config.defaultPageIcon}
               defaultPageIconColor={config.defaultPageIconColor}
               onPageIconChange={handlePageIconChange}
@@ -1039,7 +1164,7 @@ export default function DatabaseView({
               onOpenBehaviorChange={(behavior) =>
                 mutateConfig((cfg) => ({ ...cfg, openBehavior: behavior }))
               }
-              groupByCol={kanbanConfig?.groupByCol}
+              groupByCol={tableConfig?.groupByCol ?? kanbanConfig?.groupByCol}
               onGroupByColChange={handleGroupByChange}
               cardProperties={kanbanConfig?.cardProperties ?? calendarConfig?.cardProperties}
               onCardPropertiesChange={handleCardPropertiesChange}
@@ -1061,7 +1186,7 @@ export default function DatabaseView({
               onCardBgColChange={handleCardBgColChange}
               rowColorCol={(config as TableViewConfig).rowColorCol}
               onRowColorColChange={handleRowColorColChange}
-              groupColBg={kanbanConfig?.groupColBg ?? false}
+              groupColBg={tableConfig?.groupColBg ?? kanbanConfig?.groupColBg ?? false}
               onGroupColBgChange={handleGroupColBgChange}
               defaultPageIcon={config.defaultPageIcon}
               defaultPageIconColor={config.defaultPageIconColor}
@@ -1077,7 +1202,7 @@ export default function DatabaseView({
                   }))
                 )
               }
-              hiddenGroups={kanbanConfig?.hiddenGroups}
+              hiddenGroups={tableConfig?.hiddenGroups ?? kanbanConfig?.hiddenGroups}
               onHiddenGroupsChange={(hidden) =>
                 mutateConfig((cfg) => ({ ...cfg, hiddenGroups: hidden }))
               }
@@ -1204,7 +1329,18 @@ export default function DatabaseView({
 
           {/* Side Peek Drawer */}
           {(config.openBehavior ?? 'center') === 'side' && (
-            <div className="absolute z-50 flex flex-col overflow-hidden bg-neutral-850 inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t border-neutral-800 sm:left-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:w-full sm:max-w-2xl sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l sm:modal-shadow animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
+            <div
+              className="absolute z-50 flex flex-col overflow-hidden bg-neutral-850 inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t border-neutral-800 sm:left-auto sm:top-0 sm:right-0 sm:bottom-0 sm:h-full sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l sm:modal-shadow animate-in slide-in-from-bottom sm:slide-in-from-right duration-300"
+              style={isDesktopViewport ? { width: sidePeekWidth, maxWidth: '95vw' } : undefined}
+            >
+              {isDesktopViewport && (
+                <div
+                  data-no-block-marquee
+                  onMouseDown={handleSidePeekResizeStart}
+                  className="absolute left-0 top-0 bottom-0 w-1.5 -ml-0.5 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500/70 transition-colors z-20"
+                  title={t('resizePanel')}
+                />
+              )}
               {/* Peek Sticky Header */}
               <div className="flex items-center justify-between px-6 py-3 border-b border-neutral-850 shrink-0 bg-neutral-900/30">
                 <div className="flex items-center gap-3">
