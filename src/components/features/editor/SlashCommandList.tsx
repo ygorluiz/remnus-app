@@ -65,7 +65,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Large section heading',
     icon: <Heading1 size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run(),
+      (editor.chain().focus() as any).deleteRange(range).setNode('heading', { level: 1 }).run(),
   },
   {
     id: 'h2',
@@ -73,7 +73,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Medium section heading',
     icon: <Heading2 size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run(),
+      (editor.chain().focus() as any).deleteRange(range).setNode('heading', { level: 2 }).run(),
   },
   {
     id: 'h3',
@@ -81,7 +81,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Small section heading',
     icon: <Heading3 size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run(),
+      (editor.chain().focus() as any).deleteRange(range).setNode('heading', { level: 3 }).run(),
   },
   {
     id: 'bullet',
@@ -89,7 +89,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Unordered list of items',
     icon: <List size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleBulletList().run(),
+      (editor.chain().focus() as any).deleteRange(range).toggleBulletList().run(),
   },
   {
     id: 'ordered',
@@ -97,7 +97,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Ordered list of items',
     icon: <ListOrdered size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
+      (editor.chain().focus() as any).deleteRange(range).toggleOrderedList().run(),
   },
   {
     id: 'task',
@@ -105,7 +105,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Checkbox list for tasks',
     icon: <CheckSquare size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleTaskList().run(),
+      (editor.chain().focus() as any).deleteRange(range).toggleTaskList().run(),
   },
   {
     id: 'quote',
@@ -113,7 +113,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Capture a quote or callout',
     icon: <Quote size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
+      (editor.chain().focus() as any).deleteRange(range).toggleBlockquote().run(),
   },
   {
     id: 'code',
@@ -121,7 +121,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Display code with syntax',
     icon: <Code2 size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
+      (editor.chain().focus() as any).deleteRange(range).toggleCodeBlock().run(),
   },
   {
     id: 'table',
@@ -129,7 +129,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Insert a 3×3 table',
     icon: <Table size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+      (editor.chain().focus() as any).deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
     id: 'divider',
@@ -137,7 +137,7 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Visual horizontal separator',
     icon: <Minus size={15} />,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
+      (editor.chain().focus() as any).deleteRange(range).setHorizontalRule().run(),
   },
   {
     id: 'video',
